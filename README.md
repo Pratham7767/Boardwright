@@ -6,7 +6,7 @@
 
 Free and open source (MIT). A community project, not affiliated with the KiCad project or Anthropic.
 
-> **Status: 0.3.0, early testing.** Windows 11 with KiCad 10.0.8 is tested end to end on two real boards (a mains flyback supply and a USB sensor board). **Linux** is supported and tested on Ubuntu 24.04 with KiCad 10.0.8 (installer, gate scripts on a real board, the KiCad button's window); a full board design run on Linux is still to be done. macOS is untested. Expect rough edges, and please report them: see [docs/TESTING.md](docs/TESTING.md).
+> **Status: 0.3.1, early testing.** Windows 11 with KiCad 10.0.8 is tested end to end on two real boards (a mains flyback supply and a USB sensor board). **Linux** is supported and tested on Ubuntu 24.04 with KiCad 10.0.8 (installer, gate scripts on a real board, the KiCad button's window); a full board design run on Linux is still to be done. macOS is untested. Expect rough edges, and please report them: see [docs/TESTING.md](docs/TESTING.md).
 
 ## What you get
 

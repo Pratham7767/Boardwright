@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1 (2026-11-16)
+- KiCad add-on: its description in KiCad's Plugin and Content Manager now says it works on Windows and Linux (it said "Tested on Windows only").
+- No other changes. Installing 0.3.1 over 0.3.0 is optional.
+
 ## 0.3.0 (2026-11-16): ready for testers on GitHub
 - **Fixed: new projects had no stage graph.** `init_project.py` copied the scripts but not `pipeline.json`, so `plan.py` (and with it `/boardwright:pcb-auto`) failed in every new project. It no longer copies the plugin-only tools (`setup.py`, `session_start.py`, `selftest.py`) into projects.
 - **Fixed: every new project was treated as hazardous.** The planner read the template's unanswered `Mains-connected: yes / no` as "yes" (and `hand / machine` as machine assembly), which would have added the high-voltage rules and an Opus review at every stage.

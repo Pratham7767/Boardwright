@@ -17,10 +17,10 @@ Nothing in this repository uploads anything by itself. These are the steps you r
 2. Run `python tools/check_all.py` locally.
 3. Tag and push:
    ```
-   git tag v0.3.0
-   git push origin v0.3.0
+   git tag v0.3.1
+   git push origin v0.3.1
    ```
-   The **release** workflow builds the add-on and publishes a GitHub release with `boardwright-kicad-0.3.0.zip`, `boardwright-kicad.zip` (the fixed name the installers download) and `metadata.repository.json`.
+   The **release** workflow builds the add-on and publishes a GitHub release with `boardwright-kicad-<version>.zip`, `boardwright-kicad.zip` (the fixed name the installers download) and `metadata.repository.json`.
 
 ## Telling testers
 Send them the repository link and `docs/TESTING.md`. Installing is one command (README), plus one manual step in KiCad: **Install from File...** for the add-on.
