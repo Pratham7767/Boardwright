@@ -4,14 +4,14 @@
 
 Free and open source (MIT). A community project, not affiliated with the KiCad project or Anthropic.
 
-> **Status: 0.2.0, early testing.** Tested on Windows 11 with KiCad 10.0.8, on two real boards (a mains flyback supply and a USB sensor board). macOS and Linux are untested. Expect rough edges, and please report them: see [docs/TESTING.md](docs/TESTING.md).
+> **Status: 0.2.0, early testing.** Windows 11 with KiCad 10.0.8 is tested end to end on two real boards (a mains flyback supply and a USB sensor board). **Linux** is supported: the installer, the add-on's chat engine and its tests run there, but a full board run with KiCad on Linux has not been done yet. macOS is untested. Expect rough edges, and please report them: see [docs/TESTING.md](docs/TESTING.md).
 
 ## What you get
 
 | Part | What it is |
 |---|---|
 | **Claude Code plugin** (`plugin/`) | The pipeline: a skill with eight stages and their gates, 13 check and export scripts, 4 helper agents on cheaper models, design rules from manufacturer application notes, and slash commands such as `/boardwright:pcb-new`. Works in the Claude Code terminal, VS Code, JetBrains and the desktop app. |
-| **KiCad add-on** (`kicad-addon/`, Windows) | A speech-bubble button in KiCad's PCB Editor that opens a chat window next to KiCad, talking to *your own* Claude Code in the open board's folder: streamed replies, Allow/Deny for every change, model and mode menus, and a first-run check that walks you through install and sign-in. |
+| **KiCad add-on** (`kicad-addon/`, Windows and Linux) | A speech-bubble button in KiCad's PCB Editor that opens a chat window next to KiCad, talking to *your own* Claude Code in the open board's folder: streamed replies, Allow/Deny for every change, model and mode menus, and a first-run check that walks you through install and sign-in. |
 | **Installers** (`install/`) | One command that checks and sets up everything, asking before each change. |
 
 ## The eight stages
@@ -39,7 +39,7 @@ You need a Claude plan that includes Claude Code (Pro, Max, Team or Enterprise) 
 irm https://raw.githubusercontent.com/prathware/boardwright/main/install/install.ps1 | iex
 ```
 
-**macOS / Linux** (untested):
+**Linux** (and macOS, untested), in a terminal:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/prathware/boardwright/main/install/install.sh | bash

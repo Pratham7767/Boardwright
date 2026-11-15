@@ -254,6 +254,39 @@ def console_python() -> str:
     return str(exe)
 
 
+# Terminal emulators tried on Linux, in order, with the flag that runs a command.
+LINUX_TERMINALS = (("x-terminal-emulator", ["-e"]), ("gnome-terminal", ["--"]), ("konsole", ["-e"]),
+                   ("xfce4-terminal", ["-x"]), ("kitty", []), ("alacritty", ["-e"]),
+                   ("tilix", ["-e"]), ("mate-terminal", ["-x"]), ("lxterminal", ["-e"]), ("xterm", ["-e"]))
+
+
+def open_in_terminal(argv: list) -> Optional[str]:
+    """Run argv in a new, visible terminal window the user can type into.
+    Windows: a new console. Linux: the first terminal emulator found.
+    macOS: Terminal.app. -> error text (with the command to run by hand), or None."""
+    shown = " ".join(f'"{a}"' if " " in a else a for a in argv)
+    try:
+        if os.name == "nt":
+            subprocess.Popen(argv, creationflags=subprocess.CREATE_NEW_CONSOLE, close_fds=True)
+            return None
+        # keep the window open after the command ends, so its last lines can be read
+        import shlex
+        script = " ".join(shlex.quote(a) for a in argv) +             "; echo; read -r -p 'Press Enter to close this window. ' _"
+        if sys.platform == "darwin":
+            osa = 'tell application "Terminal" to do script ' + json.dumps(script)
+            subprocess.Popen(["osascript", "-e", osa, "-e", 'tell application "Terminal" to activate'])
+            return None
+        for term, flag in LINUX_TERMINALS:
+            exe = shutil.which(term)
+            if exe:
+                subprocess.Popen([exe] + flag + ["bash", "-c", script], start_new_session=True,
+                                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return None
+        return "No terminal window could be opened. Open a terminal and run:  " + shown
+    except OSError as exc:
+        return f"could not open a terminal ({exc}). Run by hand:  {shown}"
+
+
 def start_helper_setup() -> Optional[str]:
     """Run the plugin's setup.py (uv, kicad-buddy, mcp-server-kicad, KiCad API
     setting) in its own console window, where the user answers each y/N question.
@@ -261,28 +294,13 @@ def start_helper_setup() -> Optional[str]:
     if not bundle_available():
         return "this copy of the add-on has no bundled plugin; run the plugin's scripts/setup.py by hand"
     script = bundle_dir() / "plugin" / "scripts" / "setup.py"
-    argv = [console_python(), str(script)]
-    try:
-        if os.name == "nt":
-            subprocess.Popen(argv, creationflags=subprocess.CREATE_NEW_CONSOLE, close_fds=True)
-        else:
-            return "Open a terminal and run:  python3 " + str(script)
-        return None
-    except OSError as exc:
-        return f"could not start setup: {exc}"
+    return open_in_terminal([console_python(), str(script)])
 
 
 def start_login(claude: str) -> Optional[str]:
     """Start Claude Code's own sign-in (`claude auth login`) in its own console
     window. We do not touch its input or output. -> error text, or None."""
-    argv = [claude, "auth", "login"]
-    try:
-        if os.name == "nt":
-            subprocess.Popen(argv, creationflags=subprocess.CREATE_NEW_CONSOLE, close_fds=True)
-            return None
-        return "Open a terminal and run:  claude auth login"
-    except OSError as exc:
-        return f"could not start '{' '.join(argv)}': {exc}"
+    return open_in_terminal([claude, "auth", "login"])
 
 
 # --------------------------------------------------------------------------
@@ -526,7 +544,7 @@ class ClaudeSession:
         self.proc = subprocess.Popen(
             self.argv, cwd=self.cwd, env=child_env(),
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            creationflags=NO_WINDOW)
+            creationflags=NO_WINDOW, start_new_session=(os.name != "nt"))   # own group: Stop kills its tools too
         threading.Thread(target=self._read, name="claude-reader", daemon=True).start()
         self._control({"subtype": "initialize", "hooks": None})
 
@@ -604,7 +622,8 @@ class ClaudeSession:
                 subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)],
                                capture_output=True, timeout=10, creationflags=NO_WINDOW)
             else:
-                proc.kill()
+                import signal
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
         except Exception:
             try:
                 proc.kill()
@@ -691,7 +710,13 @@ def release_lock(project: str) -> None:
 def raise_window(project: str) -> bool:
     """Bring the chat window that is already open for this project to the front."""
     if os.name != "nt":
-        return False
+        wm = shutil.which("wmctrl")             # X11 only; Wayland has no way for us to do this
+        if not wm:
+            return False
+        try:
+            return subprocess.run([wm, "-a", window_title(project)], timeout=5).returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            return False
     import ctypes
     u32 = ctypes.windll.user32
     hwnd = u32.FindWindowW(None, window_title(project))

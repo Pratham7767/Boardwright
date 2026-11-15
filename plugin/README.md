@@ -2,7 +2,7 @@
 
 A Claude Code plugin that takes a printed circuit board from an idea to fab files in KiCad, in eight gated stages. You watch every board change happen in the open KiCad window, and nothing is ever ordered or uploaded for you.
 
-**Status: 0.2.0, early testing.** Tested on Windows 11 with KiCad 10.0.8 on two real boards. macOS and Linux are untested. A community plugin, not affiliated with the KiCad project or Anthropic. Install, update and test instructions are in the repository's README and `docs/`.
+**Status: 0.2.0, early testing.** Tested end to end on Windows 11 with KiCad 10.0.8 on two real boards. Linux is supported, but a full board run there is still to be done; macOS is untested. A community plugin, not affiliated with the KiCad project or Anthropic. Install, update and test instructions are in the repository's README and `docs/`.
 
 ## What it does
 
@@ -79,7 +79,7 @@ Exit codes: 0 pass, 1 a gate failed, 2 setup or tool problem. There is no option
 
 ## Chat inside KiCad
 
-The repository's `kicad-addon/` adds a button to KiCad's PCB Editor that opens a chat window running this plugin in the open board's folder (Windows). See `kicad-addon/README.md`.
+The repository's `kicad-addon/` adds a button to KiCad's PCB Editor that opens a chat window running this plugin in the open board's folder (Windows and Linux). See `kicad-addon/README.md`.
 
 ## Design rules
 

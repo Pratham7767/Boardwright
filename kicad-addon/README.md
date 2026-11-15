@@ -1,6 +1,6 @@
 # Boardwright for KiCad (the add-on)
 
-Most people should use the repository's installer; see `../docs/INSTALL.md`. This page is about the add-on itself.
+Most people should use the repository's installer; see `../docs/INSTALL.md`. This page is about the add-on itself. It runs on Windows and Linux (`platforms` in `metadata.json`). Linux needs wxPython for the system Python and a terminal emulator; see INSTALL.md.
 
 A KiCad 10 add-on. It puts a **Boardwright chat** button on the PCB Editor toolbar. The button opens a chat window that talks to **your own Claude Code**, started in the folder of the open project with the boardwright plugin loaded.
 

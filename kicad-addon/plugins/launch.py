@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -55,8 +56,19 @@ def project_from_kicad() -> str | None:
 
 
 def pcb_editor_titles() -> list:
-    """Titles of visible PCB Editor windows (Windows only)."""
+    """Titles of visible PCB Editor windows. Windows: the window list.
+    Linux on X11: wmctrl or xdotool if installed. Otherwise none (Wayland
+    does not let other programs read window titles)."""
     if os.name != "nt":
+        for cmd in (["wmctrl", "-l"], ["xdotool", "search", "--name", "PCB Editor", "getwindowname", "%@"]):
+            if shutil.which(cmd[0]):
+                try:
+                    out = subprocess.run(cmd, capture_output=True, text=True, timeout=5).stdout
+                except (OSError, subprocess.TimeoutExpired):
+                    continue
+                # wmctrl lines: "<id> <desktop> <host> <title>"
+                lines = [l.split(None, 3)[-1] if cmd[0] == "wmctrl" else l for l in out.splitlines()]
+                return [l for l in lines if l.rstrip().endswith("PCB Editor")]
         return []
     import ctypes
     from ctypes import wintypes
@@ -113,16 +125,38 @@ def project_from_window_title() -> str | None:
         path = next(iter(dirs.values()))
         log(f"project from window title {sorted(names)} and KiCad's recent files: {path}")
         return path
+    if not names and os.name != "nt":
+        # No window titles to go by (Linux on Wayland, or no wmctrl): KiCad puts the
+        # board it opened last at the top of its recent-files list.
+        newest = next((b for b in recent_boards() if b.suffix == ".kicad_pcb" and b.parent.is_dir()), None)
+        if newest:
+            log(f"no window titles readable; using the most recently opened board: {newest}")
+            return str(newest.parent)
     log(f"could not tell the project folder (PCB Editor titles {sorted(names)}, matches {sorted(dirs.values())}); "
         "will ask for it")
     return None
 
 
+def imports_wx(py: str) -> bool:
+    try:
+        return subprocess.run([py, "-c", "import wx"], capture_output=True, timeout=30,
+                              stdin=subprocess.DEVNULL).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
 def gui_python() -> str | None:
-    """A Python that has wxPython: KiCad's own (the plugin environment has none)."""
+    """A Python that has wxPython.  Windows/macOS: KiCad's bundled Python.
+    Linux: the system python3, where KiCad's packages install python3-wxgtk."""
     env = os.environ.get("BOARDWRIGHT_PYTHON")
     if env and Path(env).is_file():
         return env
+    if os.name != "nt" and sys.platform != "darwin":
+        cands = [sys.executable, getattr(sys, "_base_executable", ""), "/usr/bin/python3", shutil.which("python3")]
+        for c in dict.fromkeys(c for c in cands if c):
+            if Path(c).is_file() and imports_wx(c):
+                return c
+        return None
     base = Path(getattr(sys, "base_executable", "") or sys.executable).parent
     for d in (base, Path(sys.base_prefix), Path(sys.base_prefix) / "bin"):
         has_wx = any((d / lib / "site-packages" / "wx").is_dir() for lib in ("Lib", "lib")) or \
@@ -143,7 +177,10 @@ def main() -> int:
         return 0
     py = gui_python()
     if not py:
-        msg = "Boardwright: no Python with wxPython found. Set BOARDWRIGHT_PYTHON to KiCad's python."
+        msg = ("Boardwright: no Python with wxPython found. " +
+               ("Install wxPython for the system Python (Debian/Ubuntu: sudo apt install python3-wxgtk4.0) "
+                "or set BOARDWRIGHT_PYTHON." if sys.platform.startswith("linux")
+                else "Set BOARDWRIGHT_PYTHON to KiCad's python."))
         log(msg)
         print(msg)                 # KiCad 10.0.1+ shows plugin output in its messages
         return 1

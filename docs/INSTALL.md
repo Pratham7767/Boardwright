@@ -33,12 +33,18 @@ cd boardwright
 powershell -ExecutionPolicy Bypass -File install\install.ps1
 ```
 
-### macOS / Linux (untested)
+### Linux
+Supported distributions: anything with KiCad 9 or 10 from a **distribution package** and Python 3.10+. Ubuntu 22.04 or 24.04 with the official KiCad PPA is the reference setup. The **Flatpak** KiCad cannot be used: its sandbox can't start Claude Code. Ubuntu 20.04 is too old (no KiCad 10 PPA, Python 3.8).
+
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/prathware/boardwright/main/install/install.sh | bash
 ```
-or from a clone: `bash install/install.sh`.
+or from a clone: `bash install/install.sh`. Add `--check` to see what is missing without changing anything.
+
+On Ubuntu the installer offers KiCad 10 from the official PPA (`ppa:kicad/kicad-10.0-releases`) and Git from apt; both use `sudo`, and only after you say yes. On other distributions it prints the package command.
+
+For the KiCad button on Linux you also need wxPython for the system Python (Ubuntu: `python3-wxgtk4.0`, which KiCad's package normally pulls in) and a terminal emulator for the sign-in and helper windows. On X11, `wmctrl` (optional) lets the button find the board by its window title and bring an open chat window to the front. Without it (for example on Wayland), the button uses the board you opened most recently in KiCad.
 
 ### What the installer does, step by step
 1. **KiCad**: looks for `kicad-cli`; offers `winget install KiCad.KiCad` if missing.
@@ -47,7 +53,7 @@ or from a clone: `bash install/install.sh`.
 4. **Claude Code**: offers the official installer.
 5. **Plugin**: `claude plugin marketplace add prathware/boardwright` (or your clone's folder), then `claude plugin install boardwright@boardwright`.
 6. **Helpers**: runs the plugin's `scripts/setup.py`, which installs uv, kicad-buddy and its companion KiCad plugin, downloads the schematic tools, and ticks KiCad's **Enable KiCad API server** setting. It changes that setting only while KiCad is closed, and keeps a `.bak` copy.
-7. **KiCad add-on** (Windows): builds or downloads `boardwright-kicad.zip` and shows it in Explorer. KiCad installs add-ons itself, so this last step is yours:
+7. **KiCad add-on** (Windows and Linux): builds or downloads `boardwright-kicad.zip` and shows it in Explorer. KiCad installs add-ons itself, so this last step is yours:
    - KiCad main window → **Plugin and Content Manager** → **Install from File...** → pick `boardwright-kicad.zip` → **Close**.
    - **Restart KiCad**, then open a board in the PCB Editor. The speech-bubble button appears on the top toolbar.
 8. **Sign-in**: starts `claude auth login`, Claude Code's own sign-in in your browser.
@@ -69,7 +75,7 @@ python "<installPath>/scripts/setup.py"          # python3 on macOS/Linux
 claude auth login
 ```
 
-KiCad add-on (Windows): download `boardwright-kicad.zip` from the repository's **Releases** page, or build it from a clone with `python kicad-addon/build.py` (it lands in `kicad-addon/dist/`). Then install it with **Install from File...** as in step 7 above.
+KiCad add-on (Windows, Linux): download `boardwright-kicad.zip` from the repository's **Releases** page, or build it from a clone with `python kicad-addon/build.py` (it lands in `kicad-addon/dist/`). Then install it with **Install from File...** as in step 7 above.
 
 Check everything: open any folder in Claude Code and run `/boardwright:pcb-doctor`.
 
@@ -107,7 +113,10 @@ KiCad add-on: **Plugin and Content Manager → Installed → Boardwright → Uni
 | Problem | Fix |
 |---|---|
 | The KiCad button doesn't appear | Restart KiCad once after installing or updating the add-on. Check **Preferences → Plugins → Enable KiCad API server** is ticked. Then **Preferences → PCB Editor → Action Plugins**: "Show button" for Boardwright chat. |
-| Clicking the button does nothing | Read `%TEMP%\boardwright_launcher.log`. |
+| Clicking the button does nothing | Read `%TEMP%\boardwright_launcher.log` (Linux: `/tmp/boardwright_launcher.log`). |
+| Linux: "no Python with wxPython found" | `sudo apt install python3-wxgtk4.0` (or your distribution's wxPython package). |
+| Linux: the button opens the wrong board | It uses KiCad's most recently opened board when it can't read window titles. Install `wmctrl` (X11), or open the right board last. |
+| Linux: Sign in or Install helpers says no terminal could be opened | Run the command it shows in any terminal. |
 | "You've reached your ... limit" | Pick another model in the window's model menu (or `/model` in Claude Code) and send again. |
 | Claude can chat but can't see the board | Open the board in KiCad first; run `/boardwright:pcb-doctor`; if "KiCad API connection" is not ok, tick the API server setting and restart KiCad. |
 | `python` opens the Microsoft Store | That's Windows' placeholder. Install Python from python.org with "Add to PATH" ticked, or run the installer again. |

@@ -26,7 +26,7 @@ Go as far as you can: at least through stage 4 (schematic), ideally through stag
 - Did a gate stop the work for a good reason? A bad reason?
 - Was anything slow, or did it loop?
 
-## 4. The KiCad button (Windows, 10 min)
+## 4. The KiCad button (Windows or Linux, 10 min)
 Open the board from step 3 in KiCad's PCB Editor and click the speech-bubble button.
 - Does the window open, and does the Setup box at the top report correctly?
 - Ask: *"What stage is this project at?"* Do you get a streamed answer?
@@ -41,7 +41,8 @@ Open an issue on the GitHub repository (the **Bug report** or **Feedback** form)
 - Windows / macOS / Linux version, KiCad version, `claude --version`
 - the `/boardwright:pcb-doctor` table
 - what you did, what you expected, what happened, plus screenshots
-- KiCad button problems: the file `%TEMP%\boardwright_launcher.log`
+- KiCad button problems: the file `%TEMP%\boardwright_launcher.log` (Linux: `/tmp/boardwright_launcher.log`)
+- Linux: your distribution and version, X11 or Wayland, and how KiCad was installed (PPA, distro package, Flatpak)
 - for wrong design decisions: the stage report from `reports/` and the part of the conversation where it happened
 
 Before sharing a log or report, delete anything you don't want to share (names, paths).

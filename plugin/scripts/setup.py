@@ -171,8 +171,15 @@ def kicad_running() -> bool:
 def step_kicad() -> None:
     say("\n4. KiCad")
     cli = find_kicad_cli()
-    note("kicad-cli", "ok" if cli else "FAIL",
-         cli or f"install KiCad 9 or 10 from {KICAD_URL}" + (" (or: winget install KiCad.KiCad)" if WIN else ""))
+    if not cli and sys.platform.startswith("linux") and shutil.which("flatpak") and subprocess.run(
+            ["flatpak", "info", "org.kicad.KiCad"], capture_output=True).returncode == 0:
+        note("kicad-cli", "FAIL", "only the Flatpak KiCad is installed. Its sandbox cannot start Claude Code or "
+             "share kicad-cli, so boardwright needs a distribution package: on Ubuntu, "
+             "sudo add-apt-repository ppa:kicad/kicad-10.0-releases && sudo apt install kicad")
+    else:
+        hint = {"win32": " (or: winget install KiCad.KiCad)", "darwin": " (or: brew install --cask kicad)"}.get(
+            sys.platform, " (Ubuntu: sudo add-apt-repository ppa:kicad/kicad-10.0-releases && sudo apt install kicad)")
+        note("kicad-cli", "ok" if cli else "FAIL", cli or f"install KiCad 9 or 10 from {KICAD_URL}{hint}")
     files = kicad_config_files()
     if not files:
         note("KiCad API server", "warn", "KiCad has not been started yet; start it once, then rerun this")
