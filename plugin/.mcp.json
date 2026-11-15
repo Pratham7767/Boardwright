@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "kicad-live": {
+      "type": "stdio",
+      "command": "kicad-buddy",
+      "args": []
+    },
+    "kicad-schematic": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["--from", "mcp-server-kicad==0.21.1", "mcp-server-kicad-schematic"]
+    }
+  }
+}

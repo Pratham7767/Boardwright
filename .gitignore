@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+kicad-addon/dist/
+.DS_Store
+Thumbs.db
+*.bak
+.env

@@ -1,0 +1,2 @@
+# Boardwright needs no extra packages: it uses only the standard library and
+# the wxPython that ships with KiCad. KiCad requires this file to exist.

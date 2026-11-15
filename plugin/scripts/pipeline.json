@@ -1,0 +1,643 @@
+{
+ "version": 1,
+ "_comment": "Boardwright pipeline graph, read by plan.py. kind: model | script | helper | user | gate. needs = dependencies; loop_to = where work returns when a gate fails (not a dependency); invalidated_by = design files (sch, pcb, dru, pro) whose change reopens the node; when = hazardous | fast | machine_assembly. Evidence (auto-detected completion): file, file_contains [file, text], gate (row of reports/gates.json), json_ok (+ true_key or zero_key), glob_min [pattern, n], config_key (boardwright.json). A gate node must have evidence and can never be marked done by hand.",
+ "nodes": [
+  {
+   "id": "spec.interview",
+   "stage": 1,
+   "kind": "user",
+   "title": "Interview: use, power, connectors, size, environment, assembly, country, suppliers",
+   "needs": []
+  },
+  {
+   "id": "spec.report",
+   "stage": 1,
+   "kind": "model",
+   "title": "Write 01-spec.md: requirements table, block diagram, interfaces, standard, board class",
+   "needs": [
+    "spec.interview"
+   ],
+   "evidence": {
+    "file": "reports/01-spec.md"
+   }
+  },
+  {
+   "id": "spec.confirm",
+   "stage": 1,
+   "kind": "user",
+   "title": "Confirm the spec and every ASSUMPTION row (every requirement has a value and a source)",
+   "needs": [
+    "spec.report"
+   ]
+  },
+  {
+   "id": "parts.select",
+   "stage": 2,
+   "kind": "model",
+   "title": "Choose parts (assembly method, supplier stock, packages)",
+   "needs": [
+    "spec.confirm"
+   ]
+  },
+  {
+   "id": "parts.datasheets",
+   "stage": 2,
+   "kind": "model",
+   "title": "Download each datasheet PDF into datasheets/ (ask user if blocked)",
+   "needs": [
+    "parts.select"
+   ],
+   "evidence": {
+    "glob_min": [
+     "datasheets/*.pdf",
+     1
+    ]
+   }
+  },
+  {
+   "id": "parts.index",
+   "stage": 2,
+   "kind": "script",
+   "title": "Index datasheets, list parts without a facts file",
+   "needs": [
+    "parts.datasheets"
+   ],
+   "run": "uv run scripts/datasheet_index.py . --all"
+  },
+  {
+   "id": "parts.read",
+   "stage": 2,
+   "kind": "helper",
+   "title": "Read each datasheet (one helper per part): pins, ratings, land pattern with pages",
+   "needs": [
+    "parts.index"
+   ],
+   "parallel": "stage2",
+   "fanout": "per part",
+   "run": "helper: datasheet-reader",
+   "evidence": {
+    "glob_min": [
+     "datasheets/*.facts.md",
+     1
+    ]
+   }
+  },
+  {
+   "id": "parts.stock_quick",
+   "stage": 2,
+   "kind": "helper",
+   "title": "Quick stock and lifecycle pass over the non-passive parts",
+   "needs": [
+    "parts.select"
+   ],
+   "parallel": "stage2",
+   "run": "helper: part-scout"
+  },
+  {
+   "id": "parts.check",
+   "stage": 2,
+   "kind": "model",
+   "title": "Check pin table vs symbol and land pattern vs footprint; write MPN/LCSC/Datasheet fields",
+   "needs": [
+    "parts.read"
+   ]
+  },
+  {
+   "id": "parts.reviewer",
+   "stage": 2,
+   "kind": "helper",
+   "when": "review",
+   "title": "Independent second look at the parts report: every pin table against its datasheet page",
+   "needs": [
+    "parts.check"
+   ],
+   "run": "helper: gate-reviewer"
+  },
+  {
+   "id": "parts.report",
+   "stage": 2,
+   "kind": "gate",
+   "title": "Gate: 02-parts.md PASS (every part has a datasheet and a cited pin table)",
+   "needs": [
+    "parts.check",
+    "parts.stock_quick",
+    "parts.reviewer"
+   ],
+   "evidence": {
+    "file_contains": [
+     "reports/02-parts.md",
+     "PASS"
+    ]
+   },
+   "loop_to": "parts.check"
+  },
+  {
+   "id": "power.budget",
+   "stage": 3,
+   "kind": "model",
+   "title": "Power tree, worst-case current per rail, headroom, dissipation, junction temperature",
+   "needs": [
+    "parts.select"
+   ],
+   "parallel": "stage2"
+  },
+  {
+   "id": "power.report",
+   "stage": 3,
+   "kind": "gate",
+   "title": "Gate: 03-power.md PASS (every rail >= 20% headroom, no part over its Tj)",
+   "needs": [
+    "power.budget",
+    "parts.check"
+   ],
+   "evidence": {
+    "file_contains": [
+     "reports/03-power.md",
+     "PASS"
+    ]
+   },
+   "loop_to": "power.budget"
+  },
+  {
+   "id": "sch.project",
+   "stage": 4,
+   "kind": "model",
+   "title": "Create the KiCad project (one .kicad_pro, root .kicad_sch and .kicad_pcb)",
+   "needs": [
+    "power.report"
+   ],
+   "evidence": {
+    "glob_min": [
+     "*.kicad_pro",
+     1
+    ]
+   }
+  },
+  {
+   "id": "sch.draw",
+   "stage": 4,
+   "kind": "model",
+   "title": "Draw the schematic with the schematic tools",
+   "needs": [
+    "sch.project"
+   ]
+  },
+  {
+   "id": "sch.check",
+   "stage": 4,
+   "kind": "gate",
+   "title": "Gate: sch_check.py has 0 errors",
+   "needs": [
+    "sch.draw"
+   ],
+   "parallel": "sch-gates",
+   "run": "python scripts/sch_check.py .",
+   "evidence": {
+    "json_ok": "reports/sch-check.json",
+    "zero_key": "errors"
+   },
+   "invalidated_by": [
+    "sch"
+   ],
+   "loop_to": "sch.draw"
+  },
+  {
+   "id": "sch.erc",
+   "stage": 4,
+   "kind": "gate",
+   "title": "Gate: ERC has 0 errors",
+   "needs": [
+    "sch.draw"
+   ],
+   "parallel": "sch-gates",
+   "run": "python scripts/run_gates.py . --sch-only",
+   "evidence": {
+    "gate": "ERC"
+   },
+   "invalidated_by": [
+    "sch"
+   ],
+   "loop_to": "sch.draw"
+  },
+  {
+   "id": "sch.report",
+   "stage": 4,
+   "kind": "model",
+   "title": "Write 04-schematic.md: ERC counts, each warning explained",
+   "needs": [
+    "sch.check",
+    "sch.erc"
+   ],
+   "evidence": {
+    "file": "reports/04-schematic.md"
+   },
+   "invalidated_by": [
+    "sch"
+   ]
+  },
+  {
+   "id": "layout.rules",
+   "stage": 5,
+   "kind": "model",
+   "title": "Stackup, design rules, net classes as patterns, .kicad_dru, expect_netclass_patterns",
+   "needs": [
+    "sch.report"
+   ]
+  },
+  {
+   "id": "layout.guard",
+   "stage": 5,
+   "kind": "gate",
+   "title": "Gate: rule guard passes",
+   "needs": [
+    "layout.rules"
+   ],
+   "run": "python scripts/run_gates.py . --no-export",
+   "evidence": {
+    "gate": "Rule guard"
+   },
+   "invalidated_by": [
+    "pro",
+    "dru"
+   ],
+   "loop_to": "layout.rules"
+  },
+  {
+   "id": "layout.outline",
+   "stage": 5,
+   "kind": "user",
+   "title": "Confirm board outline, mounting holes, connector positions",
+   "needs": [
+    "sch.report"
+   ]
+  },
+  {
+   "id": "layout.floorplan",
+   "stage": 5,
+   "kind": "model",
+   "title": "Write the floorplan: blocks in current-flow order, critical loops per block",
+   "needs": [
+    "layout.guard",
+    "layout.outline"
+   ]
+  },
+  {
+   "id": "layout.place",
+   "stage": 5,
+   "kind": "model",
+   "title": "Place connectors, holes, power path, each IC with its decoupling",
+   "needs": [
+    "layout.floorplan"
+   ]
+  },
+  {
+   "id": "layout.place_measure",
+   "stage": 5,
+   "kind": "script",
+   "title": "Measure critical loops and read the unrouted list before routing",
+   "needs": [
+    "layout.place"
+   ],
+   "run": "KiCad python: scripts/emc_geometry.py . ; scripts/board_digest.py . (unrouted section) ; scripts/block_check.py . (decoupling and protection distances on the placement)"
+  },
+  {
+   "id": "layout.place_review",
+   "stage": 5,
+   "kind": "user",
+   "title": "Review the placement before any routing",
+   "needs": [
+    "layout.place_measure"
+   ]
+  },
+  {
+   "id": "layout.route_critical",
+   "stage": 5,
+   "kind": "model",
+   "title": "Route mains, switch nodes, high-current paths, feedback (coordinates; pcb-mechanic may push)",
+   "needs": [
+    "layout.place_review"
+   ]
+  },
+  {
+   "id": "layout.route_rest",
+   "stage": 5,
+   "kind": "model",
+   "title": "Route the remaining signals",
+   "needs": [
+    "layout.route_critical"
+   ]
+  },
+  {
+   "id": "layout.pours",
+   "stage": 5,
+   "kind": "model",
+   "title": "Pours last, refilled under the full rule set; none inside a hazardous area",
+   "needs": [
+    "layout.route_rest"
+   ]
+  },
+  {
+   "id": "layout.drc",
+   "stage": 5,
+   "kind": "gate",
+   "title": "Gate: DRC with schematic parity 0 errors, 0 unconnected",
+   "needs": [
+    "layout.pours"
+   ],
+   "run": "python scripts/run_gates.py . --no-export",
+   "evidence": {
+    "gate": "DRC"
+   },
+   "invalidated_by": [
+    "pcb",
+    "sch",
+    "dru",
+    "pro"
+   ],
+   "loop_to": "layout.route_critical"
+  },
+  {
+   "id": "layout.barrier",
+   "stage": 5,
+   "kind": "gate",
+   "title": "Gate: isolation barrier check passes",
+   "needs": [
+    "layout.drc"
+   ],
+   "when": "hazardous",
+   "run": "KiCad python: scripts/barrier_check.py .",
+   "evidence": {
+    "json_ok": "reports/barrier.json",
+    "true_key": "pass"
+   },
+   "invalidated_by": [
+    "pcb"
+   ],
+   "loop_to": "layout.route_critical"
+  },
+  {
+   "id": "layout.proof_rules",
+   "stage": 5,
+   "kind": "model",
+   "title": "Once per project: prove on a scratch copy that a deliberate violation raises an error",
+   "needs": [
+    "layout.drc"
+   ]
+  },
+  {
+   "id": "layout.blocks",
+   "stage": 5,
+   "kind": "script",
+   "title": "Measure block rules on the routed board: decoupling, protection parts, crystal, I2C pull-ups, track width",
+   "needs": [
+    "layout.pours"
+   ],
+   "run": "KiCad python: scripts/block_check.py .",
+   "evidence": {
+    "file": "reports/block-check.json"
+   },
+   "invalidated_by": [
+    "pcb",
+    "sch"
+   ]
+  },
+  {
+   "id": "layout.reviewer",
+   "stage": 5,
+   "kind": "helper",
+   "when": "review",
+   "title": "Independent second look at the layout: rules cover the spec, distances, gate numbers",
+   "needs": [
+    "layout.drc"
+   ],
+   "run": "helper: gate-reviewer"
+  },
+  {
+   "id": "layout.report",
+   "stage": 5,
+   "kind": "gate",
+   "title": "Gate: 05-layout.md PASS (rule table, distances, DRC counts)",
+   "needs": [
+    "layout.drc",
+    "layout.barrier",
+    "layout.proof_rules",
+    "layout.blocks",
+    "layout.reviewer"
+   ],
+   "evidence": {
+    "file_contains": [
+     "reports/05-layout.md",
+     "PASS"
+    ]
+   },
+   "invalidated_by": [
+    "pcb"
+   ],
+   "loop_to": "layout.route_critical"
+  },
+  {
+   "id": "emc.config",
+   "stage": 6,
+   "kind": "model",
+   "title": "Fill the emc section of boardwright.json: loops, switch nodes, distances, limits with sources",
+   "needs": [
+    "layout.report"
+   ],
+   "evidence": {
+    "config_key": "emc"
+   }
+  },
+  {
+   "id": "emc.measure",
+   "stage": 6,
+   "kind": "script",
+   "title": "Run the EMC geometry checks",
+   "needs": [
+    "emc.config"
+   ],
+   "run": "KiCad python: scripts/emc_geometry.py .",
+   "evidence": {
+    "file": "reports/emc-geometry.json"
+   },
+   "invalidated_by": [
+    "pcb"
+   ]
+  },
+  {
+   "id": "emc.si",
+   "stage": 6,
+   "kind": "model",
+   "title": "Controlled-impedance and fast nets: target Z0, stackup, length matching (high-speed.md)",
+   "needs": [
+    "emc.measure"
+   ],
+   "when": "fast"
+  },
+  {
+   "id": "emc.review",
+   "stage": 6,
+   "kind": "model",
+   "title": "Rate each finding CRITICAL/HIGH/MEDIUM/LOW; propose fixes (schematic changes need approval)",
+   "needs": [
+    "emc.measure",
+    "emc.si"
+   ],
+   "invalidated_by": [
+    "pcb"
+   ]
+  },
+  {
+   "id": "emc.reviewer",
+   "stage": 6,
+   "kind": "helper",
+   "when": "review",
+   "title": "Independent second look at the EMC findings and their ratings",
+   "needs": [
+    "emc.review"
+   ],
+   "run": "helper: gate-reviewer"
+  },
+  {
+   "id": "emc.report",
+   "stage": 6,
+   "kind": "gate",
+   "title": "Gate: 06-emc.md PASS (no CRITICAL finding)",
+   "needs": [
+    "emc.review",
+    "emc.reviewer"
+   ],
+   "evidence": {
+    "file_contains": [
+     "reports/06-emc.md",
+     "PASS"
+    ]
+   },
+   "invalidated_by": [
+    "pcb"
+   ],
+   "loop_to": "layout.route_critical"
+  },
+  {
+   "id": "bom.export",
+   "stage": 7,
+   "kind": "script",
+   "title": "Export the BOM: reference, value, footprint, MPN, supplier number",
+   "needs": [
+    "emc.report"
+   ],
+   "run": "kicad-live sch_bom (columns MPN, LCSC, DigiKey)"
+  },
+  {
+   "id": "bom.scout",
+   "stage": 7,
+   "kind": "helper",
+   "title": "Stock, price, lifecycle per BOM batch",
+   "needs": [
+    "bom.export"
+   ],
+   "parallel": "stage7",
+   "fanout": "per 15 lines",
+   "run": "helper: part-scout"
+  },
+  {
+   "id": "bom.handcheck",
+   "stage": 7,
+   "kind": "user",
+   "title": "Hand-check lines LCSC does not cover (suppliers.md); read the numbers",
+   "needs": [
+    "bom.export"
+   ],
+   "parallel": "stage7"
+  },
+  {
+   "id": "bom.assembly",
+   "stage": 7,
+   "kind": "model",
+   "title": "Machine assembly: every line stocked by the assembler, library type and setup fees noted",
+   "needs": [
+    "bom.export"
+   ],
+   "when": "machine_assembly",
+   "parallel": "stage7"
+  },
+  {
+   "id": "bom.report",
+   "stage": 7,
+   "kind": "gate",
+   "title": "Gate: 07-bom.md PASS (no end-of-life, no out-of-stock part)",
+   "needs": [
+    "bom.scout",
+    "bom.handcheck",
+    "bom.assembly"
+   ],
+   "evidence": {
+    "file_contains": [
+     "reports/07-bom.md",
+     "PASS"
+    ]
+   },
+   "loop_to": "parts.select"
+  },
+  {
+   "id": "release.gates",
+   "stage": 8,
+   "kind": "script",
+   "title": "Refill zones on a copy, rerun DRC, export Gerbers, drill, placement, BOM into fab/",
+   "needs": [
+    "bom.report"
+   ],
+   "run": "python scripts/run_gates.py .",
+   "evidence": {
+    "gate": "Gerber zip"
+   },
+   "invalidated_by": [
+    "pcb"
+   ]
+  },
+  {
+   "id": "release.files_check",
+   "stage": 8,
+   "kind": "script",
+   "title": "Check the exported files: BOM against placement designators, paste layers not empty",
+   "needs": [
+    "release.gates"
+   ],
+   "run": "KiCad python: scripts/block_check.py . (rows B6 and B7; an ERROR here stops the release)"
+  },
+  {
+   "id": "release.reviewer",
+   "stage": 8,
+   "kind": "helper",
+   "title": "Independent second look at the release",
+   "needs": [
+    "release.gates",
+    "release.files_check"
+   ],
+   "run": "helper: gate-reviewer"
+  },
+  {
+   "id": "release.report",
+   "stage": 8,
+   "kind": "model",
+   "title": "Write 08-release.md: gate summary, fab/ files, checklist of every assumption",
+   "needs": [
+    "release.reviewer"
+   ],
+   "evidence": {
+    "file": "reports/08-release.md"
+   },
+   "invalidated_by": [
+    "pcb"
+   ]
+  },
+  {
+   "id": "release.user",
+   "stage": 8,
+   "kind": "user",
+   "title": "Go through the release checklist yourself; nothing is ordered or uploaded",
+   "needs": [
+    "release.report"
+   ]
+  }
+ ]
+}

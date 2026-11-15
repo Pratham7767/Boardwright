@@ -1,0 +1,22 @@
+{
+  "$schema": "https://go.kicad.org/api/schemas/v1",
+  "identifier": "com.github.prathware.boardwright",
+  "name": "Boardwright",
+  "description": "Chat with your own Claude Code about the board that is open in the PCB Editor, with the boardwright PCB pipeline loaded.",
+  "runtime": {
+    "type": "python",
+    "min_version": "3.9"
+  },
+  "actions": [
+    {
+      "identifier": "open-chat",
+      "name": "Boardwright chat",
+      "description": "Open the Boardwright chat window (Claude Code) for this board's project folder",
+      "show-button": true,
+      "scopes": ["pcb"],
+      "entrypoint": "launch.py",
+      "icons-light": ["icons/chat-24.png", "icons/chat-48.png"],
+      "icons-dark": ["icons/chat-24-dark.png", "icons/chat-48-dark.png"]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "boardwright",
+  "owner": { "name": "Prathware", "url": "https://github.com/prathware" },
+  "metadata": { "description": "Idea-to-fab-files PCB design in KiCad, driven by Claude Code, with hard gates at every stage." },
+  "plugins": [
+    {
+      "name": "boardwright",
+      "source": "./plugin",
+      "description": "Eight-stage KiCad PCB pipeline (spec, parts, power, schematic, layout, EMC, BOM, release) with ERC/DRC gates, live editing in KiCad, and cheap helper agents for mechanical work."
+    }
+  ]
+}

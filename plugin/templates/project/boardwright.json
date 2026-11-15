@@ -1,0 +1,3 @@
+{
+  "_comment": "Settings for the gate scripts. Add expect_netclass_patterns (integer) at stage 5, a barrier section if the board has an isolation barrier, and an emc section at stage 6. See the boardwright skill, references/stages.md."
+}

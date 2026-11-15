@@ -1,0 +1,36 @@
+{
+  "$schema": "https://go.kicad.org/pcm/schemas/v2",
+  "name": "Boardwright",
+  "description": "Chat with your own Claude Code inside KiCad. Takes a board from idea to fab files in eight gated stages.",
+  "description_full": "Adds a Boardwright button to the PCB Editor toolbar. It opens a chat window that talks to the Claude Code you have installed on your own computer, started in the folder of the open KiCad project with the boardwright plugin loaded: streamed answers, one line per tool call, Allow/Deny for every permission request, a Stop button.\n\nBoardwright guides a board through eight stages (spec, parts, power budget, schematic, layout, EMC, BOM, release files) and stops at ERC/DRC gates. It never orders, uploads or publishes anything.\n\nRequirements: KiCad 10 with 'Enable KiCad API server' ticked (Preferences > Plugins), Claude Code installed and signed in with your own Claude account (a paid Claude plan or API billing is needed; messages count against it). On first run the window checks this and walks you through it. Sign-in is Claude Code's own browser login; this add-on never asks for, reads or stores a password, key or token.\n\nThe chat is a separate window next to KiCad, not a docked panel. Tested on Windows only. The window and all messages are in English.",
+  "identifier": "com.github.prathware.boardwright",
+  "type": "plugin",
+  "author": {
+    "name": "Prathware",
+    "contact": {
+      "web": "https://github.com/prathware/boardwright"
+    }
+  },
+  "license": "MIT",
+  "resources": {
+    "homepage": "https://github.com/prathware/boardwright"
+  },
+  "tags": [
+    "ai",
+    "assistant",
+    "claude",
+    "design-review",
+    "automation"
+  ],
+  "versions": [
+    {
+      "version": "0.2.0",
+      "status": "testing",
+      "kicad_version": "10.0",
+      "platforms": [
+        "windows"
+      ],
+      "runtime": "ipc"
+    }
+  ]
+}
