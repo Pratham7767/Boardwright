@@ -16,6 +16,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Paths and part names can be non-English (e.g. OneDrive\文档); a pipe on Windows defaults to cp1252.
+for _s in (sys.stdout, sys.stderr):
+    if _s and (getattr(_s, "encoding", "") or "").lower().replace("-", "") != "utf8":
+        try:
+            _s.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 PLUGIN_SCRIPTS = Path(__file__).resolve().parent
 MAX_LINES = 60
 
@@ -42,7 +50,7 @@ def main() -> None:
         print("boardwright project, but its scripts/ folder is missing or incomplete. Run: "
               f'python "{PLUGIN_SCRIPTS / "init_project.py"}" . --update-scripts')
         return
-    stale = sorted(f.name for f in PLUGIN_SCRIPTS.glob("*.py")
+    stale = sorted(f.name for f in list(PLUGIN_SCRIPTS.glob("*.py")) + [PLUGIN_SCRIPTS / "pipeline.json"]
                    if f.name not in ("session_start.py", "setup.py", "selftest.py", "init_project.py")
                    and (local / f.name).is_file() and digest(local / f.name) != digest(f))
     out = ["boardwright session start (from the plugin's hook; you need not run status.py or plan.py again now):"]

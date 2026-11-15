@@ -27,6 +27,14 @@ import xml.etree.ElementTree as ET
 from collections import OrderedDict
 from pathlib import Path
 
+# Paths and part names can be non-English (e.g. OneDrive\文档); a pipe on Windows defaults to cp1252.
+for _s in (sys.stdout, sys.stderr):
+    if _s and (getattr(_s, "encoding", "") or "").lower().replace("-", "") != "utf8":
+        try:
+            _s.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from run_gates import find_kicad_cli  # noqa: E402
 
@@ -61,7 +69,7 @@ def export_netlist(cli, sch):
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "netlist.xml"
         cmd = [cli, "sch", "export", "netlist", "--format", "kicadxml", "-o", str(out), str(sch)]
-        proc = subprocess.run(cmd, capture_output=True, text=True)
+        proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
         if proc.returncode != 0 or not out.exists():
             raise SetupError("netlist export failed: " + (proc.stderr or proc.stdout).strip()[:500])
         try:
@@ -250,7 +258,6 @@ def run_checks(project, cli, comps, libparts, nets):
                   f"pad(s) {','.join(extra)} used by no symbol pin in {c['footprint']}")
 
     # node bookkeeping
-    comp_by_ref = {c["ref"]: c for c in active}
     skipped = {c["ref"] for c in active if c["skip"]}
 
     def real_nodes(nodes):

@@ -9,6 +9,14 @@ import shutil
 import sys
 from pathlib import Path
 
+# Paths and part names can be non-English (e.g. OneDrive\文档); a pipe on Windows defaults to cp1252.
+for _s in (sys.stdout, sys.stderr):
+    if _s and (getattr(_s, "encoding", "") or "").lower().replace("-", "") != "utf8":
+        try:
+            _s.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 GITIGNORE = ["*.kicad_prl", "*-backups/", "fp-info-cache", "__pycache__/",
              ".env", "secrets.env", "~*.lck", ".history/"]
 
@@ -58,8 +66,10 @@ def main():
     # Gate scripts are copied into the project so it works without the plugin path.
     here = Path(__file__).resolve().parent
     (target / "scripts").mkdir(exist_ok=True)
-    for src in sorted(here.glob("*.py")):
-        if src.name == "init_project.py":
+    # the gate scripts and the stage graph they read; not the plugin-only tools
+    plugin_only = {"init_project.py", "setup.py", "session_start.py", "selftest.py"}
+    for src in sorted(list(here.glob("*.py")) + [here / "pipeline.json"]):
+        if src.name in plugin_only:
             continue
         dst = target / "scripts" / src.name
         if dst.exists() and dst.read_bytes() != src.read_bytes() and not update:

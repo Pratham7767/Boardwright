@@ -72,9 +72,17 @@ function Find-KicadCli {
     return $null
 }
 
-Say 'Boardwright installer (Windows). It asks before every change.'
+Say 'Boardwright installer (Windows)'
 if ($Local) { Say "Using this clone: $Here" } else { Say "Using GitHub: $Repo" }
 Refresh-Path
+if (-not $Yes) {
+    Say ''
+    Say 'It will install whatever is missing, from official sources only: KiCad (winget), Python, Git,'
+    Say 'Claude Code, the boardwright plugin and its helper tools; turn on KiCad''s API server setting;'
+    Say 'prepare the KiCad add-on; and start Claude Code''s own sign-in in your browser.'
+    $a = Read-Host 'Set up everything? [Y/n]  (n = ask me before each step)'
+    if ($a -notmatch '^(n|no)$') { $Yes = $true }
+}
 
 Step 1 'KiCad 9 or 10'
 $cli = Find-KicadCli

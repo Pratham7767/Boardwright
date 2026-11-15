@@ -22,7 +22,6 @@ Config keys ("block"): decoupling_max_mm, protection_max_mm, protection_refs, cr
 Notes on heuristics: X-prefixed refs count as crystals only when the part has at most 4 pins; nets named
  SCLK are not treated as I2C SCL; a configured block.i2c_vcc overrides the Vcc parsed from the rail name.
 """
-import glob
 import json
 import math
 import re
@@ -33,6 +32,14 @@ import time
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
 from pathlib import Path
+
+# Paths and part names can be non-English (e.g. OneDrive\文档); a pipe on Windows defaults to cp1252.
+for _s in (sys.stdout, sys.stderr):
+    if _s and (getattr(_s, "encoding", "") or "").lower().replace("-", "") != "utf8":
+        try:
+            _s.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from run_gates import find_kicad_cli  # noqa: E402
@@ -159,7 +166,7 @@ def export_netlist(cli, sch):
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "netlist.xml"
         cmd = [cli, "sch", "export", "netlist", "--format", "kicadxml", "-o", str(out), str(sch)]
-        proc = subprocess.run(cmd, capture_output=True, text=True)
+        proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
         if proc.returncode != 0 or not out.exists():
             raise SetupError("netlist export failed: " + (proc.stderr or proc.stdout).strip()[:500])
         try:
@@ -397,7 +404,7 @@ def check_b1(R, comps, nets, board, cfg, src):
             same = board.layer[cref] == board.layer[ref]
             problems = []
             if d > lim:
-                problems.append(f"farther than limit")
+                problems.append("farther than limit")
             if not same:
                 problems.append(f"capacitor on {board.layer[cref]}, IC on {board.layer[ref]}")
             sev = "WARN" if problems else "INFO"

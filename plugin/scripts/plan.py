@@ -24,6 +24,14 @@ import re
 import sys
 from pathlib import Path
 
+# Paths and part names can be non-English (e.g. OneDrive\文档); a pipe on Windows defaults to cp1252.
+for _s in (sys.stdout, sys.stderr):
+    if _s and (getattr(_s, "encoding", "") or "").lower().replace("-", "") != "utf8":
+        try:
+            _s.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 HERE = Path(__file__).resolve().parent
 PIPELINE = HERE / "pipeline.json"
 MAX_LINES = 30
@@ -229,7 +237,8 @@ def _base_properties(project, cfg):
     if not pm.is_file():
         return props
     text = read_text(pm)
-    if re.search(r"(?i)(mains-connected|hazardous voltage|isolation barrier)[\s*:|`]*yes\b", text):
+    # "yes / no" is the template's unanswered placeholder, not an answer
+    if re.search(r"(?i)(mains-connected|hazardous voltage|isolation barrier)[\s*:|`]*yes\b(?!\s*/)", text):
         props.add("hazardous")
     for line in text.splitlines():
         key = val = None
@@ -242,6 +251,8 @@ def _base_properties(project, cfg):
             if m:
                 key, val = m.group(1).strip().lower(), m.group(2).strip("*` ").lower()
         if not key:
+            continue
+        if " / " in val or val.startswith("/"):      # an unanswered template choice such as "hand / machine"
             continue
         if key.startswith("assembly") and "machine" in val:
             props.add("machine_assembly")

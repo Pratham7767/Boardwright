@@ -1,10 +1,19 @@
 {
   "name": "boardwright",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Idea-to-fab-files PCB design in KiCad 9/10. Eight gated stages, live edits you can watch in KiCad, design rules from manufacturer application notes, cheap helper agents for mechanical work. Never orders or publishes anything.",
-  "author": { "name": "Prathware", "url": "https://github.com/prathware" },
+  "author": {
+    "name": "Prathware",
+    "url": "https://github.com/prathware"
+  },
   "homepage": "https://github.com/prathware/boardwright",
   "repository": "https://github.com/prathware/boardwright",
   "license": "MIT",
-  "keywords": ["kicad", "pcb", "electronics", "hardware", "eda"]
+  "keywords": [
+    "kicad",
+    "pcb",
+    "electronics",
+    "hardware",
+    "eda"
+  ]
 }

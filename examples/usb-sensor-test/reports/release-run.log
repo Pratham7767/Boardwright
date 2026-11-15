@@ -1,0 +1,35 @@
+kicad-cli: <kicad>\bin\kicad-cli.exe
+Gate 1: Rule guard
+Gate 2: ERC
+  $ <kicad>\bin\kicad-cli.exe sch erc --format json --severity-all --exit-code-violations -o <project>\reports\erc.json <project>\usb-sensor-test.kicad_sch
+Gate 3: DRC (with schematic parity)
+  $ <kicad>\bin\kicad-cli.exe pcb drc --format json --severity-all --schematic-parity --exit-code-violations -o <project>\reports\drc.json <project>\usb-sensor-test.kicad_pcb
+Exports: refill check, Gerbers, drill, placement, BOM, schematic PDF
+  $ <kicad>\bin\kicad-cli.exe pcb drc --format json --severity-all --schematic-parity --exit-code-violations --refill-zones --save-board -o <project>\reports\drc-refill.json C:\Users\<user>\AppData\Local\Temp\pcb-gates-h2gpq8rv\usb-sensor-test.kicad_pcb
+  $ <kicad>\bin\kicad-cli.exe pcb export gerbers -o <project>\fab\gerbers --layers F.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts C:\Users\<user>\AppData\Local\Temp\pcb-gates-h2gpq8rv\usb-sensor-test.kicad_pcb
+  $ <kicad>\bin\kicad-cli.exe pcb export drill -o <project>\fab\gerbers --format excellon --excellon-units mm --generate-map --map-format pdf C:\Users\<user>\AppData\Local\Temp\pcb-gates-h2gpq8rv\usb-sensor-test.kicad_pcb
+  $ <kicad>\bin\kicad-cli.exe pcb export pos --format csv --units mm --side both --exclude-dnp -o <project>\fab\usb-sensor-test-pos.csv C:\Users\<user>\AppData\Local\Temp\pcb-gates-h2gpq8rv\usb-sensor-test.kicad_pcb
+  $ <kicad>\bin\kicad-cli.exe sch export bom --fields Reference,Value,Footprint,${QUANTITY},MPN,LCSC --labels Reference,Value,Footprint,Quantity,MPN,LCSC --group-by Value,Footprint,MPN --exclude-dnp --ref-range-delimiter  -o <project>\fab\usb-sensor-test-bom.csv <project>\usb-sensor-test.kicad_sch
+  $ <kicad>\bin\kicad-cli.exe sch export pdf -o <project>\fab\usb-sensor-test-schematic.pdf <project>\usb-sensor-test.kicad_sch
+# Gate results
+
+| Gate | Status | Detail |
+| --- | --- | --- |
+| Rule guard | pass | 2 classes used by rules; 3 classes, 5 patterns |
+| ERC | pass | 0 errors, 0 warnings |
+| DRC | pass | 0 errors, 17 warnings, 0 unconnected, 0 parity |
+| DRC after zone refill | pass | 0 errors, 17 warnings, 0 unconnected, 0 parity |
+| Gerbers | pass | 10 files in fab/gerbers |
+| Drill | pass | 12 files in fab/gerbers |
+| Gerber zip | pass | usb-sensor-test-gerbers.zip, 62890 bytes |
+| Placement | pass | usb-sensor-test-pos.csv, 1995 bytes |
+| BOM | pass | usb-sensor-test-bom.csv, 1646 bytes |
+| Schematic PDF | pass | usb-sensor-test-schematic.pdf, 123420 bytes |
+| JLCPCB assembly files | note | usb-sensor-test-jlc-bom.csv (20 lines, 0 without an LCSC number), usb-sensor-test-jlc-cpl.csv (27 parts). Rotations are KiCad's, unchanged: check every polarised and multi-pin part in JLCPCB's placement preview before confirming |
+| Other files in fab/ | note | none |
+
+ERC warnings: none
+DRC warnings: lib_footprint_mismatch x14, silk_edge_clearance x2, silk_over_copper x1
+DRC after zone refill warnings: lib_footprint_mismatch x14, silk_edge_clearance x2, silk_over_copper x1
+
+Power budget, EMC, SI and BOM-stock gates are run by Claude; see the boardwright skill.

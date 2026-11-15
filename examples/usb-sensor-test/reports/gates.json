@@ -1,0 +1,68 @@
+{
+  "project": "usb-sensor-test",
+  "kicad_cli_version": "10.0.8",
+  "timestamp": "2026-11-15T11:16:21+05:30",
+  "results": [
+    {
+      "name": "Rule guard",
+      "status": "pass",
+      "detail": "2 classes used by rules; 3 classes, 5 patterns"
+    },
+    {
+      "name": "ERC",
+      "status": "pass",
+      "detail": "0 errors, 0 warnings"
+    },
+    {
+      "name": "DRC",
+      "status": "pass",
+      "detail": "0 errors, 17 warnings, 0 unconnected, 0 parity"
+    },
+    {
+      "name": "DRC after zone refill",
+      "status": "pass",
+      "detail": "0 errors, 17 warnings, 0 unconnected, 0 parity"
+    },
+    {
+      "name": "Gerbers",
+      "status": "pass",
+      "detail": "10 files in fab/gerbers"
+    },
+    {
+      "name": "Drill",
+      "status": "pass",
+      "detail": "12 files in fab/gerbers"
+    },
+    {
+      "name": "Gerber zip",
+      "status": "pass",
+      "detail": "usb-sensor-test-gerbers.zip, 62890 bytes"
+    },
+    {
+      "name": "Placement",
+      "status": "pass",
+      "detail": "usb-sensor-test-pos.csv, 1995 bytes"
+    },
+    {
+      "name": "BOM",
+      "status": "pass",
+      "detail": "usb-sensor-test-bom.csv, 1646 bytes"
+    },
+    {
+      "name": "Schematic PDF",
+      "status": "pass",
+      "detail": "usb-sensor-test-schematic.pdf, 123420 bytes"
+    },
+    {
+      "name": "JLCPCB assembly files",
+      "status": "note",
+      "detail": "usb-sensor-test-jlc-bom.csv (20 lines, 0 without an LCSC number), usb-sensor-test-jlc-cpl.csv (27 parts). Rotations are KiCad's, unchanged: check every polarised and multi-pin part in JLCPCB's placement preview before confirming"
+    },
+    {
+      "name": "Other files in fab/",
+      "status": "note",
+      "detail": "none"
+    }
+  ],
+  "passed": true
+}

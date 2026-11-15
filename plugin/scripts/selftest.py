@@ -17,6 +17,14 @@ import tempfile
 import time
 from pathlib import Path
 
+# Paths and part names can be non-English (e.g. OneDrive\文档); a pipe on Windows defaults to cp1252.
+for _s in (sys.stdout, sys.stderr):
+    if _s and (getattr(_s, "encoding", "") or "").lower().replace("-", "") != "utf8":
+        try:
+            _s.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from run_gates import find_kicad_cli  # noqa: E402
@@ -73,7 +81,7 @@ def main():
         for name, cmd, ok_codes, out in jobs:
             t = time.time()
             try:
-                p = subprocess.run([str(c) for c in cmd], capture_output=True, text=True, timeout=600)
+                p = subprocess.run([str(c) for c in cmd], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600)
                 code, text = p.returncode, (p.stdout or "") + (p.stderr or "")
             except (OSError, subprocess.TimeoutExpired) as exc:
                 code, text = -1, str(exc)

@@ -63,7 +63,7 @@ def pcb_editor_titles() -> list:
         for cmd in (["wmctrl", "-l"], ["xdotool", "search", "--name", "PCB Editor", "getwindowname", "%@"]):
             if shutil.which(cmd[0]):
                 try:
-                    out = subprocess.run(cmd, capture_output=True, text=True, timeout=5).stdout
+                    out = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5).stdout
                 except (OSError, subprocess.TimeoutExpired):
                     continue
                 # wmctrl lines: "<id> <desktop> <host> <title>"

@@ -1,0 +1,41 @@
+name: release
+
+# Push a tag such as v0.3.0 (it must match the version in kicad-addon/metadata.json).
+# This builds the KiCad add-on and publishes a GitHub release with:
+#   boardwright-kicad-<version>.zip   the add-on, versioned
+#   boardwright-kicad.zip             the same file under the fixed name the installers download
+#   metadata.repository.json          metadata for the KiCad add-on repository (with the real download URL)
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version must match the tag
+        run: |
+          VER=$(python3 -c "import json;print(json.load(open('kicad-addon/metadata.json'))['versions'][0]['version'])")
+          PVER=$(python3 -c "import json;print(json.load(open('plugin/.claude-plugin/plugin.json'))['version'])")
+          [ "v$VER" = "$GITHUB_REF_NAME" ] && [ "$VER" = "$PVER" ] || { echo "tag $GITHUB_REF_NAME, add-on $VER, plugin $PVER must agree"; exit 1; }
+          echo "VER=$VER" >> "$GITHUB_ENV"
+      - name: Tests
+        run: |
+          python3 kicad-addon/tests/test_core.py
+          bash -n install/install.sh
+      - name: Build the KiCad add-on
+        run: python3 kicad-addon/build.py --download-url "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/boardwright-kicad-$VER.zip"
+      - name: Release notes from CHANGELOG.md
+        run: awk '/^## /{n++} n==1' CHANGELOG.md > notes.md
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --title "Boardwright $GITHUB_REF_NAME" --notes-file notes.md \
+            "kicad-addon/dist/boardwright-kicad-$VER.zip" \
+            "kicad-addon/dist/boardwright-kicad.zip" \
+            "kicad-addon/dist/metadata.repository.json"

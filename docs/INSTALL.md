@@ -47,6 +47,8 @@ On Ubuntu the installer offers KiCad 10 from the official PPA (`ppa:kicad/kicad-
 For the KiCad button on Linux you also need wxPython for the system Python (Ubuntu: `python3-wxgtk4.0`, which KiCad's package normally pulls in) and a terminal emulator for the sign-in and helper windows. On X11, `wmctrl` (optional) lets the button find the board by its window title and bring an open chat window to the front. Without it (for example on Wayland), the button uses the board you opened most recently in KiCad.
 
 ### What the installer does, step by step
+It first asks **Set up everything? [Y/n]**. Press Enter and it does every step below without asking again. Answer `n` to be asked before each step.
+
 1. **KiCad**: looks for `kicad-cli`; offers `winget install KiCad.KiCad` if missing.
 2. **Python**: looks for Python 3.10+ (it ignores the Microsoft Store stub); offers `winget install Python.Python.3.12`.
 3. **Git**: offers `winget install Git.Git`.

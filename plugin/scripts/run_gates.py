@@ -23,6 +23,14 @@ import tempfile
 import zipfile
 from pathlib import Path
 
+# Paths and part names can be non-English (e.g. OneDrive\文档); a pipe on Windows defaults to cp1252.
+for _s in (sys.stdout, sys.stderr):
+    if _s and (getattr(_s, "encoding", "") or "").lower().replace("-", "") != "utf8":
+        try:
+            _s.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 
 def find_kicad_cli():
     env = os.environ.get("KICAD_CLI")
@@ -62,7 +70,7 @@ def find_kicad_cli():
 
 def run(cmd):
     print("  $", " ".join(str(c) for c in cmd))
-    return subprocess.run([str(c) for c in cmd], capture_output=True, text=True)
+    return subprocess.run([str(c) for c in cmd], capture_output=True, text=True, encoding="utf-8", errors="replace")
 
 
 def count_violations(node, counts=None):
@@ -393,7 +401,7 @@ def write_reports(project, cli, results, detail=()):
     ver = ""
     if cli:
         try:
-            ver = subprocess.run([cli, "version"], capture_output=True, text=True).stdout.strip()
+            ver = subprocess.run([cli, "version"], capture_output=True, text=True, encoding="utf-8", errors="replace").stdout.strip()
         except OSError:
             pass
     (reports / "gates.json").write_text(json.dumps({

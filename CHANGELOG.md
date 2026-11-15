@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 (2026-11-16): ready for testers on GitHub
+- **Fixed: new projects had no stage graph.** `init_project.py` copied the scripts but not `pipeline.json`, so `plan.py` (and with it `/boardwright:pcb-auto`) failed in every new project. It no longer copies the plugin-only tools (`setup.py`, `session_start.py`, `selftest.py`) into projects.
+- **Fixed: every new project was treated as hazardous.** The planner read the template's unanswered `Mains-connected: yes / no` as "yes" (and `hand / machine` as machine assembly), which would have added the high-voltage rules and an Opus review at every stage.
+- **Fixed: crashes on non-English paths.** On Windows, scripts writing to a pipe used cp1252 and crashed on paths such as `OneDrive\文档`; the session-start hook went silent. All scripts now write UTF-8 and decode child output as UTF-8.
+- Installers ask **one** question ("Set up everything? [Y/n]") instead of one per step.
+- `examples/usb-sensor-test`: a complete board made with the pipeline (spec to fab files; datasheets not redistributed).
+- `tools/check_all.py` runs every check; GitHub Actions run it on Windows and on Ubuntu with KiCad 10 (`checks.yml`), and a tag such as `v0.3.0` builds and publishes the KiCad add-on release (`release.yml`).
+- Tidied the issues pyflakes found (unused imports and variables).
+
 ## 0.2.0 (2026-11-16): first version for testers
 - New repository layout: Claude Code plugin, KiCad add-on and installers in one repo, installable from GitHub with `claude plugin marketplace add prathware/boardwright`.
 - One-command installers for Windows (`install/install.ps1`) and macOS/Linux (`install/install.sh`, untested).

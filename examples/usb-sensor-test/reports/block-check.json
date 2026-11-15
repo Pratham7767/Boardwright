@@ -1,0 +1,200 @@
+{
+  "summary": "rows 18: errors 0, warnings 0, info 18; not placed: 0 parts",
+  "header": "Rule sources: TI SLVA689 (I2C), TI AN-1229 (track width), RP2040 hardware design guide (crystal), plugin EMC guide values (protection distance). Defaults marked 'default' are engineering estimates; the part's datasheet takes priority.",
+  "config": {
+    "decoupling_max_mm": 5.0,
+    "protection_max_mm": 10.0,
+    "protection_refs": [],
+    "crystal_stray_pf": 3.0,
+    "i2c_mode": "standard",
+    "i2c_bus_pf": 100.0,
+    "i2c_vcc": null,
+    "currents": {
+      "/VBUS": 0.0561,
+      "/VBUS_F": 0.0561,
+      "/+3V3": 0.056,
+      "/3V3_SENS": 0.0006,
+      "/GND": 0.0561
+    },
+    "width_mm_per_amp": 0.305
+  },
+  "config_source": {
+    "decoupling_max_mm": "default",
+    "protection_max_mm": "default",
+    "protection_refs": "default",
+    "crystal_stray_pf": "default",
+    "i2c_mode": "config",
+    "i2c_bus_pf": "default",
+    "i2c_vcc": "default",
+    "currents": "config",
+    "width_mm_per_amp": "default"
+  },
+  "errors": 0,
+  "warnings": 0,
+  "info": 18,
+  "not_placed": [],
+  "rows": [
+    {
+      "id": "B1",
+      "severity": "INFO",
+      "item": "U1 pins 1,17,5 (/+3V3)",
+      "measured": "1.5 mm",
+      "limit": "<= 5 mm (default)",
+      "limit_source": "default",
+      "note": "nearest cap C7 10nF at pin 5, same layer; default, engineering estimate: use the IC's datasheet"
+    },
+    {
+      "id": "B1",
+      "severity": "INFO",
+      "item": "U2 pin 1 (/VBUS_F)",
+      "measured": "1.2 mm",
+      "limit": "<= 5 mm (default)",
+      "limit_source": "default",
+      "note": "nearest cap C1 1uF at pin 1, same layer; default, engineering estimate: use the IC's datasheet"
+    },
+    {
+      "id": "B1",
+      "severity": "INFO",
+      "item": "U3 pin 2 (/3V3_SENS)",
+      "measured": "3.0 mm",
+      "limit": "<= 5 mm (default)",
+      "limit_source": "default",
+      "note": "nearest cap C9 10uF at pin 2, same layer; default, engineering estimate: use the IC's datasheet"
+    },
+    {
+      "id": "B2",
+      "severity": "INFO",
+      "item": "U4.3 -> connector (/USB_DM)",
+      "measured": "7.5 mm to J1.B7",
+      "limit": "<= 10 mm (default)",
+      "limit_source": "default",
+      "note": "2 via(s) of this net in the box between the pads (+1 mm); pad centre to pad centre"
+    },
+    {
+      "id": "B2",
+      "severity": "INFO",
+      "item": "U4.4 -> connector (/USB_DM)",
+      "measured": "5.3 mm to J1.B7",
+      "limit": "<= 10 mm (default)",
+      "limit_source": "default",
+      "note": "2 via(s) of this net in the box between the pads (+1 mm); pad centre to pad centre"
+    },
+    {
+      "id": "B2",
+      "severity": "INFO",
+      "item": "U4.1 -> connector (/USB_DP)",
+      "measured": "7.5 mm to J1.B6",
+      "limit": "<= 10 mm (default)",
+      "limit_source": "default",
+      "note": "0 via(s) of this net in the box between the pads (+1 mm); pad centre to pad centre"
+    },
+    {
+      "id": "B2",
+      "severity": "INFO",
+      "item": "U4.6 -> connector (/USB_DP)",
+      "measured": "5.3 mm to J1.B6",
+      "limit": "<= 10 mm (default)",
+      "limit_source": "default",
+      "note": "0 via(s) of this net in the box between the pads (+1 mm); pad centre to pad centre"
+    },
+    {
+      "id": "B2",
+      "severity": "INFO",
+      "item": "U4.5 -> connector (/VBUS)",
+      "measured": "5.8 mm to J1.A4",
+      "limit": "<= 10 mm (default)",
+      "limit_source": "default",
+      "note": "1 via(s) of this net in the box between the pads (+1 mm); pad centre to pad centre"
+    },
+    {
+      "id": "B4",
+      "severity": "INFO",
+      "item": "/I2C_SCL",
+      "measured": "4700 ohm",
+      "limit": "967..11802 ohm (standard, tr 1000 ns)",
+      "limit_source": "default",
+      "note": "R4 to /+3V3; Vcc 3.3 V; Cb 100 pF default (assumed bus capacitance; formulas from TI SLVA689)"
+    },
+    {
+      "id": "B4",
+      "severity": "INFO",
+      "item": "/I2C_SDA",
+      "measured": "4700 ohm",
+      "limit": "967..11802 ohm (standard, tr 1000 ns)",
+      "limit_source": "default",
+      "note": "R5 to /+3V3; Vcc 3.3 V; Cb 100 pF default (assumed bus capacitance; formulas from TI SLVA689)"
+    },
+    {
+      "id": "B5",
+      "severity": "INFO",
+      "item": "/VBUS",
+      "measured": "min 0.400 mm",
+      "limit": ">= 0.017 mm = 0.0561 A x 0.305 mm/A (default)",
+      "limit_source": "default",
+      "note": "TI AN-1229 s6.1, valid for the conditions stated there; default"
+    },
+    {
+      "id": "B5",
+      "severity": "INFO",
+      "item": "/VBUS_F",
+      "measured": "min 0.300 mm",
+      "limit": ">= 0.017 mm = 0.0561 A x 0.305 mm/A (default)",
+      "limit_source": "default",
+      "note": "TI AN-1229 s6.1, valid for the conditions stated there; default"
+    },
+    {
+      "id": "B5",
+      "severity": "INFO",
+      "item": "/+3V3",
+      "measured": "min 0.300 mm",
+      "limit": ">= 0.017 mm = 0.056 A x 0.305 mm/A (default)",
+      "limit_source": "default",
+      "note": "TI AN-1229 s6.1, valid for the conditions stated there; default"
+    },
+    {
+      "id": "B5",
+      "severity": "INFO",
+      "item": "/3V3_SENS",
+      "measured": "min 0.400 mm",
+      "limit": ">= 0.000 mm = 0.0006 A x 0.305 mm/A (default)",
+      "limit_source": "default",
+      "note": "TI AN-1229 s6.1, valid for the conditions stated there; default"
+    },
+    {
+      "id": "B5",
+      "severity": "INFO",
+      "item": "/GND",
+      "measured": "min 0.300 mm",
+      "limit": ">= 0.017 mm = 0.0561 A x 0.305 mm/A (default)",
+      "limit_source": "default",
+      "note": "TI AN-1229 s6.1, valid for the conditions stated there; default"
+    },
+    {
+      "id": "B6",
+      "severity": "INFO",
+      "item": "usb-sensor-test-bom.csv vs usb-sensor-test-pos.csv",
+      "measured": "BOM 27 refs, pos 27 refs",
+      "limit": "-",
+      "limit_source": null,
+      "note": "BOM and placement references match (case-sensitive)"
+    },
+    {
+      "id": "B7",
+      "severity": "INFO",
+      "item": "F_Paste (top)",
+      "measured": "113 flashes in usb-sensor-test-F_Paste.gtp; 113 SMD pads with paste",
+      "limit": "-",
+      "limit_source": null,
+      "note": "flashes are counted from lines ending D03*; regions (G36) and stencil-only apertures are not counted"
+    },
+    {
+      "id": "B7",
+      "severity": "INFO",
+      "item": "B_Paste (bottom)",
+      "measured": "0 flashes in usb-sensor-test-B_Paste.gbp; 0 SMD pads with paste",
+      "limit": "-",
+      "limit_source": null,
+      "note": "flashes are counted from lines ending D03*; regions (G36) and stencil-only apertures are not counted"
+    }
+  ]
+}

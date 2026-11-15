@@ -47,10 +47,18 @@ find_cli() {
   done
 }
 
-echo "Boardwright installer ($OS${DISTRO:+, $DISTRO ${VERSION_ID:-}}). It asks before every change."
+echo "Boardwright installer ($OS${DISTRO:+, $DISTRO ${VERSION_ID:-}})"
 [ "$CHECK" = 1 ] && echo "Check only: nothing will be installed or changed."
 [ "$OS" = Darwin ] && echo "macOS is untested. Please report what happens."
 [ "$LOCAL" = 1 ] && echo "Using this clone: $HERE" || echo "Using GitHub: $REPO"
+if [ "$YES" = 0 ] && [ "$CHECK" = 0 ] && ( : </dev/tty ) 2>/dev/null; then
+  echo
+  echo "It will install whatever is missing, from official sources only: KiCad (Ubuntu: official PPA), Git,"
+  echo "Claude Code, the boardwright plugin and its helper tools; turn on KiCad's API server setting;"
+  echo "prepare the KiCad add-on; and start Claude Code's own sign-in in your browser."
+  read -r -p "Set up everything? [Y/n]  (n = ask me before each step) " a </dev/tty || a=n
+  [[ "$a" =~ ^([nN]|no)$ ]] || YES=1
+fi
 
 step 1 "KiCad 9 or 10"
 CLI="$(find_cli)"

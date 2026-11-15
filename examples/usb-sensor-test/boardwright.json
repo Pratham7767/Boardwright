@@ -1,0 +1,180 @@
+{
+  "_comment": "Settings for the gate scripts. Add expect_netclass_patterns (integer) at stage 5, a barrier section if the board has an isolation barrier, and an emc section at stage 6. See the boardwright skill, references/stages.md.",
+  "expect_netclass_patterns": 5,
+  "block": {
+    "i2c_mode": "standard",
+    "currents": {
+      "/VBUS": 0.0561,
+      "/VBUS_F": 0.0561,
+      "/+3V3": 0.056,
+      "/3V3_SENS": 0.0006,
+      "/GND": 0.0561
+    }
+  },
+  "emc": {
+    "_comment": "Limits are engineering estimates unless a source is named. Sources: TI SLVA680 (ESD part next to the connector), plugin block guide (decoupling at the pin).",
+    "loops": [
+      {
+        "id": "E1",
+        "name": "U2 input loop (C1 - VIN - GND)",
+        "pads": [
+          "C1.1",
+          "U2.1",
+          "U2.2",
+          "C1.2"
+        ],
+        "max_mm2": 10,
+        "severity": "MEDIUM"
+      },
+      {
+        "id": "E2",
+        "name": "U2 output loop (VOUT - C2 - GND)",
+        "pads": [
+          "U2.5",
+          "C2.1",
+          "C2.2",
+          "U2.2"
+        ],
+        "max_mm2": 10,
+        "severity": "MEDIUM"
+      },
+      {
+        "id": "E3",
+        "name": "U1 VDD decoupling loop (pin 1 - C3 - pin 32)",
+        "pads": [
+          "U1.1",
+          "C3.1",
+          "C3.2",
+          "U1.32"
+        ],
+        "max_mm2": 10,
+        "severity": "MEDIUM"
+      },
+      {
+        "id": "E4",
+        "name": "U1 VDDIO2 decoupling loop (pin 17 - C4 - pin 16)",
+        "pads": [
+          "U1.17",
+          "C4.1",
+          "C4.2",
+          "U1.16"
+        ],
+        "max_mm2": 10,
+        "severity": "MEDIUM"
+      }
+    ],
+    "pad_distance": [
+      {
+        "id": "E5",
+        "name": "ESD part to connector, D-",
+        "a": "U4.4",
+        "b": "J1.B7",
+        "max_mm": 10,
+        "severity": "HIGH"
+      },
+      {
+        "id": "E6",
+        "name": "ESD part to connector, D+",
+        "a": "U4.6",
+        "b": "J1.B6",
+        "max_mm": 10,
+        "severity": "HIGH"
+      },
+      {
+        "id": "E7",
+        "name": "ESD part VBUS pin to connector VBUS",
+        "a": "U4.5",
+        "b": "J1.A4",
+        "max_mm": 10,
+        "severity": "MEDIUM"
+      },
+      {
+        "id": "E8",
+        "name": "U1 VDDA to C7 (10 nF)",
+        "a": "U1.5",
+        "b": "C7.1",
+        "max_mm": 3,
+        "severity": "MEDIUM"
+      },
+      {
+        "id": "E9",
+        "name": "U3 VDD to C9 (10 uF)",
+        "a": "U3.2",
+        "b": "C9.1",
+        "max_mm": 5,
+        "severity": "MEDIUM"
+      },
+      {
+        "id": "E10",
+        "name": "Fuse to connector VBUS",
+        "a": "F1.1",
+        "b": "J1.A4",
+        "max_mm": 10,
+        "severity": "LOW"
+      }
+    ],
+    "track_length": [
+      {
+        "id": "E11",
+        "name": "USB D+ track, all branches",
+        "net": "/USB_DP",
+        "max_mm": 40,
+        "severity": "LOW"
+      },
+      {
+        "id": "E12",
+        "name": "USB D- track, all branches",
+        "net": "/USB_DM",
+        "max_mm": 40,
+        "severity": "LOW"
+      },
+      {
+        "id": "E13",
+        "name": "NRST track, all branches; clear of the USB pair",
+        "net": "/NRST",
+        "max_mm": 30,
+        "clear_of": [
+          "/USB_DP",
+          "/USB_DM"
+        ],
+        "clear_min_mm": 1.0,
+        "severity": "LOW"
+      }
+    ],
+    "net_distance": [
+      {
+        "id": "E14",
+        "name": "NRST to I2C clock, same layer",
+        "a": [
+          "/NRST"
+        ],
+        "b": [
+          "/I2C_SCL"
+        ],
+        "min_mm": 0.5,
+        "same_layer": true,
+        "severity": "LOW"
+      },
+      {
+        "id": "E15",
+        "name": "USB pair to SWD lines, same layer",
+        "a": [
+          "/USB_DP",
+          "/USB_DM"
+        ],
+        "b": [
+          "/SWCLK",
+          "/SWDIO"
+        ],
+        "min_mm": 0.2,
+        "same_layer": true,
+        "severity": "LOW"
+      }
+    ],
+    "edge_clearance": {
+      "id": "E16",
+      "min_mm": 0.3,
+      "severity": "MEDIUM"
+    }
+  }
+}

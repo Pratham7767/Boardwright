@@ -13,6 +13,14 @@ import re
 import sys
 from pathlib import Path
 
+# Paths and part names can be non-English (e.g. OneDrive\文档); a pipe on Windows defaults to cp1252.
+for _s in (sys.stdout, sys.stderr):
+    if _s and (getattr(_s, "encoding", "") or "").lower().replace("-", "") != "utf8":
+        try:
+            _s.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 MAX_LINES = 25
 STAGES = [("01", "spec"), ("02", "parts"), ("03", "power"), ("04", "schematic"),
           ("05", "layout"), ("06", "emc"), ("07", "bom"), ("08", "release")]

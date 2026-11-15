@@ -33,7 +33,6 @@ import json
 import logging
 import re
 import sys
-import time
 from pathlib import Path
 
 try:
@@ -249,7 +248,6 @@ def select_extract(pages):
 
 
 def index_one(pdf, outdir):
-    t0 = time.time()
     texts = read_pages(pdf)
     pages = analyse(texts)
     n = len(pages)

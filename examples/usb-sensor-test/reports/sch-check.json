@@ -1,0 +1,25 @@
+{
+  "schematic": "usb-sensor-test.kicad_sch",
+  "command": "<kicad>\\bin\\kicad-cli.exe sch export netlist --format kicadxml -o C:\\Users\\<user>\\AppData\\Local\\Temp\\tmp3dhffq5_\\netlist.xml <project>\\usb-sensor-test.kicad_sch",
+  "summary": "components 33, nets 41, errors 0, warnings 2",
+  "components": 33,
+  "nets": 41,
+  "errors": 0,
+  "warnings": 2,
+  "rows": [
+    {
+      "id": "S2",
+      "severity": "WARN",
+      "subject": "U1",
+      "message": "no datasheet file matched (tried: stm32f042k6t6)",
+      "count": 1
+    },
+    {
+      "id": "S2",
+      "severity": "WARN",
+      "subject": "U2",
+      "message": "no datasheet file matched (tried: ap2112k, 3trg1, ap2112k33)",
+      "count": 1
+    }
+  ]
+}
