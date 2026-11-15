@@ -4,10 +4,10 @@
   "description": "Idea-to-fab-files PCB design in KiCad 9/10. Eight gated stages, live edits you can watch in KiCad, design rules from manufacturer application notes, cheap helper agents for mechanical work. Never orders or publishes anything.",
   "author": {
     "name": "Prathware",
-    "url": "https://github.com/prathware"
+    "url": "https://github.com/Pratham7767"
   },
-  "homepage": "https://github.com/prathware/boardwright",
-  "repository": "https://github.com/prathware/boardwright",
+  "homepage": "https://github.com/Pratham7767/Boardwright",
+  "repository": "https://github.com/Pratham7767/Boardwright",
   "license": "MIT",
   "keywords": [
     "kicad",

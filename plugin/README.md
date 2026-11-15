@@ -31,7 +31,7 @@ Two modes: **guided** (plain-language interview, stops after every stage and exp
 KiCad 9 or 10 with its API server enabled, Claude Code, Python 3.10+, and two helper tools (kicad-buddy for the live link, mcp-server-kicad for schematics). The repository's installer sets all of it up; by hand:
 
 ```
-claude plugin marketplace add prathware/boardwright
+claude plugin marketplace add Pratham7767/Boardwright
 claude plugin install boardwright@boardwright
 python "<plugin folder>/scripts/setup.py"     # uv, kicad-buddy, mcp-server-kicad, KiCad API setting
 ```

@@ -3,12 +3,12 @@
 #
 #   From a clone:          bash install/install.sh [--yes] [--no-signin] [--no-open] [--check]
 #   --check reports what is installed and what is missing, and changes nothing.
-#   Straight from GitHub:  curl -fsSL https://raw.githubusercontent.com/prathware/boardwright/main/install/install.sh | bash
+#   Straight from GitHub:  curl -fsSL https://raw.githubusercontent.com/Pratham7767/Boardwright/main/install/install.sh | bash
 #
 # Asks before every change (sudo is used only for the KiCad and Git packages, and only after you say yes).
 # Never asks for, reads or stores a password, API key or token: sign-in is Claude Code's own browser flow.
 set -u
-REPO="prathware/boardwright"
+REPO="Pratham7767/Boardwright"
 ADDON_URL="https://github.com/$REPO/releases/latest/download/boardwright-kicad.zip"
 YES=0; SIGNIN=1; OPEN=1; CHECK=0
 for a in "$@"; do

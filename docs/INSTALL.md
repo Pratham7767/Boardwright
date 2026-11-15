@@ -22,13 +22,13 @@ The installer only uses official installers (winget, claude.ai, astral.sh) and p
 Open **PowerShell** (Start menu → type PowerShell) and paste:
 
 ```powershell
-irm https://raw.githubusercontent.com/prathware/boardwright/main/install/install.ps1 | iex
+irm https://raw.githubusercontent.com/Pratham7767/Boardwright/main/install/install.ps1 | iex
 ```
 
 If the repository is **private** (shared with you before it went public), this line won't work. Clone it instead:
 
 ```powershell
-git clone https://github.com/prathware/boardwright.git
+git clone https://github.com/Pratham7767/Boardwright.git
 cd boardwright
 powershell -ExecutionPolicy Bypass -File install\install.ps1
 ```
@@ -38,7 +38,7 @@ Supported distributions: anything with KiCad 9 or 10 from a **distribution packa
 
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/prathware/boardwright/main/install/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Pratham7767/Boardwright/main/install/install.sh | bash
 ```
 or from a clone: `bash install/install.sh`. Add `--check` to see what is missing without changing anything.
 
@@ -53,7 +53,7 @@ It first asks **Set up everything? [Y/n]**. Press Enter and it does every step b
 2. **Python**: looks for Python 3.10+ (it ignores the Microsoft Store stub); offers `winget install Python.Python.3.12`.
 3. **Git**: offers `winget install Git.Git`.
 4. **Claude Code**: offers the official installer.
-5. **Plugin**: `claude plugin marketplace add prathware/boardwright` (or your clone's folder), then `claude plugin install boardwright@boardwright`.
+5. **Plugin**: `claude plugin marketplace add Pratham7767/Boardwright` (or your clone's folder), then `claude plugin install boardwright@boardwright`.
 6. **Helpers**: runs the plugin's `scripts/setup.py`, which installs uv, kicad-buddy and its companion KiCad plugin, downloads the schematic tools, and ticks KiCad's **Enable KiCad API server** setting. It changes that setting only while KiCad is closed, and keeps a `.bak` copy.
 7. **KiCad add-on** (Windows and Linux): builds or downloads `boardwright-kicad.zip` and shows it in Explorer. KiCad installs add-ons itself, so this last step is yours:
    - KiCad main window → **Plugin and Content Manager** → **Install from File...** → pick `boardwright-kicad.zip` → **Close**.
@@ -66,7 +66,7 @@ It ends with a list of anything left for you.
 
 ```bash
 # 1. the Claude Code plugin
-claude plugin marketplace add prathware/boardwright
+claude plugin marketplace add Pratham7767/Boardwright
 claude plugin install boardwright@boardwright
 
 # 2. the helper tools: find the plugin folder, then run its setup script

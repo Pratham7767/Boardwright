@@ -1,6 +1,6 @@
 {
   "name": "boardwright",
-  "owner": { "name": "Prathware", "url": "https://github.com/prathware" },
+  "owner": { "name": "Prathware", "url": "https://github.com/Pratham7767" },
   "metadata": { "description": "Idea-to-fab-files PCB design in KiCad, driven by Claude Code, with hard gates at every stage." },
   "plugins": [
     {

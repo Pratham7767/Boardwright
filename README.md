@@ -1,6 +1,6 @@
 # Boardwright
 
-[![checks](https://github.com/prathware/boardwright/actions/workflows/checks.yml/badge.svg)](https://github.com/prathware/boardwright/actions/workflows/checks.yml)
+[![checks](https://github.com/Pratham7767/Boardwright/actions/workflows/checks.yml/badge.svg)](https://github.com/Pratham7767/Boardwright/actions/workflows/checks.yml)
 
 **Design a printed circuit board in KiCad by talking to Claude.** You describe the board; Claude Code takes it from idea to fab files in eight gated stages, and you watch every change happen in the open KiCad window. It never orders, uploads or publishes anything.
 
@@ -38,13 +38,13 @@ You need a Claude plan that includes Claude Code (Pro, Max, Team or Enterprise) 
 **Windows**, in PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/prathware/boardwright/main/install/install.ps1 | iex
+irm https://raw.githubusercontent.com/Pratham7767/Boardwright/main/install/install.ps1 | iex
 ```
 
 **Linux** (and macOS, untested), in a terminal:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/prathware/boardwright/main/install/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Pratham7767/Boardwright/main/install/install.sh | bash
 ```
 
 It asks one question (**Set up everything? [Y/n]**), then installs whatever is missing from official sources: KiCad, Python, Git, Claude Code, the plugin and its helper tools. It also prepares the KiCad add-on and starts Claude Code's own sign-in. The one manual step left is in KiCad: **Plugin and Content Manager → Install from File...** for the add-on. **Step-by-step and manual instructions: [docs/INSTALL.md](docs/INSTALL.md).**

@@ -10,7 +10,7 @@
 - Tidied the issues pyflakes found (unused imports and variables).
 
 ## 0.2.0 (2026-11-16): first version for testers
-- New repository layout: Claude Code plugin, KiCad add-on and installers in one repo, installable from GitHub with `claude plugin marketplace add prathware/boardwright`.
+- New repository layout: Claude Code plugin, KiCad add-on and installers in one repo, installable from GitHub with `claude plugin marketplace add Pratham7767/Boardwright`.
 - One-command installers for Windows (`install/install.ps1`) and macOS/Linux (`install/install.sh`, untested).
 - `scripts/setup.py`: installs uv, kicad-buddy (pinned 0.1.0) and mcp-server-kicad (pinned 0.21.1), ticks KiCad's API server setting. Asks before each change; `--check` changes nothing.
 - A session-start hook puts the project's status and plan into Claude's context, which saves two tool calls per session. It also warns when a project's scripts are older than the plugin's.

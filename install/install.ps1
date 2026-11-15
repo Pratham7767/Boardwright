@@ -4,7 +4,7 @@ Boardwright installer for Windows.
 From a clone of the repository:
     powershell -ExecutionPolicy Bypass -File install\install.ps1
 Straight from GitHub (nothing to clone):
-    irm https://raw.githubusercontent.com/prathware/boardwright/main/install/install.ps1 | iex
+    irm https://raw.githubusercontent.com/Pratham7767/Boardwright/main/install/install.ps1 | iex
 
 It asks before every change. Add -Yes to accept every question (only with the
 file form: powershell -ExecutionPolicy Bypass -File install\install.ps1 -Yes).
@@ -15,7 +15,7 @@ Claude Code's own browser flow.
 param([switch]$Yes, [switch]$NoOpen)
 
 $ErrorActionPreference = 'Continue'
-$Repo = 'prathware/boardwright'
+$Repo = 'Pratham7767/Boardwright'
 $AddonUrl = "https://github.com/$Repo/releases/latest/download/boardwright-kicad.zip"
 $Here = if ($PSScriptRoot) { Split-Path -Parent $PSScriptRoot } else { $null }
 $Local = $Here -and (Test-Path (Join-Path $Here '.claude-plugin\marketplace.json'))

@@ -4,11 +4,10 @@ Nothing in this repository uploads anything by itself. These are the steps you r
 
 ## First push to GitHub
 1. Create an empty repository named `boardwright` on GitHub, without a README or licence: this repository already has both. Public is easiest for testers; with a private repository, add each friend as a collaborator.
-2. If your GitHub account is not `prathware`, replace `prathware` everywhere first:
-   `git grep -l prathware` lists the files (marketplace.json, plugin.json, kicad-addon metadata and plugin.json, both installers, the docs). The add-on identifier `com.github.prathware.boardwright` must keep the reverse-DNS form.
+2. The repository is `github.com/Pratham7767/Boardwright`; every link, the plugin marketplace and the add-on identifier (`com.github.pratham7767.boardwright`) already point there.
 3. Push:
    ```
-   git remote add origin https://github.com/prathware/boardwright.git
+   git remote add origin https://github.com/Pratham7767/Boardwright.git
    git push -u origin main
    ```
    The **checks** workflow runs on Windows and on Ubuntu with KiCad 10. Wait for it to pass (Actions tab).

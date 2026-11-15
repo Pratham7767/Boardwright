@@ -43,10 +43,10 @@ It also lists `kicad-buddy`, `uvx` and `kicad-cli`. Without them the chat still 
 
 ## Getting it into the "KiCad official repository" list
 For that, KiCad's team has to review a merge request. **None of the steps below has been done.** Each one needs your decision.
-1. **Public source with an issue tracker.** Push this repository to `github.com/prathware/boardwright` and make it public. `metadata.json` already points its homepage and contact there. If the GitHub account name is different, change `prathware` in `metadata.json`, `plugins/plugin.json` (identifier), `../.claude-plugin/marketplace.json`, `../plugin/.claude-plugin/plugin.json` and the two installers.
+1. **Public source with an issue tracker.** Push this repository to `github.com/Pratham7767/Boardwright` and make it public. `metadata.json` already points its homepage and contact there.
 2. **Licence.** The code is MIT, which KiCad accepts because it is GPL-compatible. The bundled `plugin/` folder is the same MIT code; the third-party tools are not bundled (see `../THIRD_PARTY.md`).
 3. **Public download URL.** Attach `dist/boardwright-kicad-<version>.zip` and `dist/boardwright-kicad.zip` (the fixed name the installer downloads) to a GitHub release, then run `python build.py --download-url <that URL>`. This fills `dist/metadata.repository.json` with `download_url`, `download_sha256`, `download_size` and `install_size`. Rebuild whenever the zip changes, because the hash changes.
-4. **Merge request.** You need a GitLab account. Fork https://gitlab.com/kicad/addons/metadata, add `packages/com.github.prathware.boardwright/metadata.json` (the content of `dist/metadata.repository.json`) and `icon.png` (from `resources/`), and open the merge request. Do not send it to `kicad/addons/repository`, which is generated automatically.
+4. **Merge request.** You need a GitLab account. Fork https://gitlab.com/kicad/addons/metadata, add `packages/com.github.pratham7767.boardwright/metadata.json` (the content of `dist/metadata.repository.json`) and `icon.png` (from `resources/`), and open the merge request. Do not send it to `kicad/addons/repository`, which is generated automatically.
 5. **Likely review questions:** the add-on starts a separate program (Claude Code) and needs a paid Claude account. Say both plainly in the merge request. The KiCad rule for "commercial services" is aimed at fab and part-ordering services. If the reviewers count Claude as one, they will ask you to write to plugins@kicad.org.
 
 ## Alternative: your own repository (no review)
