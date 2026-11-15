@@ -64,9 +64,11 @@ if [ -z "$CLI" ]; then
     echo "   Upgrade Ubuntu, or use KiCad 9 from https://www.kicad.org/download/linux-distros/ if it lists one for $VERSION_ID."
   elif is_ubuntu && has apt-get; then
     echo "   Official KiCad 10 packages for Ubuntu: ppa:kicad/kicad-10.0-releases (https://www.kicad.org/download/linux-distros/)"
-    if ask "Install KiCad 10 from the official PPA now (uses sudo)?"; then
+    if ask "Install KiCad 10 from the official PPA now (about 60 MB, uses sudo)?"; then
       sudo apt-get install -y software-properties-common >/dev/null
-      sudo add-apt-repository -y ppa:kicad/kicad-10.0-releases && sudo apt-get update && sudo apt-get install -y kicad
+      sudo add-apt-repository -y ppa:kicad/kicad-10.0-releases && sudo apt-get update && \
+        sudo apt-get install -y --no-install-recommends kicad kicad-symbols kicad-footprints kicad-templates
+      echo "   (3D models are left out: about 280 MB more. Add them any time: sudo apt install kicad-packages3d)"
     fi
   elif [ "$OS" = Darwin ]; then
     has brew && ask "Install KiCad with Homebrew (brew install --cask kicad)?" && brew install --cask kicad
@@ -118,7 +120,8 @@ for p in json.load(sys.stdin):
 fi
 if [ -n "$PY" ] && [ -n "$SETUP" ] && [ -f "$SETUP" ]; then
   SARGS=(); [ "$YES" = 1 ] && SARGS=(--yes); [ "$CHECK" = 1 ] && SARGS=(--check)
-  if [ -r /dev/tty ] && [ "$YES" = 0 ]; then $PY "$SETUP" "${SARGS[@]}" </dev/tty; else $PY "$SETUP" "${SARGS[@]}" </dev/null; fi \
+  # answers come from the terminal when there is one we can really open (not with curl | bash in CI)
+  if [ "$YES" = 0 ] && ( : </dev/tty ) 2>/dev/null; then $PY "$SETUP" "${SARGS[@]}" </dev/tty; else $PY "$SETUP" "${SARGS[@]}" </dev/null; fi \
     || warn "helper setup left items open (see its summary above)"
 else warn "helper setup skipped; later run: python3 <plugin>/scripts/setup.py"; fi
 
