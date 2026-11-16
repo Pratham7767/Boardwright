@@ -8,6 +8,7 @@ Each stage: what to do, what to hand to helpers, the gate, and what the report m
 - Always ask, in both modes: how the board will be assembled (hand soldering, or machine assembly by the fab), the user's country and currency, and which suppliers they buy from. Part choice follows the assembly answer: hand soldering means 0805 and larger and leaded or gull-wing packages wherever a suitable part exists; machine assembly means parts the assembler stocks.
 - Classify the board: fast signals or four or more layers yes/no (then read `high-speed.md`). Highest voltage present, mains-connected yes/no, isolation needed yes/no. If hazardous voltage is present, read `high-voltage.md` now and tell the user what it means for them.
 - Report: requirements table (item, value, source), block diagram (text), interface list (connector, pins, signal levels), target standard or "none", open assumptions.
+- Hazardous voltage or mains: fill the `safety` section of `boardwright.json` now (`high-voltage.md`): the standard and product class (the user's decisions), mains, pollution degree, altitude, laminate CTI, domains, barriers and supplies. Low-voltage board: record the supply's rated power under `safety.supplies` so its PS class is on file.
 - Gate: every requirement has a value and a source.
 
 ## 2 Parts
@@ -33,21 +34,23 @@ Each stage: what to do, what to hand to helpers, the gate, and what the report m
 - Run `python scripts/sch_check.py .`: fields, footprint pads against symbol pins, single-pin nets, power pins, decoupling. Fix every error. Explain each warning in the report or fix it.
 - Run `python scripts/run_gates.py . --sch-only` (the board is still empty, so DRC is listed as not run). Read every ERC warning: an "isolated label" or "pin not driven" warning is often a real wiring mistake.
 - Report: ERC counts, each remaining warning with the reason it is acceptable, changes from the reference design.
-- Gate: ERC 0 errors and `sch_check.py` 0 errors.
+- Mains boards: run `python scripts/mains_check.py .` and fix every FAIL (fuse first, X/Y classes, varistor after fuse, discharge path, earth). Give safety parts a `safety_class` field where the value text does not say X2/Y1.
+- Gate: ERC 0 errors and `sch_check.py` 0 errors; on mains boards also `mains_check.py` PASS.
 
 ## 5 Layout
 Order: stackup and rules, placement, review, power routing, signal routing, pours, cleanup.
-1. Stackup and rules: pick the layer count and stackup from `design-practice.md` §1, and write the choice and the reason into the report. Board setup from `fab-jlcpcb.md`. Net classes for every power and hazardous net, stored as **patterns**, never per-net assignments (see `lessons.md`). Custom rules in the `.kicad_dru` for anything DRC must enforce: isolation, hole keep-outs. Write the pattern count into `boardwright.json` as `expect_netclass_patterns`.
+1. Stackup and rules: pick the layer count and stackup from `design-practice.md` §1, and write the choice and the reason into the report. Board setup from `fab-jlcpcb.md`. Net classes for every power and hazardous net, stored as **patterns**, never per-net assignments (see `lessons.md`). Custom rules in the `.kicad_dru` for anything DRC must enforce: isolation, hole keep-outs. Write the pattern count into `boardwright.json` as `expect_netclass_patterns`. Hazardous boards: run `python scripts/creepage_rules.py . --write` to add the barrier rules, then `python scripts/safety_class.py .`. Boards with fast pairs: fill `high_speed` (`high-speed.md`) and run `python scripts/hs_rules.py . --write`.
 2. Placement: write the floorplan first (blocks in current-flow order, critical loops per block), then place. Measure the critical loops on the placement with `emc_geometry.py` and read the unrouted list from `board_digest.py` before any routing. Connectors and mounting holes first, then the power path in current-flow order, then each IC with its decoupling. Stop and show the placement before routing. In guided mode, explain the three or four choices that matter.
 3. Routing: you decide every route for mains, switch nodes, high-current paths and feedback lines, as coordinates. `pcb-mechanic` may push them and run the DRC loop. Low-risk signal nets may be autorouted only if the user asks.
 4. Pours last, refilled under the full rule set. No pour inside a hazardous-voltage area.
 5. Run the gate. Then run `barrier_check.py` if the board has an isolation barrier, and `block_check.py`. Put the rail currents from the power budget into `boardwright.json` under `block.currents` first, so track widths are checked against them. Explain or fix every warning in the report.
 - Proof the rules fire: once per project, check on a scratch copy that a deliberate violation (a track moved across the barrier, a class removed) produces an error. Record it in the report.
 - Report: board size and layers, rule table, key measured distances, routing method per net group, DRC counts, open items.
-- Gate: rule guard pass; DRC with schematic parity 0 errors; 0 unconnected.
+- Gate: rule guard pass; DRC with schematic parity 0 errors; 0 unconnected. Hazardous boards: `safety_class.py`, `barrier_check.py` and then `creepage_rules.py` PASS (the last one needs fresh DRC and barrier results). Fast pairs: `hs_rules.py` (KiCad python) PASS.
 
 ## 6 EMC and signal integrity
 - Fill the `emc` section of `boardwright.json` for this board: the switching loops (pads in current order), switch-node copper, noisy-to-quiet distances, protection parts to connector pins, track-to-edge clearance. Choosing what to measure and the limits is your job; say where each limit comes from or mark it as an engineering estimate.
+- List every clock and switcher in `emc.clocks` (frequency and source) and run `python scripts/emc_harmonics.py .`: it shows which harmonics fall in each emission band, which coincide, and the cable ports to probe first. Put that plan in the report.
 - Run `emc_geometry.py`. Rate each finding CRITICAL, HIGH, MEDIUM or LOW. CRITICAL means the board is likely to fail to work or to be unsafe as laid out.
 - Controlled-impedance or fast nets (USB, Ethernet, DDR, RF): follow `high-speed.md`. State the target impedance, the fab stackup it was calculated for, and the measured length matching. If none, say "none".
 - Fixes that change the schematic need the user's approval first.

@@ -59,6 +59,14 @@ def main():
                 "Install KiCad 9 or newer")
         else:
             add("kicad-cli", "ok", f"{cli} (version {out})")
+            try:
+                ver = tuple(int(x) for x in out.split(".")[:3])
+            except ValueError:
+                ver = None
+            if ver and ver < (10, 0, 6):
+                add("KiCad creepage DRC", "warn", f"KiCad {out} is older than 10.0.6",
+                    "Update KiCad before relying on creepage results (earlier versions had geometry bugs); "
+                    "creepage_rules.py fails on older versions")
         bindir = Path(cli).resolve().parent
         py = next((bindir / n for n in ("python.exe", "python3", "python")
                    if (bindir / n).exists()), None)

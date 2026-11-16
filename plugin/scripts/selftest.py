@@ -66,11 +66,16 @@ def main():
             ("run_gates.py --sch-only", [py, HERE / "run_gates.py", proj, "--sch-only"], (0, 1), "reports/gates.json"),
             ("run_gates.py --no-export", [py, HERE / "run_gates.py", proj, "--no-export"], (0, 1), "reports/gates.json"),
             ("sch_check.py", [py, HERE / "sch_check.py", proj], (0, 1), "reports/sch-check.json"),
+            ("safety_class.py", [py, HERE / "safety_class.py", proj], (0, 1), "reports/safety-class.json"),
+            ("mains_check.py", [py, HERE / "mains_check.py", proj], (0, 1), "reports/mains-check.json"),
+            ("creepage_rules.py", [py, HERE / "creepage_rules.py", proj], (0, 1), "reports/creepage.json"),
+            ("emc_harmonics.py", [py, HERE / "emc_harmonics.py", proj], (0,), "reports/emc-harmonics.json"),
         ]
         if kpy:
             jobs += [
                 ("board_digest.py summary", [kpy, "-I", HERE / "board_digest.py", proj], (0,), None),
                 ("block_check.py", [kpy, "-I", HERE / "block_check.py", proj], (0, 1), "reports/block-check.json"),
+                ("hs_rules.py", [kpy, "-I", HERE / "hs_rules.py", proj], (0, 1), "reports/hs-check.json"),
             ]
             if "barrier" in cfg:
                 jobs.append(("barrier_check.py", [kpy, "-I", HERE / "barrier_check.py", proj], (0, 1), "reports/barrier.json"))

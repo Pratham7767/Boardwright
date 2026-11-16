@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 (2026-11-16): safety, EMC and high-speed checks (phase 1 of the research plan)
+Built from the research in "Boardwright safety EMC high speed plan". Every limit names its source and status; tables not yet checked against the purchased standards say "secondary source" or "unverified".
+
+- **Safety intake** (`safety_class.py`, `boardwright.json` "safety"): voltage domains, ES1/ES2/ES3 and PS1/PS2/PS3 per IEC 62368-1, `mains_referenced` domains counted as ES3, a barrier required for every domain above ES1, the standard and product class recorded as the user's decisions.
+- **Creepage and clearance gate v2** (`creepage_rules.py`, `spacing.py`, `spacing_tables.json`): required distances per barrier by the IEC 60664-1 method (impulse voltage, transient and peak clearance, altitude, creepage by pollution degree and material group, reinforced rules, slot width). KiCad's calculator was studied, not copied; unlike it, creepage always takes the next table row up (KiCad interpolates above 160 V, which can under-state). `--write` puts the rules at the end of the `.kicad_dru`; the check fails on a missing or weak rule, KiCad older than 10.0.6, stale DRC results, a DRC violation, or when KiCad's DRC and `barrier_check.py` disagree.
+- **Rule guard:** a net class now needs patterns that match nets on the board, not just patterns.
+- **Mains topology** (`mains_check.py`): fuse first on the line input, X class across mains, Y class across barriers (Y1 for reinforced), varistor after the fuse, X-capacitor discharge time through the bleeder, touch-current estimate, earth on class I.
+- **High-speed pairs** (`hs_rules.py`, "high_speed"): generated KiCad skew/length (and pair gap) rules, plus an independent measurement of length including via barrels, skew in mm and ps, via parity and return vias.
+- **EMC harmonic plan** (`emc_harmonics.py`, "emc.clocks"): harmonics per FCC 15.109 / CISPR 32 band, conducted band, coincidences, cable ports to probe.
+- Stage graph: new steps `spec.safety`, `sch.mains`, `layout.safety_class`, `layout.creepage`, `layout.hs`, `emc.harmonics`.
+- Tests: `plugin/tests/test_safety.py` (32 checks with planted faults). Fault tests on the AC-DC board: secondary copper pushed inside the barrier (both checks fail), rules that match nothing (cross-check fails), a net class whose patterns match nothing (rule guard fails).
+- README disclaimer rewritten to say what is checked and what is not.
+
 ## 0.3.1 (2026-11-16)
 - KiCad add-on: its description in KiCad's Plugin and Content Manager now says it works on Windows and Linux (it said "Tested on Windows only").
 - No other changes. Installing 0.3.1 over 0.3.0 is optional.

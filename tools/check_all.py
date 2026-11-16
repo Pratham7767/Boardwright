@@ -73,6 +73,7 @@ def main() -> int:
         run("install.ps1 syntax", [ps, "-NoProfile", "-Command",
                                    "$null=[scriptblock]::Create((Get-Content -Raw install/install.ps1))"])
     run("add-on tests (fake Claude Code)", [py, "kicad-addon/tests/test_core.py"])
+    run("safety, EMC and high-speed checks (planted faults)", [py, "plugin/tests/test_safety.py"])
     run("add-on build", [py, "kicad-addon/build.py"])
     if QUICK:
         skip("plugin selftest on the example board", "--quick")

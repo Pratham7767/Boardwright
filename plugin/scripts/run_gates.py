@@ -128,11 +128,24 @@ def rule_guard(project, stem):
     custom = defined - {"Default"}
     summary = f"{len(defined)} classes, {len(patterns)} patterns"
     problems = []
+    # A pattern can exist and still match nothing (a typo, a renamed net): count the nets each class
+    # really gets on the board, so a safety rule cannot go silent.
+    matched = None
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from bw_project import board_nets, nets_by_class
+        nets = board_nets(project / f"{stem}.kicad_pcb")
+        if nets:
+            matched = {c: len(v) for c, v in nets_by_class(pro, nets).items()}
+    except Exception as exc:          # the pattern count below still applies
+        print(f"  (rule guard: could not match net-class patterns to board nets: {exc})")
     for cls in sorted(used):
         if cls not in defined:
             problems.append(f"'{cls}' used by a rule but not defined in the project")
         elif members.get(cls, 0) == 0:
             problems.append(f"'{cls}' has no patterns or assignments (rule never fires)")
+        elif matched is not None and matched.get(cls, 0) == 0:
+            problems.append(f"'{cls}' has patterns but they match no net on the board (rule never fires)")
     if cfg.exists():
         try:
             expect = json.loads(cfg.read_text(encoding="utf-8")).get("expect_netclass_patterns")

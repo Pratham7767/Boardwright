@@ -2,7 +2,7 @@
 
 A Claude Code plugin that takes a printed circuit board from an idea to fab files in KiCad, in eight gated stages. You watch every board change happen in the open KiCad window, and nothing is ever ordered or uploaded for you.
 
-**Status: 0.3.1, early testing.** Tested end to end on Windows 11 with KiCad 10.0.8 on two real boards. Linux is tested on Ubuntu 24.04 with KiCad 10.0.8 (installer, gate scripts, the KiCad button's window); a full board run there is still to be done; macOS is untested. A community plugin, not affiliated with the KiCad project or Anthropic. Install, update and test instructions are in the repository's README and `docs/`.
+**Status: 0.4.0, early testing.** Tested end to end on Windows 11 with KiCad 10.0.8 on two real boards. Linux is tested on Ubuntu 24.04 with KiCad 10.0.8 (installer, gate scripts, the KiCad button's window); a full board run there is still to be done; macOS is untested. A community plugin, not affiliated with the KiCad project or Anthropic. Install, update and test instructions are in the repository's README and `docs/`.
 
 ## What it does
 
@@ -73,6 +73,12 @@ python scripts/sch_check.py .                 # schematic verification before la
 <kicad>/bin/python -I scripts/board_digest.py . --section summary   # compact board facts
 <kicad>/bin/python -I scripts/barrier_check.py .   # isolation barrier, needs boardwright.json
 <kicad>/bin/python -I scripts/emc_geometry.py .    # EMC geometry, needs boardwright.json
+python scripts/safety_class.py .              # voltage domains, ES/PS classes (boardwright.json "safety")
+python scripts/mains_check.py .               # fuse first, X/Y classes, varistor, X discharge, earth
+python scripts/creepage_rules.py . [--write]  # spacing per barrier (IEC 60664-1 method), rules, cross-check
+python scripts/spacing.py --mains 230 --insulation reinforced   # the spacing calculation on its own
+<kicad>/bin/python -I scripts/hs_rules.py . [--write]   # pair skew, via parity, return vias ("high_speed")
+python scripts/emc_harmonics.py .             # clock and switcher harmonics against the emission bands
 ```
 
 Exit codes: 0 pass, 1 a gate failed, 2 setup or tool problem. There is no option to skip a check.

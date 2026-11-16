@@ -68,7 +68,7 @@ def main():
     (target / "scripts").mkdir(exist_ok=True)
     # the gate scripts and the stage graph they read; not the plugin-only tools
     plugin_only = {"init_project.py", "setup.py", "session_start.py", "selftest.py"}
-    for src in sorted(list(here.glob("*.py")) + [here / "pipeline.json"]):
+    for src in sorted(list(here.glob("*.py")) + [here / "pipeline.json", here / "spacing_tables.json"]):
         if src.name in plugin_only:
             continue
         dst = target / "scripts" / src.name

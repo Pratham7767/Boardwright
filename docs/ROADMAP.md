@@ -84,3 +84,10 @@ Still open from that run:
 - It found a real release defect on the first board (BOM reference ranges), now fixed in the export.
 - Limits: straight-line distances, nearest capacitor only, minimum segment width only (a short neck fails a wide net; zone-fed nets are not measured), I2C range depends on an assumed bus capacitance, paste check counts flashed pads only. The crystal check has never run on a real crystal circuit.
 - Its default limits are engineering estimates and say so in the output.
+
+## Safety, EMC and high-speed: phase 1 done in 0.4.0, next phases
+Phase 1 of the research plan (`E:/PCB/boardwright-research/reports/Boardwright safety EMC high speed plan.md` on the maintainer's machine) is built and tested on the AC-DC and USB sensor boards. Next:
+- **Before trusting any spacing gate:** buy IS/IEC 62368-1:2023 (and IEC 60664-1:2020) and check every row of `scripts/spacing_tables.json`, changing its status row by row.
+- **Phase 2:** automatic EMC layout rules (track over a plane gap, unstitched splits, unfiltered cable ports, ground coverage); an impedance estimate from the fab stackup (scikit-rf, BSD-3, optional cross-check); a register of safety-critical parts with certificate numbers; a PDN target-impedance estimate; a pre-compliance pack for the lab.
+- **Phase 3 (opt-in):** ngspice conducted-emission model with a LISN; transmission-line reflection check; gerber2ems (Apache-2.0) simulation of a USB pair; near-field scan import.
+- Not built: 3-D clearance over part bodies, inner-layer and coated-board rules.

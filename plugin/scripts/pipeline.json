@@ -31,6 +31,19 @@
    ]
   },
   {
+   "id": "spec.safety",
+   "stage": 1,
+   "kind": "model",
+   "when": "hazardous",
+   "title": "Fill boardwright.json 'safety': standard (user's choice), mains, PD, altitude, laminate CTI, domains, barriers, supplies (high-voltage.md)",
+   "needs": [
+    "spec.confirm"
+   ],
+   "evidence": {
+    "config_key": "safety"
+   }
+  },
+  {
    "id": "parts.select",
    "stage": 2,
    "kind": "model",
@@ -220,6 +233,26 @@
    "loop_to": "sch.draw"
   },
   {
+   "id": "sch.mains",
+   "stage": 4,
+   "kind": "gate",
+   "when": "hazardous",
+   "parallel": "sch-gates",
+   "title": "Gate: mains topology (fuse first, X/Y classes, varistor after fuse, X discharge, earth)",
+   "needs": [
+    "sch.draw"
+   ],
+   "run": "python scripts/mains_check.py .",
+   "evidence": {
+    "json_ok": "reports/mains-check.json",
+    "true_key": "pass"
+   },
+   "invalidated_by": [
+    "sch"
+   ],
+   "loop_to": "sch.draw"
+  },
+  {
    "id": "sch.report",
    "stage": 4,
    "kind": "model",
@@ -259,6 +292,26 @@
    "invalidated_by": [
     "pro",
     "dru"
+   ],
+   "loop_to": "layout.rules"
+  },
+  {
+   "id": "layout.safety_class",
+   "stage": 5,
+   "kind": "gate",
+   "when": "hazardous",
+   "title": "Gate: every net in a voltage domain, energy classes set, a barrier for each domain above ES1",
+   "needs": [
+    "layout.rules"
+   ],
+   "run": "python scripts/safety_class.py .",
+   "evidence": {
+    "json_ok": "reports/safety-class.json",
+    "true_key": "pass"
+   },
+   "invalidated_by": [
+    "pro",
+    "pcb"
    ],
    "loop_to": "layout.rules"
   },
@@ -376,6 +429,48 @@
    "loop_to": "layout.route_critical"
   },
   {
+   "id": "layout.creepage",
+   "stage": 5,
+   "kind": "gate",
+   "when": "hazardous",
+   "title": "Gate: generated spacing rules present, KiCad >= 10.0.6, KiCad DRC and barrier_check agree (creepage_rules.py; --write in layout.rules)",
+   "needs": [
+    "layout.drc",
+    "layout.barrier"
+   ],
+   "run": "python scripts/creepage_rules.py .",
+   "evidence": {
+    "json_ok": "reports/creepage.json",
+    "true_key": "pass"
+   },
+   "invalidated_by": [
+    "pcb",
+    "dru",
+    "pro"
+   ],
+   "loop_to": "layout.route_critical"
+  },
+  {
+   "id": "layout.hs",
+   "stage": 5,
+   "kind": "gate",
+   "when": "fast",
+   "title": "Gate: each high-speed pair within its skew/length limits, equal via counts, ground via at each layer change (hs_rules.py; --write in layout.rules)",
+   "needs": [
+    "layout.drc"
+   ],
+   "run": "KiCad python: scripts/hs_rules.py .",
+   "evidence": {
+    "json_ok": "reports/hs-check.json",
+    "true_key": "pass"
+   },
+   "invalidated_by": [
+    "pcb",
+    "dru"
+   ],
+   "loop_to": "layout.route_critical"
+  },
+  {
    "id": "layout.proof_rules",
    "stage": 5,
    "kind": "model",
@@ -422,7 +517,10 @@
     "layout.barrier",
     "layout.proof_rules",
     "layout.blocks",
-    "layout.reviewer"
+    "layout.reviewer",
+    "layout.safety_class",
+    "layout.creepage",
+    "layout.hs"
    ],
    "evidence": {
     "file_contains": [
@@ -464,6 +562,23 @@
    ]
   },
   {
+   "id": "emc.harmonics",
+   "stage": 6,
+   "kind": "script",
+   "title": "Harmonic plan: clocks and switchers against the emission bands, cable ports to probe (emc.clocks)",
+   "needs": [
+    "emc.config"
+   ],
+   "parallel": "emc-measure",
+   "run": "python scripts/emc_harmonics.py .",
+   "evidence": {
+    "file": "reports/emc-harmonics.json"
+   },
+   "invalidated_by": [
+    "pcb"
+   ]
+  },
+  {
    "id": "emc.si",
    "stage": 6,
    "kind": "model",
@@ -480,7 +595,8 @@
    "title": "Rate each finding CRITICAL/HIGH/MEDIUM/LOW; propose fixes (schematic changes need approval)",
    "needs": [
     "emc.measure",
-    "emc.si"
+    "emc.si",
+    "emc.harmonics"
    ],
    "invalidated_by": [
     "pcb"

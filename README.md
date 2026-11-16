@@ -6,7 +6,7 @@
 
 Free and open source (MIT). A community project, not affiliated with the KiCad project or Anthropic.
 
-> **Status: 0.3.1, early testing.** Windows 11 with KiCad 10.0.8 is tested end to end on two real boards (a mains flyback supply and a USB sensor board). **Linux** is supported and tested on Ubuntu 24.04 with KiCad 10.0.8 (installer, gate scripts on a real board, the KiCad button's window); a full board design run on Linux is still to be done. macOS is untested. Expect rough edges, and please report them: see [docs/TESTING.md](docs/TESTING.md).
+> **Status: 0.4.0, early testing.** Windows 11 with KiCad 10.0.8 is tested end to end on two real boards (a mains flyback supply and a USB sensor board). **Linux** is supported and tested on Ubuntu 24.04 with KiCad 10.0.8 (installer, gate scripts on a real board, the KiCad button's window); a full board design run on Linux is still to be done. macOS is untested. Expect rough edges, and please report them: see [docs/TESTING.md](docs/TESTING.md).
 
 ## What you get
 
@@ -23,9 +23,9 @@ Free and open source (MIT). A community project, not affiliated with the KiCad p
 | 1 Spec | every requirement has a value and a source |
 | 2 Parts | every part has a datasheet and a pin table with page numbers |
 | 3 Power budget | at least 20% headroom on every rail |
-| 4 Schematic | ERC 0 errors, schematic check 0 errors |
-| 5 Layout | rule guard passes; DRC with schematic parity 0 errors; nothing unconnected |
-| 6 EMC | no CRITICAL finding; isolation barrier check if the board has one |
+| 4 Schematic | ERC 0 errors, schematic check 0 errors; on mains boards, fuse first, X/Y capacitor classes, varistor after the fuse and the X-capacitor discharge time |
+| 5 Layout | rule guard passes; DRC with schematic parity 0 errors; nothing unconnected; on mains boards, creepage and clearance from the IEC 60664-1 method, with KiCad's DRC and an independent check agreeing; on fast boards, pair skew, via parity and return vias |
+| 6 EMC | no CRITICAL finding; a harmonic plan of every clock and switcher against the emission bands |
 | 7 BOM | no end-of-life or out-of-stock part |
 | 8 Release | Gerbers, drill, placement, BOM and schematic PDF from a freshly refilled copy, plus a checklist of everything you must verify yourself |
 
@@ -58,8 +58,13 @@ It asks one question (**Set up everything? [Y/n]**), then installs whatever is m
 
 ## What it will not do
 
-- **It does not make a board safe.** A clean check only proves the board obeys the rules that were set. A board with mains or other hazardous voltage must be reviewed by a qualified person before it is powered.
-- It does not prove EMC compliance; stage 6 is a geometry-based risk estimate.
+Boardwright checks a design against the rules listed in its reports, using values from the cited sources and the facts you supplied. Its reports are pre-compliance evidence for a responsible person. They are not a safety certification, a test report, or a prediction of an EMC lab result.
+
+- Rows marked "secondary source" or "unverified" have not been checked against the purchased standard or the part's own document.
+- Impedance and skew-in-picoseconds values are calculated estimates, not field-solved or measured.
+- Electric strength, touch current, fault behaviour, temperature, emissions, immunity and signal integrity are known only from tests on built hardware.
+- Selling a product requires the manufacturer's own declaration and, where the law requires it (for example BIS CRS in India, FCC SDoC in the US, the EU EMC Directive), testing by a recognised lab.
+- **Mains and hazardous-voltage boards can kill.** A qualified person must review them before they are powered.
 - It does not order, upload or publish anything, and it never waives a failed check: it lists proposed waivers and waits for you.
 - It never asks for, reads or stores your passwords, API keys or tokens. Sign-in is always Claude Code's own.
 

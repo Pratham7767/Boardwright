@@ -22,6 +22,18 @@ Applies when the board has any of: USB 2.0 high-speed or faster, Ethernet, HDMI,
 - Decoupling: one capacitor per power pin as close as the package allows, each with its own via to the plane.
 - Connector and ESD parts first on the path from the connector; then common-mode chokes if used; then the chip.
 
+## Pair rules and the independent pair check
+Declare every differential pair and its limits in `boardwright.json`, each limit with its source (the chip's layout guide and page):
+```json
+"high_speed": {"er_eff": 3.3, "er_source": "fab stackup JLC04161H-7628, calculator 2026-11-16",
+  "ground_nets": ["/GND"], "max_return_via_mm": 1.5,
+  "pairs": [{"name": "USB", "p": "/USB_DP", "n": "/USB_DM", "max_skew_mm": 0.15, "max_length_mm": 50,
+             "max_vias_each": 2, "source": "RP2350 hardware design guide, section 5.1"}]}
+```
+- `python scripts/hs_rules.py . --write` (stage 5, with the other rules) writes KiCad `skew` and `length` rules, and `diff_pair_gap` / `diff_pair_uncoupled` when the net names follow KiCad's pair convention (`_P`/`_N`, `+`/`-`).
+- `<kicad>/bin/python -I scripts/hs_rules.py .` (gate `layout.hs`) measures each pair itself: lengths including via barrels, skew in mm and ps, equal via counts, and a ground via within `max_return_via_mm` of every signal via. It does not depend on KiCad grouping the pair correctly.
+- A limit without a source is reported as "assumption". `max_return_via_mm` 1.5 is a working default, not a value from a standard.
+
 ## Stage 6: what to measure
 Add these to `boardwright.json` and the report. Where the script has no check for an item, measure it another way and say how:
 - Length and skew of every matched group (`track_length` entries, compared by you).
@@ -35,4 +47,4 @@ Add these to `boardwright.json` and the report. Where the script has no check fo
 
 ## Limits
 - Impedance depends on the fab's real materials and tolerances. Order impedance control from the fab if the interface needs it, and state that in the release checklist.
-- This plugin does not run signal-integrity or power-integrity simulation.
+- This plugin does not run signal-integrity or power-integrity simulation, and does not calculate impedance yet (planned: an estimate from the fab's stackup, labelled as such).
