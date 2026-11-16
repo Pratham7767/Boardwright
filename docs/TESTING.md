@@ -1,48 +1,57 @@
-# Testing Boardwright: a guide for friends
+# Test guide
 
-Thanks for trying it. This is early software, and your bug reports are the point of the exercise. About an hour of your time covers the important parts.
+Thank you for helping test Boardwright. It is still new, so your reports of what goes wrong are the most useful part. Plan on about an hour.
 
-**Before you start:**
-- It uses **your own Claude plan or API credit**. A small test board can use a noticeable share of a Pro plan's usage limit. If you hit a limit, switch to Sonnet (model menu in the KiCad window, or `/model sonnet` in Claude Code).
-- **Do not order a board** made during testing without checking it yourself. The release checklist in `reports/08-release.md` lists what to check.
-- Nothing is uploaded or ordered by the tool. Your board files go to Anthropic only as part of your own Claude conversations, like any Claude Code session.
+**Before you start**
 
-## 1. Install (15-30 min)
-Follow [INSTALL.md](INSTALL.md), option A. **Note anything that confused you or failed**, including the exact text of errors. A screenshot is fine.
+- Boardwright uses **your own Claude plan**. A small test board can use a good share of a monthly plan. If you hit a limit, switch to the Sonnet model.
+- **Don't order a board made during testing** without checking it yourself. The list of things to check is in `reports/08-release.md`.
+- Boardwright never orders or uploads anything.
 
-## 2. Setup check (2 min)
-In an empty folder in Claude Code: `/boardwright:pcb-doctor`. Copy its table into your report.
+## 1. Install (15-30 minutes)
 
-## 3. A small board (30-60 min)
-Make an empty folder, open it in Claude Code and start:
+Follow the [install guide](INSTALL.md). Write down anything that confused you or went wrong, with the exact error message. A screenshot is fine.
+
+## 2. Check the setup (2 minutes)
+
+Open an empty folder in Claude Code and type `/boardwright:pcb-doctor`. Copy its table into your report.
+
+## 3. Design a small board (30-60 minutes)
+
+Make an empty folder, open it in Claude Code and type:
 
 ```
-/boardwright:pcb-new guided A USB-C powered board with an STM32 or RP2040 microcontroller, a temperature and humidity sensor on I2C, a status LED, and a reset button. 2 layers, about 30 x 40 mm, assembled by JLCPCB.
+/boardwright:pcb-new guided A USB-C powered board with an STM32 or RP2040 microcontroller, a temperature and humidity sensor, a status LED and a reset button. 2 layers, about 30 x 40 mm, assembled by JLCPCB.
 ```
 
-Go as far as you can: at least through stage 4 (schematic), ideally through stage 5 (layout) with KiCad open. Things to watch:
-- Did it ask sensible questions, and not too many?
-- Did it ever claim something as checked that wasn't?
-- Did a gate stop the work for a good reason? A bad reason?
-- Was anything slow, or did it loop?
+Try to get at least to stage 4 (the circuit drawing), and stage 5 (the layout) if you can, with KiCad open. While it works, notice:
 
-## 4. The KiCad button (Windows or Linux, 10 min)
-Open the board from step 3 in KiCad's PCB Editor and click the speech-bubble button.
-- Does the window open, and does the Setup box at the top report correctly?
-- Ask: *"What stage is this project at?"* Do you get a streamed answer?
-- Ask it to make a small change, such as moving a part's silkscreen text. Do Allow and Deny work?
-- Try **Stop** in the middle of an answer, and **New chat**.
+- Were the questions sensible, and not too many?
+- Did it ever say something was checked when it wasn't?
+- When a check stopped the work, was the reason good?
+- Was anything slow, or did it repeat itself?
 
-## 5. Optional: an existing board
-In a folder with one of your own KiCad projects: `/boardwright:pcb-review`. It changes nothing. Is the report useful? Is anything in it wrong?
+## 4. Try the KiCad chat button (10 minutes)
+
+Open your board in KiCad and click the speech-bubble button.
+
+- Does the window open, and does the Setup box show the right things?
+- Ask *"What stage is this project at?"*. Does an answer appear?
+- Ask for a small change. Do the Allow and Deny buttons work?
+- Try **Stop** while it is answering, and **New chat**.
+
+## 5. Optional: check a board you already have
+
+In a folder with one of your own KiCad projects, type `/boardwright:pcb-review`. It changes nothing and writes `reports/review.md`. Is the report useful? Is anything in it wrong?
 
 ## How to report
-Open an issue on the GitHub repository (the **Bug report** or **Feedback** form), or send the owner a message. Include:
-- Windows / macOS / Linux version, KiCad version, `claude --version`
-- the `/boardwright:pcb-doctor` table
-- what you did, what you expected, what happened, plus screenshots
-- KiCad button problems: the file `%TEMP%\boardwright_launcher.log` (Linux: `/tmp/boardwright_launcher.log`)
-- Linux: your distribution and version, X11 or Wayland, and how KiCad was installed (PPA, distro package, Flatpak)
-- for wrong design decisions: the stage report from `reports/` and the part of the conversation where it happened
 
-Before sharing a log or report, delete anything you don't want to share (names, paths).
+Open an issue on GitHub (use the **Bug report** or **Tester feedback** form), or message the owner. Include:
+
+- your operating system, KiCad version, and the output of `claude --version`;
+- the `/boardwright:pcb-doctor` table;
+- what you did, what you expected and what happened, with screenshots;
+- for chat-button problems, the log file (`%TEMP%\boardwright_launcher.log` on Windows, `/tmp/boardwright_launcher.log` on Linux);
+- for wrong design choices, the stage report from `reports/` and what Claude said.
+
+Remove anything private, such as names or folder paths, before you share a file.

@@ -1,106 +1,108 @@
-# boardwright
+# How the Boardwright pipeline works
 
-A Claude Code plugin that takes a printed circuit board from an idea to fab files in KiCad, in eight gated stages. You watch every board change happen in the open KiCad window, and nothing is ever ordered or uploaded for you.
+This folder is the Claude Code plugin: the part that does the design work and runs the checks. To install it, see the main [README](../README.md).
 
-**Status: 0.5.0.** Tested on Windows 11 and Ubuntu 24.04 with KiCad 10.0.8, on a mains flyback supply and a USB sensor board. macOS is untested. A community plugin, not affiliated with the KiCad project or Anthropic.
+**Status: 0.5.0.** Tested on Windows 11 and Ubuntu 24.04 with KiCad 10.0.8, on a mains power-supply board and a USB sensor board. Not affiliated with the KiCad project or Anthropic.
 
-## What it does
+## The idea
 
-| Stage | Gate |
+Claude does the design work. Small Python programs check it. A stage only counts as done when its checks pass. If a check fails, Claude goes back, fixes the cause and runs the check again. It never switches a check off to make it pass.
+
+Each project folder keeps its own notes:
+
+| File or folder | What it holds |
 |---|---|
-| 1 Spec | every requirement has a value and a source |
-| 2 Parts | every part has a datasheet and a pin table with page numbers |
-| 3 Power budget | at least 20% headroom on every rail |
-| 4 Schematic | ERC 0 errors |
-| 5 Layout | rule guard passes; DRC with schematic parity 0 errors; nothing unconnected |
-| 6 EMC | no CRITICAL finding; isolation barrier check if the board has one |
-| 7 BOM | no end-of-life or out-of-stock part |
-| 8 Release | Gerbers, drill, placement, BOM and schematic PDF, exported from a freshly refilled copy, plus a checklist of everything you must verify yourself |
+| `PROJECT.md` | What the board must do, and every decision you made |
+| `boardwright.json` | Settings for the checks, such as the safety details of a mains board |
+| `reports/` | One report per stage, and the results of every check |
+| `datasheets/` | One datasheet per part |
+| `fab/` | The files for the factory |
+| `scripts/` | The check programs, copied into the project so they also run by hand |
 
-Two modes: **guided** (plain-language interview, stops after every stage and explains) and **express** (reads `PROJECT.md`, stops only when a gate fails or a decision is yours). Both run the same gates.
+## Two ways to work
 
-## What it will not do
+- **Guided:** Claude asks questions in plain language, one topic at a time, and stops after each stage to explain what it did.
+- **Express:** Claude reads your spec and stops only when a check fails or a decision is yours.
 
-- It does not make a board safe. A clean check only proves the board obeys the rules that were set. Boards with mains or other hazardous voltage must be reviewed by a qualified person before they are powered.
-- It does not prove EMC compliance. Stage 6 is a geometry-based risk estimate.
-- It does not order, upload or publish anything.
-- It does not waive a failed check. It lists proposed waivers and waits for you.
+Both run the same checks.
 
-## Requirements and install
+## Commands
 
-KiCad 9 or 10 with its API server enabled, Claude Code, Python 3.10+, and two helper tools (kicad-buddy for the live link, mcp-server-kicad for schematics). The repository's installer sets all of it up; by hand:
+| Command | What it does |
+|---|---|
+| `/boardwright:pcb-doctor` | Checks that KiCad, Claude Code and the helper tools are ready |
+| `/boardwright:pcb-new` | Starts a new board |
+| `/boardwright:pcb-run` | Continues from the stage you are at |
+| `/boardwright:pcb-auto <idea>` | Designs a whole board with as few stops as possible |
+| `/boardwright:pcb-gates` | Runs every check and changes nothing |
+| `/boardwright:pcb-review` | Reviews an existing board and writes `reports/review.md` |
+| `/boardwright:pcb-retro` | Looks back at a finished board and suggests improvements to Boardwright |
 
-```
-claude plugin marketplace add Pratham7767/Boardwright
-claude plugin install boardwright@boardwright
-python "<plugin folder>/scripts/setup.py"     # uv, kicad-buddy, mcp-server-kicad, KiCad API setting
-```
+Commands only run read-only checks without asking. Anything that changes your design asks you first.
 
-## Use
+## Helpers
 
-1. Make an empty folder for your board and open it in Claude Code.
-2. Run `/boardwright:pcb-doctor` and fix anything marked FAIL.
-3. Run `/boardwright:pcb-new guided` (or `express`) and describe your board. Or, for the fewest stops: `/boardwright:pcb-auto <what the board should do>`.
-4. Later sessions: `/boardwright:pcb-run` continues from the stage you are at. `/boardwright:pcb-gates` runs the checks without changing anything.
+For long, routine jobs Claude hands work to helpers that run on cheaper models:
 
-Already have a design? Run `/boardwright:pcb-new` in a folder that holds your schematic to continue from it, or `/boardwright:pcb-review` for a review-only report on a finished board.
+| Helper | Job |
+|---|---|
+| `datasheet-reader` | Reads one datasheet and lists the pins and limits, with page numbers |
+| `part-scout` | Looks up stock, price and lifecycle for a batch of parts |
+| `pcb-mechanic` | Draws tracks Claude has already planned, and reruns checks |
+| `gate-reviewer` | Gives a second opinion on a stage before it counts (strongest model) |
 
-## How the work is split between models
+Design decisions are never handed to a helper.
 
-The main session makes every design decision and reviews every gate; run it on the strongest model you have. Mechanical work goes to cheaper helpers, in parallel where their inputs are independent:
+## The checks
 
-| Helper | Model | Job |
-|---|---|---|
-| `datasheet-reader` | Sonnet | one datasheet each: pin table and ratings with page numbers |
-| `part-scout` | Haiku | stock, price and lifecycle for batches of BOM lines |
-| `pcb-mechanic` | Sonnet | pushes the routes it is given, runs DRC loops, cleans up silkscreen |
-| `gate-reviewer` | Opus | independent review of a stage before its gate counts |
+You can run any check by hand from the project folder. Each prints a short result and writes the full detail to `reports/`.
 
-A helper starts with no context, so it only saves usage on long mechanical jobs. Small edits are done directly.
+**Every board**
 
-## Scripts
+| Command | What it checks |
+|---|---|
+| `python scripts/run_gates.py . --no-export` | KiCad's wiring check (ERC) and layout check (DRC), and that the spacing rules really apply to the right nets |
+| `python scripts/sch_check.py .` | The circuit drawing: part details, pin numbers, unconnected pins, decoupling capacitors |
+| `python scripts/status.py .` | Where the project is |
+| `python scripts/plan.py .` | What to do next |
+| `python scripts/doctor.py .` | That the setup is complete |
 
-`init_project.py` copies these into your project's `scripts/` folder, so they also run by hand:
+**Boards that plug into the wall**
 
-```
-python scripts/run_gates.py . --no-export     # rule guard, ERC, DRC with parity
-python scripts/run_gates.py .                 # the same, then exports into fab/
-python scripts/doctor.py .                    # setup check
-python <plugin>/scripts/setup.py --check      # helper tools, KiCad API setting (without --check: installs)
-python scripts/plan.py .                      # what is ready now, what can run together, what failed
-python scripts/status.py .                    # where the project is, in 25 lines
-python scripts/sch_check.py .                 # schematic verification before layout
-<kicad>/bin/python -I scripts/board_digest.py . --section summary   # compact board facts
-<kicad>/bin/python -I scripts/barrier_check.py .   # isolation barrier, needs boardwright.json
-<kicad>/bin/python -I scripts/emc_geometry.py .    # EMC geometry, needs boardwright.json
-python scripts/safety_class.py .              # voltage domains, ES/PS classes (boardwright.json "safety")
-python scripts/mains_check.py .               # fuse first, X/Y classes, varistor, X discharge, earth
-python scripts/creepage_rules.py . [--write]  # spacing per barrier (IEC 60664-1 method), rules, cross-check
-python scripts/spacing.py --mains 230 --insulation reinforced   # the spacing calculation on its own
-<kicad>/bin/python -I scripts/hs_rules.py . [--write]   # pair skew, via parity, return vias ("high_speed")
-python scripts/emc_harmonics.py .             # clock and switcher harmonics against the emission bands
-<kicad>/bin/python -I scripts/emc_rules.py .  # EMC layout rules: pour gaps, return vias, cable ports, edge, ground cover
-python scripts/impedance_check.py .           # impedance estimate per net class ("high_speed.impedance")
-python scripts/pdn_check.py .                 # decoupling bank against each rail's target impedance ("pdn")
-python scripts/parts_register.py .            # safety-critical parts with certificate, standard, rating
-python scripts/sim_export.py .                # IPC-2581, ODB++, STEP into sim/ for HyperLynx, CST, SIwave
-python scripts/precompliance_pack.py .        # everything above in one document for the lab
-```
+| Command | What it checks |
+|---|---|
+| `python scripts/safety_class.py .` | Sorts every connection into dangerous or safe |
+| `python scripts/mains_check.py .` | Fuse first, correct safety capacitors, discharge time after unplugging |
+| `python scripts/creepage_rules.py . --write` | Works out the safe distances and adds them to KiCad's rules |
+| `python scripts/creepage_rules.py .` | Checks the distances twice, in two independent ways, and fails if they disagree |
+| `python scripts/parts_register.py .` | Lists the safety parts and their certificates |
 
-Exit codes: 0 pass, 1 a gate failed, 2 setup or tool problem. There is no option to skip a check.
+**Interference and fast signals**
 
-## Chat inside KiCad
+| Command | What it checks |
+|---|---|
+| `python scripts/emc_harmonics.py .` | Which frequencies each clock produces, and which to test first |
+| `<kicad python> -I scripts/emc_rules.py .` | Layout mistakes that cause interference: tracks over gaps in the ground copper, missing ground vias, unprotected connectors |
+| `<kicad python> -I scripts/hs_rules.py .` | Fast pairs such as USB: matching lengths and layer changes |
+| `python scripts/impedance_check.py .` | Estimated impedance of fast tracks |
+| `python scripts/pdn_check.py .` | Whether each power supply has enough capacitors near the chips |
 
-The repository's `kicad-addon/` adds a button to KiCad's PCB Editor that opens a chat window running this plugin in the open board's folder (Windows and Linux). See `kicad-addon/README.md`.
+**Release**
 
-## Design rules
+| Command | What it does |
+|---|---|
+| `python scripts/run_gates.py .` | Runs the checks, then makes the factory files in `fab/` |
+| `python scripts/precompliance_pack.py .` | Puts every result into one document for the person who signs off and the test lab |
+| `python scripts/sim_export.py .` | Exports the board for professional analysis tools such as HyperLynx or CST |
 
-`skills/boardwright/references/` holds the rules the skill applies, each with its source: `block-guides.md` (per circuit block, from manufacturer application notes), `design-practice.md` (stackup, return paths, spacing, crystals, USB protection, inrush, fiducials, KiCad board setup), `field-lessons.md`, `high-voltage.md`, `high-speed.md`.
+`<kicad python>` means the Python that comes with KiCad (`python.exe` next to `kicad-cli`), because these checks read the board through KiCad.
 
-## Known gaps
+Every check ends with a code: 0 means passed, 1 means a check failed, 2 means something is missing in the setup.
 
-See `docs/ROADMAP.md` in the repository.
+## Where the design rules come from
+
+The rules Claude follows are in `skills/boardwright/references/`. Each rule names its source: manufacturers' application notes, published design guides and KiCad's documentation. Safety distances come from published summaries of IEC 60664-1 and IEC 62368-1. They are marked "secondary source" until someone checks them against the official standard.
 
 ## Licence
 
-MIT. See `LICENSE`, including the note on hazardous designs.
+MIT. See `LICENSE`.

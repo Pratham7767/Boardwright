@@ -1,15 +1,17 @@
-# Example: USB-C temperature and humidity sensor
+# Example: USB temperature and humidity sensor
 
-A real board taken through the Boardwright pipeline in guided mode, kept here so you can see what each stage produces before you start your own.
+A small board designed with Boardwright, kept here so you can see what each stage produces.
 
-- **The board:** 30 x 40 mm, 2 layers, USB-C powered, an STM32F042K6T6 reading an AHT20 sensor over I2C and showing up as a USB serial port. Machine-assembled by JLCPCB (`PROJECT.md`).
-- **Stage reports:** `reports/01-spec.md` to `reports/08-release.md`, plus the gate results (`gates.md`, `erc.json`, `drc.json`), the EMC geometry check and the retro.
-- **Release files:** `fab/` (Gerbers, drill, placement, BOM, schematic PDF, JLCPCB assembly files).
+- **The board:** 30 x 40 mm, 2 layers, powered from USB-C. A microcontroller (STM32F042K6T6) reads a temperature and humidity sensor (AHT20) and shows up on the computer as a USB serial port. Built and assembled by JLCPCB. Details in `PROJECT.md`.
+- **Stage reports:** `reports/01-spec.md` to `reports/08-release.md`, plus the check results.
+- **Factory files:** in `fab/`.
 
-**It is not ready to order.** Two gates were left open by the designer's decision and are listed at the top of `reports/08-release.md`:
-- stage 2: three part details are unconfirmed;
-- stage 7: one resistor was out of stock.
+**It is not ready to order.** Known open items:
 
-That's the pipeline behaving as designed: it reports open gates rather than hiding them.
+- Stage 2: three part details are unconfirmed.
+- Stage 7: one resistor was out of stock.
+- A review with `/boardwright:pcb-review` (0.5.0) found that the regulator U2 uses a symbol for a different part (AP2204K-1.5 instead of AP2112K-3.3), and that its USB pair changes layer without nearby ground vias.
 
-Datasheets are not included (see `datasheets/README.md`). The gate scripts are not included either. To rerun the checks, copy this folder somewhere, open it in Claude Code and run `/boardwright:pcb-gates`. If `scripts/` is missing, Claude first restores it from the plugin.
+Boardwright reports these open items rather than hiding them.
+
+The datasheets are not included, because they belong to their manufacturers (see `datasheets/README.md`). To run the checks yourself, copy this folder, open it in Claude Code and type `/boardwright:pcb-gates`.

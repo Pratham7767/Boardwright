@@ -1,61 +1,53 @@
-# Boardwright for KiCad (the add-on)
+# The KiCad chat button
 
-Most people should use the repository's installer; see `../docs/INSTALL.md`. This page is about the add-on itself. It runs on Windows and Linux (`platforms` in `metadata.json`). Linux needs wxPython for the system Python and a terminal emulator; see INSTALL.md.
+This folder is the KiCad add-on. It puts a speech-bubble button on the toolbar of KiCad's PCB Editor. The button opens a chat window, next to KiCad, that talks to **your own** Claude Code in the folder of the board you have open.
 
-A KiCad 10 add-on. It puts a **Boardwright chat** button on the PCB Editor toolbar. The button opens a chat window that talks to **your own Claude Code**, started in the folder of the open project with the boardwright plugin loaded.
+Works on Windows and Linux with KiCad 10. Most people get it through the main installer: see the [install guide](../docs/INSTALL.md).
 
-## What you need
-- KiCad 10.0 or newer, with **Preferences → Plugins → Enable KiCad API server** ticked.
-- Claude Code installed and signed in with your own Claude account. If either is missing, the window walks you through it the first time.
-- Nothing else: KiCad sets up a small Python environment for the add-on the first time, and the add-on needs no extra packages.
+## Install
 
-## Install from the zip (works today, no review needed)
-1. Build it: `python build.py` (any Python 3.9+). This writes `dist/boardwright-kicad-<version>.zip`.
-2. In KiCad's main window: **Plugin and Content Manager → Install from File...** and pick the zip.
-3. Close the dialog. The add-on is installed straight away. Open the PCB Editor: KiCad first sets up a small Python environment for the add-on, which takes about 10 seconds, and then adds the button. If you are **updating** the add-on, or the button doesn't appear, restart KiCad once.
-4. Open a board in the PCB Editor and click the speech-bubble button **Boardwright chat**. If you don't see it: **Preferences → PCB Editor → Action Plugins**, and tick "Show button" for Boardwright chat.
+1. Get `boardwright-kicad.zip`: the installer makes it, or download it from the repository's **Releases** page.
+2. In KiCad: **Plugin and Content Manager → Install from File...**, pick the zip and close the window.
+3. Restart KiCad and open a board. The speech-bubble button appears on the toolbar.
 
-## First run
-The **Setup** box at the top of the window checks three things:
+KiCad must have **Preferences → Plugins → Enable KiCad API server** ticked. The installer does this for you.
 
-| Check | If it fails |
-|---|---|
-| Claude Code installed | **How to install** opens the official page (code.claude.com/docs/en/setup) and copies `irm https://claude.ai/install.ps1 \| iex` to the clipboard. Paste it into PowerShell, then press **Check again**. |
-| Signed in | **Sign in** runs `claude auth login`, which is Claude Code's own sign-in: a console window opens and your browser asks you to log in. The chat window waits and carries on by itself. The add-on never sees a password, key or token. |
-| boardwright plugin | If it is missing, the chat loads the copy inside the add-on. **Install** adds it for every Claude Code session by running `claude plugin marketplace add %LOCALAPPDATA%\Boardwright\claude-plugin-<hash>` and then `claude plugin install boardwright@boardwright` (the window shows the exact path). |
+## The first time you open it
 
-It also lists `kicad-buddy`, `uvx` and `kicad-cli`. Without them the chat still works, but Claude can't drive KiCad. **Install helpers** opens a console that runs the plugin's `setup.py`, which asks before installing each one and can tick KiCad's API setting.
+The **Setup** box at the top checks three things and offers a button for anything missing:
+
+- **Claude Code installed.** If not, the button opens the official install page.
+- **Signed in.** If not, **Sign in** starts Claude Code's own sign-in in your browser. The add-on never sees your password or keys.
+- **Boardwright plugin.** If it is missing, the window uses the copy that comes with the add-on, and **Install** adds it to Claude Code permanently.
+
+It also checks the helper tools. **Install helpers** installs any that are missing, asking before each one.
 
 ## Using it
-- Type your message. **Enter** sends it; **Shift+Enter** starts a new line. **Stop** (or Esc) ends the current turn.
-- Each tool call shows up as one line. When Claude wants to do something that needs your OK, an **Allow / Allow, don't ask again / Deny** bar appears.
-- Mode menu: **Ask before edits** (Claude Code's default), **Auto-accept file edits**, **Plan only**. A new mode takes effect from the next message, in the same chat.
-- Model menu: **your default** (whatever Claude Code uses), **Opus**, **Sonnet**, **Haiku**. If Claude Code answers that you've reached a model's usage limit, pick another one and send again; the chat carries on.
-- **New chat** starts over. Every message counts against your Claude plan.
-- The window sits next to KiCad. It can't dock inside KiCad, because KiCad has no API for third-party panels.
-- If nothing happens when you click the button, read `%TEMP%\boardwright_launcher.log`.
 
-## Why it is built this way (findings from testing on KiCad 10.0.8, Windows 11)
-- **IPC plugin, not a classic pcbnew action plugin.** KiCad's docs call the IPC API the stable interface; the SWIG action-plugin API is the legacy one. An IPC plugin runs outside KiCad, so a slow Claude reply can't freeze the editor. Action buttons only exist in the PCB Editor in KiCad 9 and 10, which is why the button is there.
-- **`requirements.txt` exists but lists no packages.** KiCad marks a Python plugin ready only after `pip install -r requirements.txt` succeeds, so the file must be there. When the KiCad documents folder has a non-English name (here `OneDrive\文档`), pip writes hundreds of KB of encoding errors that KiCad doesn't read while pip runs, and pip hangs forever. So the add-on needs no packages: it finds the open project from the PCB Editor's window title plus KiCad's recent-files list, and uses kicad-python only if it happens to be installed.
-- **The Claude Code plugin is zipped inside the add-on.** KiCad reads every file named `plugin.json` under the add-on folder, and it rejects the whole add-on when it meets Claude Code's `.claude-plugin/plugin.json`. The copy is unpacked to `%LOCALAPPDATA%\Boardwright\` when it is first needed.
-- **Restart after a failed setup.** When an add-on's environment setup fails, KiCad keeps it marked "busy" until KiCad restarts, so reloading plugins doesn't help.
-
-## Getting it into the "KiCad official repository" list
-For that, KiCad's team has to review a merge request. **None of the steps below has been done.** Each one needs your decision.
-1. **Public source with an issue tracker.** Push this repository to `github.com/Pratham7767/Boardwright` and make it public. `metadata.json` already points its homepage and contact there.
-2. **Licence.** The code is MIT, which KiCad accepts because it is GPL-compatible. The bundled `plugin/` folder is the same MIT code; the third-party tools are not bundled (see `../THIRD_PARTY.md`).
-3. **Public download URL.** Attach `dist/boardwright-kicad-<version>.zip` and `dist/boardwright-kicad.zip` (the fixed name the installer downloads) to a GitHub release, then run `python build.py --download-url <that URL>`. This fills `dist/metadata.repository.json` with `download_url`, `download_sha256`, `download_size` and `install_size`. Rebuild whenever the zip changes, because the hash changes.
-4. **Merge request.** You need a GitLab account. Fork https://gitlab.com/kicad/addons/metadata, add `packages/com.github.pratham7767.boardwright/metadata.json` (the content of `dist/metadata.repository.json`) and `icon.png` (from `resources/`), and open the merge request. Do not send it to `kicad/addons/repository`, which is generated automatically.
-5. **Likely review questions:** the add-on starts a separate program (Claude Code) and needs a paid Claude account. Say both plainly in the merge request. The KiCad rule for "commercial services" is aimed at fab and part-ordering services. If the reviewers count Claude as one, they will ask you to write to plugins@kicad.org.
-
-## Alternative: your own repository (no review)
-`python build.py --repo-url https://<your host>/kicad` writes `dist/repo/` (`repository.json`, `packages.json`, `resources.zip`, the zip). Put that folder on any static web host (GitHub Pages works). Users then add `https://<your host>/kicad/repository.json` under **Plugin and Content Manager → Manage...**, and get updates from there. Nothing has been uploaded.
+- Type a message. **Enter** sends it; **Shift+Enter** starts a new line.
+- **Stop** (or Esc) stops the current answer.
+- Each action Claude takes shows as a short line. When Claude wants to change something, **Allow**, **Always allow** and **Deny** buttons appear.
+- **Mode** sets how careful Claude is: ask before edits, accept file edits automatically, or plan only.
+- **Model** picks the Claude model. If you hit a usage limit, pick another one and send again.
+- **New chat** starts over. Every message uses your Claude plan.
+- The window sits beside KiCad. It can't be docked inside KiCad, because KiCad doesn't allow that for add-ons.
+- If nothing happens when you click the button, look at `%TEMP%\boardwright_launcher.log` (Windows) or `/tmp/boardwright_launcher.log` (Linux).
 
 ## Files
-- `metadata.json`: the PCM package metadata that goes inside the zip (schema v2).
-- `plugins/plugin.json`: the IPC-API plugin manifest (toolbar action).
-- `plugins/launch.py`: runs when the button is clicked. It asks KiCad for the project folder and starts the window.
-- `plugins/bw_chat.py`: the window (wxPython, run with KiCad's own Python).
-- `plugins/bw_core.py`: finds Claude Code, runs the first-run checks and talks to Claude Code (its stream-json protocol, the same one the Agent SDK uses).
-- `build.py`, `make_icons.py`, `tests/`: build, icons, tests (`python tests/test_core.py` uses a fake Claude Code, so it needs no account).
+
+| File | What it does |
+|---|---|
+| `plugins/launch.py` | Runs when you click the button: finds the board's folder and opens the window |
+| `plugins/bw_chat.py` | The chat window |
+| `plugins/bw_core.py` | Finds Claude Code, runs the setup checks and talks to Claude Code |
+| `metadata.json`, `plugins/plugin.json` | Tell KiCad what the add-on is |
+| `build.py` | Builds the zip file |
+| `tests/` | Tests that use a stand-in for Claude Code, so they need no account |
+
+## Notes for developers
+
+- **Why a separate window.** It runs outside KiCad, so a slow answer can never freeze the editor. It uses KiCad's newer IPC plugin system rather than the older one.
+- **Why no extra Python packages.** KiCad installs an add-on's packages with pip. On a computer whose Documents folder has a non-English name, that step can hang forever in KiCad 10.0.8. So the add-on needs none: it finds the open board from the window title and KiCad's recent-files list.
+- **Why the Claude Code plugin is zipped inside.** KiCad rejects an add-on that contains another program's `plugin.json` file. The copy is unzipped the first time it is needed.
+- **Restart after a failed install.** KiCad keeps a failed add-on marked "busy" until it restarts.
+- **Listing it in KiCad's official add-on store** needs a review by the KiCad team: a merge request to `gitlab.com/kicad/addons/metadata` with the release zip's address. Run `python build.py --download-url <release zip address>` first; it writes the details the store needs. You can also host your own add-on list with `python build.py --repo-url <web address>`.

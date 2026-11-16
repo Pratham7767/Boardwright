@@ -2,95 +2,101 @@
 
 [![checks](https://github.com/Pratham7767/Boardwright/actions/workflows/checks.yml/badge.svg)](https://github.com/Pratham7767/Boardwright/actions/workflows/checks.yml)
 
-Boardwright takes a printed circuit board from an idea to fab files in KiCad, with Claude Code doing the design work and a gate at every stage. You see each change in the open KiCad window. Nothing is ordered, uploaded or published.
+**Boardwright helps you design a circuit board in KiCad by chatting with Claude.**
 
-Free and open source (MIT). Not affiliated with the KiCad project or Anthropic.
+You describe the board you want. Claude chooses the parts, draws the circuit, lays out the board and makes the files a factory needs to build it. At each step, Boardwright checks the work. If a check fails, the work stops until the problem is fixed.
 
-## What it checks
+It is free and open source. It never orders, uploads or publishes anything for you.
 
-| Area | Checks |
-|---|---|
-| Electrical | ERC, DRC with schematic parity, net-class rule guard, schematic verification, block rules (decoupling, protection, crystal, I2C, track width) |
-| Safety (mains and hazardous voltage) | Voltage domains and energy classes (IEC 62368-1); creepage and clearance per barrier by the IEC 60664-1 method, enforced in KiCad DRC and cross-checked by an independent measurement; mains topology (fuse first, X/Y classes, varistor placement, X-capacitor discharge, touch current, earth); safety-critical parts register |
-| EMC | Layout rules (track over pour gaps, layer changes without return vias, unfiltered cable ports, edge proximity, ground coverage); switching-loop areas and distances; harmonic plan against FCC 15.109 and CISPR 32 bands; export to IPC-2581, ODB++ and STEP for HyperLynx, CST or SIwave |
-| High speed and power | Pair length, skew, via parity and return vias; impedance estimate from the stackup; decoupling bank against each rail's target impedance |
-| Release | Gerbers, drill, placement, BOM, schematic PDF and JLCPCB assembly files from a refilled copy; a pre-compliance pack for the responsible person and the test lab |
+## What you need
 
-Every limit names its source and status. Values not yet checked against a purchased standard say so in the report.
-
-## Stages
-
-| | Stage | Gate |
-|---|---|---|
-| 1 | Spec | every requirement has a value and a source |
-| 2 | Parts | every part has a datasheet and a pin table with page numbers |
-| 3 | Power budget | at least 20% headroom on every rail |
-| 4 | Schematic | ERC and schematic check clean; mains topology on mains boards |
-| 5 | Layout | DRC clean with schematic parity; spacing gate on mains boards; pair and impedance checks on fast boards |
-| 6 | EMC | no CRITICAL finding |
-| 7 | BOM | no end-of-life or out-of-stock part |
-| 8 | Release | release files from a refilled copy; checklist of everything a person must verify |
-
-Guided mode interviews you and explains its choices. Express mode stops only when a gate fails or a decision is yours. Both run the same gates.
-
-## Platforms
-
-| | Windows 11 | Linux (Ubuntu 22.04/24.04) | macOS |
-|---|---|---|---|
-| Claude Code plugin and checks | tested | tested | untested |
-| KiCad chat window | tested | tested | not available |
-| KiCad | 9 or 10 (tested on 10.0.8) | 9 or 10 (tested on 10.0.8) | 9 or 10 |
+- **KiCad 9 or 10**, the free circuit-board design program.
+- **Claude Code** with a paid Claude plan, or an Anthropic API account. Every message uses your own plan.
+- **Windows 11 or Linux.** Mac is not tested yet.
 
 ## Install
 
-You need a Claude plan that includes Claude Code, or an Anthropic API account. Every message uses your plan or credit.
-
-Windows (PowerShell):
+On **Windows**, open PowerShell and paste:
 
 ```powershell
 irm https://raw.githubusercontent.com/Pratham7767/Boardwright/main/install/install.ps1 | iex
 ```
 
-Linux:
+On **Linux**, open a terminal and paste:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Pratham7767/Boardwright/main/install/install.sh | bash
 ```
 
-The installer asks once, then installs what is missing from official sources: KiCad, Python, Git, Claude Code, the plugin and its helper tools. It prepares the KiCad add-on and starts Claude Code's own sign-in. Finish in KiCad with **Plugin and Content Manager → Install from File...**. Details and manual steps: [docs/INSTALL.md](docs/INSTALL.md).
+The installer asks one question, then installs whatever is missing and asks you to sign in to Claude. Last step, in KiCad: **Plugin and Content Manager → Install from File...**, then pick the file the installer shows you.
 
-## Use
+More detail: [docs/INSTALL.md](docs/INSTALL.md).
 
-1. Open an empty folder in Claude Code, or open a board in KiCad and click the Boardwright button.
-2. `/boardwright:pcb-doctor` checks the setup.
-3. `/boardwright:pcb-new guided` starts a board. `/boardwright:pcb-auto <idea>` runs with the fewest stops.
-4. `/boardwright:pcb-run` continues. `/boardwright:pcb-gates` runs every check and changes nothing. `/boardwright:pcb-review` reviews an existing board.
+## How to use it
 
-## Limits
+1. Make an empty folder for your board and open it in Claude Code.
+2. Type `/boardwright:pcb-doctor` to check that everything is set up.
+3. Type `/boardwright:pcb-new guided` and describe your board in a sentence or two.
+4. Answer Claude's questions. It works through eight stages and stops after each one to show you what it did.
 
-Boardwright's reports are pre-compliance evidence for a responsible person. They are not a safety certificate, a test report or a prediction of an EMC lab result.
+You can also open a board in KiCad and click the **Boardwright** chat button on the toolbar.
 
-- Impedance, PDN and skew-in-picoseconds figures are calculated estimates.
-- Electric strength, touch current, fault behaviour, temperature, emissions, immunity and signal integrity are known only from tests on built hardware.
-- Selling a product needs the manufacturer's declaration and, where the law requires it (BIS CRS in India, FCC in the US, the EU EMC and Low Voltage directives), testing by a recognised lab.
-- **Mains and hazardous-voltage boards can kill.** A qualified person reviews them before they are powered.
-- Failed checks are never waived automatically; proposed waivers wait for you.
-- Boardwright never asks for, reads or stores passwords, API keys or tokens. Sign-in is Claude Code's own.
+Other commands:
+
+| Command | What it does |
+|---|---|
+| `/boardwright:pcb-run` | Continues where you left off |
+| `/boardwright:pcb-gates` | Runs every check and changes nothing |
+| `/boardwright:pcb-review` | Reviews a board you already have and writes a report |
+| `/boardwright:pcb-auto <idea>` | Designs a whole board with as few stops as possible |
+
+## The eight stages
+
+| Stage | What happens | The check that must pass |
+|---|---|---|
+| 1. Spec | Write down what the board must do | Every requirement has a value |
+| 2. Parts | Choose the parts and save their datasheets | Every part has a datasheet and a checked pin list |
+| 3. Power | Work out the current each part needs | Every power supply has spare capacity |
+| 4. Schematic | Draw the circuit | No wiring errors |
+| 5. Layout | Place the parts and draw the copper tracks | No spacing or connection errors |
+| 6. Interference | Look for things that could cause radio interference | No serious problem found |
+| 7. Parts list | Check that the parts can be bought | No part is out of stock or discontinued |
+| 8. Release | Make the factory files | Files made, plus a list of things you must check yourself |
+
+## What it checks
+
+- **Wiring and spacing.** KiCad's own checks, run at every stage.
+- **Safety on mains boards.** Boards that plug into the wall need enough distance between the dangerous side and the safe side. Boardwright works out the distance the safety standard asks for, makes KiCad enforce it, and measures it a second way to be sure. It also checks the fuse, the safety capacitors and how fast the board discharges after you unplug it.
+- **Radio interference (EMC).** It looks for common layout mistakes that make a board noisy, and lists the frequencies to test first.
+- **Fast signals.** For USB and other fast connections, it checks track lengths, the layer changes and the estimated impedance.
+- **Power.** It estimates whether each power supply has enough small capacitors near the chips.
+
+New to these words? See the [glossary](docs/GLOSSARY.md).
+
+## Important limits
+
+- **Boardwright does not make a board safe or certified.** Its reports help a qualified person check the design. They are not a safety certificate or a lab test.
+- **Mains boards can kill.** A qualified person must check them before they are switched on.
+- Some numbers, such as the safety distances, come from published summaries of the standards, not from the standards themselves. The reports say so.
+- Interference and many safety properties can only be measured on a real, built board.
+- To sell a product, you need lab tests and your own declaration. In India that can mean BIS registration; in the US, FCC rules; in Europe, the CE rules.
+- Boardwright never sees your passwords or keys. Signing in is done by Claude Code itself.
 
 ## Example
 
-[examples/usb-sensor-test](examples/usb-sensor-test): a USB sensor board taken from idea to fab files, with every stage report.
+[examples/usb-sensor-test](examples/usb-sensor-test) is a small USB temperature and humidity sensor board made with Boardwright, with the report from every stage.
 
-## Documentation
+## More documents
 
-- [docs/INSTALL.md](docs/INSTALL.md) installing, updating, uninstalling, troubleshooting
-- [docs/TESTING.md](docs/TESTING.md) a test plan for early users
-- [plugin/README.md](plugin/README.md) the pipeline, scripts and helper agents
-- [kicad-addon/README.md](kicad-addon/README.md) the KiCad add-on
-- [docs/ROADMAP.md](docs/ROADMAP.md) known gaps and next work
-- [docs/RELEASING.md](docs/RELEASING.md) for maintainers
-- [THIRD_PARTY.md](THIRD_PARTY.md) projects Boardwright builds on
+- [Install guide](docs/INSTALL.md): installing, updating, removing, fixing problems
+- [Glossary](docs/GLOSSARY.md): the circuit-board words used here, explained simply
+- [Test guide](docs/TESTING.md): what to try if you are helping test Boardwright
+- [How the pipeline works](plugin/README.md): the commands, checks and helpers
+- [The KiCad chat button](kicad-addon/README.md)
+- [What is planned next](docs/ROADMAP.md)
+- [For maintainers](docs/RELEASING.md)
+- [Other projects used](THIRD_PARTY.md)
 
 ## Licence
 
-MIT. See [LICENSE](LICENSE), including the note on hazardous designs.
+MIT, free to use and change. See [LICENSE](LICENSE).

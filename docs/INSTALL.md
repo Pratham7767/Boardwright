@@ -1,128 +1,140 @@
-# Installing Boardwright
+# Install guide
 
-Plan on 15 to 30 minutes on a fresh computer, most of it downloads. You can stop and resume at any step; every step checks first and skips what is already there.
+Setting up a new computer takes 15 to 30 minutes, mostly downloads. You can stop and start again at any point: each step checks first and skips what is already done.
 
-## What you need
+## What gets installed
 
-| | Why | Where it comes from |
-|---|---|---|
-| **KiCad 9 or 10** | the design tool | https://www.kicad.org/download/ (Windows: also `winget install KiCad.KiCad`) |
-| **Claude Code** + a Claude plan (Pro, Max, Team, Enterprise) or Anthropic API credit | does the design work | https://code.claude.com/docs/en/setup |
-| **Python 3.10+** | runs the gate and export scripts | https://www.python.org (tick "Add python.exe to PATH") |
-| **Git** | Claude Code needs it on Windows; also used for the plugin marketplace | https://git-scm.com |
-| **uv** | runs the two KiCad helper tools | installed for you by the setup script |
-| **kicad-buddy** 0.1.0 | live link between Claude and the open KiCad window | installed for you by the setup script |
-| **mcp-server-kicad** 0.21.1 | schematic editing tools | downloaded for you by the setup script |
+| Program | What it is for |
+|---|---|
+| KiCad 9 or 10 | The program you design the board in |
+| Claude Code | Does the design work. Needs a paid Claude plan or an Anthropic API account. |
+| Python 3.10 or newer | Runs Boardwright's checks |
+| Git | Claude Code needs it on Windows |
+| uv, kicad-buddy, mcp-server-kicad | Small helper tools that let Claude work inside KiCad |
 
-The installer only uses official installers (winget, claude.ai, astral.sh) and pinned versions of the two helpers.
+Everything comes from its official source.
 
-## Option A: the installer (recommended)
+## The easy way: the installer
 
 ### Windows
-Open **PowerShell** (Start menu → type PowerShell) and paste:
+
+1. Open **PowerShell**: press the Start button and type PowerShell.
+2. Paste this line and press Enter:
 
 ```powershell
 irm https://raw.githubusercontent.com/Pratham7767/Boardwright/main/install/install.ps1 | iex
 ```
 
-If the repository is **private** (shared with you before it went public), this line won't work. Clone it instead:
-
-```powershell
-git clone https://github.com/Pratham7767/Boardwright.git
-cd boardwright
-powershell -ExecutionPolicy Bypass -File install\install.ps1
-```
-
 ### Linux
-Supported distributions: anything with KiCad 9 or 10 from a **distribution package** and Python 3.10+. Ubuntu 22.04 or 24.04 with the official KiCad PPA is the reference setup. The **Flatpak** KiCad cannot be used: its sandbox can't start Claude Code. Ubuntu 20.04 is too old (no KiCad 10 PPA, Python 3.8).
 
+Open a terminal, paste this line and press Enter:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Pratham7767/Boardwright/main/install/install.sh | bash
 ```
-or from a clone: `bash install/install.sh`. Add `--check` to see what is missing without changing anything.
 
-On Ubuntu the installer offers KiCad 10 from the official PPA (`ppa:kicad/kicad-10.0-releases`) and Git from apt; both use `sudo`, and only after you say yes. On other distributions it prints the package command.
+Works on Ubuntu 22.04 and 24.04, and other distributions that install KiCad 9 or 10 as a normal package. Two cases don't work: KiCad installed as a Flatpak, and Ubuntu 20.04, which is too old.
 
-For the KiCad button on Linux you also need wxPython for the system Python (Ubuntu: `python3-wxgtk4.0`, which KiCad's package normally pulls in) and a terminal emulator for the sign-in and helper windows. On X11, `wmctrl` (optional) lets the button find the board by its window title and bring an open chat window to the front. Without it (for example on Wayland), the button uses the board you opened most recently in KiCad.
+### What happens next
 
-### What the installer does, step by step
-It first asks **Set up everything? [Y/n]**. Press Enter and it does every step below without asking again. Answer `n` to be asked before each step.
+The installer asks **Set up everything? [Y/n]**. Press Enter. It then:
 
-1. **KiCad**: looks for `kicad-cli`; offers `winget install KiCad.KiCad` if missing.
-2. **Python**: looks for Python 3.10+ (it ignores the Microsoft Store stub); offers `winget install Python.Python.3.12`.
-3. **Git**: offers `winget install Git.Git`.
-4. **Claude Code**: offers the official installer.
-5. **Plugin**: `claude plugin marketplace add Pratham7767/Boardwright` (or your clone's folder), then `claude plugin install boardwright@boardwright`.
-6. **Helpers**: runs the plugin's `scripts/setup.py`, which installs uv, kicad-buddy and its companion KiCad plugin, downloads the schematic tools, and ticks KiCad's **Enable KiCad API server** setting. It changes that setting only while KiCad is closed, and keeps a `.bak` copy.
-7. **KiCad add-on** (Windows and Linux): builds or downloads `boardwright-kicad.zip` and shows it in Explorer. KiCad installs add-ons itself, so this last step is yours:
-   - KiCad main window → **Plugin and Content Manager** → **Install from File...** → pick `boardwright-kicad.zip` → **Close**.
-   - **Restart KiCad**, then open a board in the PCB Editor. The speech-bubble button appears on the top toolbar.
-8. **Sign-in**: starts `claude auth login`, Claude Code's own sign-in in your browser.
+1. installs KiCad, Python, Git and Claude Code if they are missing;
+2. adds the Boardwright plugin to Claude Code;
+3. installs the helper tools and turns on KiCad's API setting, which lets Claude talk to KiCad;
+4. prepares the KiCad chat button and shows you where the file is;
+5. opens your browser so you can sign in to Claude.
 
-It ends with a list of anything left for you.
+At the end it lists anything left for you to do.
 
-## Option B: by hand
+### Last step: the KiCad chat button
 
-```bash
-# 1. the Claude Code plugin
-claude plugin marketplace add Pratham7767/Boardwright
-claude plugin install boardwright@boardwright
+KiCad installs add-ons itself, so this step is yours:
 
-# 2. the helper tools: find the plugin folder, then run its setup script
-claude plugin list --json          # look for "installPath" of boardwright@boardwright
-python "<installPath>/scripts/setup.py"          # python3 on macOS/Linux
+1. Open KiCad.
+2. Click **Plugin and Content Manager**, then **Install from File...**.
+3. Pick `boardwright-kicad.zip`, the file the installer showed you, and close the window.
+4. Restart KiCad. Open a board in the PCB Editor: a speech-bubble button appears on the toolbar.
 
-# 3. sign in (Claude Code's own browser flow)
-claude auth login
+### If the repository is private
+
+If someone shared Boardwright with you before it was public, the one-line install won't work. Use these instead:
+
+```powershell
+git clone https://github.com/Pratham7767/Boardwright.git
+cd Boardwright
+powershell -ExecutionPolicy Bypass -File install\install.ps1
 ```
 
-KiCad add-on (Windows, Linux): download `boardwright-kicad.zip` from the repository's **Releases** page, or build it from a clone with `python kicad-addon/build.py` (it lands in `kicad-addon/dist/`). Then install it with **Install from File...** as in step 7 above.
+## Check that it works
 
-Check everything: open any folder in Claude Code and run `/boardwright:pcb-doctor`.
+Open any folder in Claude Code and type:
+
+```
+/boardwright:pcb-doctor
+```
+
+It lists anything missing and how to fix it.
 
 ## Your first board
 
 1. Make an empty folder, for example `Documents\boards\my-first-board`.
-2. Open it in Claude Code (terminal: `cd` there and run `claude`; VS Code: File → Open Folder, then the Claude panel).
-3. Type `/boardwright:pcb-new guided` and describe the board in a sentence or two, for example: *"A USB-C powered board with a temperature sensor and an LED, about 30 x 40 mm."*
-4. Answer the questions. Claude stops after every stage to show you what it did. Keep KiCad open with the project when it gets to layout (stage 5): you'll see the parts and tracks appear.
+2. Open it in Claude Code. In a terminal, go to the folder and type `claude`. In VS Code, use File → Open Folder and open the Claude panel.
+3. Type `/boardwright:pcb-new guided` and describe your board, for example: *"A USB-C powered board with a temperature sensor and an LED, about 30 x 40 mm."*
+4. Answer the questions. Keep KiCad open when Claude reaches the layout stage: you will see the parts and tracks appear.
 
 ## Updating
 
-Run the installer again. Or by hand:
+Run the installer again. Or type these two commands:
 
 ```bash
 claude plugin marketplace update boardwright
+```
+```bash
 claude plugin update boardwright@boardwright
 ```
 
-Then restart Claude Code. For the KiCad add-on, install the new zip with **Install from File...** and restart KiCad.
+Then restart Claude Code. To update the KiCad chat button, install the new zip file the same way as before and restart KiCad.
 
-Projects keep their own copy of the gate scripts. After an update, Claude tells you when they are older than the plugin's and offers to refresh them (`init_project.py --update-scripts`).
-
-## Uninstalling
+## Removing it
 
 ```bash
 claude plugin uninstall boardwright@boardwright
-claude plugin marketplace remove boardwright
-uv tool uninstall kicad-buddy
 ```
-KiCad add-on: **Plugin and Content Manager → Installed → Boardwright → Uninstall**. Your board folders are never touched.
+```bash
+claude plugin marketplace remove boardwright
+```
 
-## Troubleshooting
+For the KiCad chat button: **Plugin and Content Manager → Installed → Boardwright → Uninstall**. Your board folders are never touched.
 
-| Problem | Fix |
+## Installing by hand
+
+If you prefer not to use the installer:
+
+```bash
+claude plugin marketplace add Pratham7767/Boardwright
+claude plugin install boardwright@boardwright
+claude plugin list --json
+```
+
+The last command shows where the plugin is installed (`installPath`). Run the setup script from there:
+
+```bash
+python "<installPath>/scripts/setup.py"
+```
+
+Then sign in with `claude auth login`. Get the KiCad chat button from the **Releases** page of the repository.
+
+## Fixing problems
+
+| Problem | What to do |
 |---|---|
-| The KiCad button doesn't appear | Restart KiCad once after installing or updating the add-on. Check **Preferences → Plugins → Enable KiCad API server** is ticked. Then **Preferences → PCB Editor → Action Plugins**: "Show button" for Boardwright chat. |
-| Clicking the button does nothing | Read `%TEMP%\boardwright_launcher.log` (Linux: `/tmp/boardwright_launcher.log`). |
-| Linux: "no Python with wxPython found" | `sudo apt install python3-wxgtk4.0` (or your distribution's wxPython package). |
-| Linux: the button opens the wrong board | It uses KiCad's most recently opened board when it can't read window titles. Install `wmctrl` (X11), or open the right board last. |
-| Linux: Sign in or Install helpers says no terminal could be opened | Run the command it shows in any terminal. |
-| "You've reached your ... limit" | Pick another model in the window's model menu (or `/model` in Claude Code) and send again. |
-| Claude can chat but can't see the board | Open the board in KiCad first; run `/boardwright:pcb-doctor`; if "KiCad API connection" is not ok, tick the API server setting and restart KiCad. |
-| `python` opens the Microsoft Store | That's Windows' placeholder. Install Python from python.org with "Add to PATH" ticked, or run the installer again. |
-| KiCad add-on stuck after a failed install | KiCad keeps a failed add-on "busy" until it restarts. Restart KiCad. |
-| Your Documents folder has a non-English name (e.g. OneDrive\文档) | Supported: the add-on needs no Python packages, which avoids a KiCad 10.0.8 pip hang on such paths. |
+| The chat button doesn't appear in KiCad | Restart KiCad once. Check **Preferences → Plugins → Enable KiCad API server** is ticked. |
+| Clicking the button does nothing | Look at the log file: `%TEMP%\boardwright_launcher.log` on Windows, `/tmp/boardwright_launcher.log` on Linux. |
+| "You've reached your limit" | Choose another model in the chat window's Model menu and send again. |
+| Claude can chat but can't see the board | Open the board in KiCad first, then run `/boardwright:pcb-doctor`. |
+| Typing `python` opens the Microsoft Store | Install Python from python.org and tick "Add python.exe to PATH". |
+| Linux: "no Python with wxPython found" | Run `sudo apt install python3-wxgtk4.0`. |
+| Linux: the button opens the wrong board | Open the board you want last, or install `wmctrl`. |
 
-Still stuck? Open an issue with the output of `/boardwright:pcb-doctor`; see [TESTING.md](TESTING.md).
+Still stuck? Open an issue on GitHub and include the output of `/boardwright:pcb-doctor`.
