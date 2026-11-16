@@ -128,7 +128,21 @@ def main(argv: list) -> int:
            "This is a measurement plan, not an emission prediction: levels depend on the layout, cables and "
            "enclosure, and are known only from a measurement."]
     write_report(project, "emc-harmonics", {"clocks": clocks, "ports": ports, **p, "sources": SOURCES}, md)
-    print("\n".join(md))
+    if "--verbose" in argv or not clocks:
+        print("\n".join(md))
+        return 0
+    # compact summary on screen; the full tables are in reports/emc-harmonics.md
+    out = ["EMC harmonic plan (full tables: reports/emc-harmonics.md)"]
+    for c in clocks:
+        rad = [r for r in p["radiated"] if r["source"] == c["name"]]
+        con = [r for r in p["conducted"] if r["source"] == c["name"]]
+        out.append(f"- {c['name']} {fmt_f(float(c['f_hz']))}: {sum(r['count'] for r in rad)} harmonics in 30 MHz-1 GHz"
+                   + (f" (first {rad[0]['first']})" if rad else "")
+                   + (f"; {con[0]['count']} in the conducted band" if con else ""))
+    if p["coincidences"]:
+        out.append(f"- coinciding harmonics: {len(p['coincidences'])}, first: " + "; ".join(p["coincidences"][:3]))
+    out.append(f"- cable ports to probe first: {', '.join(ports) if ports else 'none found'}")
+    print("\n".join(out))
     return 0
 
 

@@ -12,6 +12,8 @@ Built from the research in "Boardwright safety EMC high speed plan". Every limit
 - Stage graph: new steps `spec.safety`, `sch.mains`, `layout.safety_class`, `layout.creepage`, `layout.hs`, `emc.harmonics`.
 - Tests: `plugin/tests/test_safety.py` (32 checks with planted faults). Fault tests on the AC-DC board: secondary copper pushed inside the barrier (both checks fail), rules that match nothing (cross-check fails), a net class whose patterns match nothing (rule guard fails).
 - README disclaimer rewritten to say what is checked and what is not.
+- `/boardwright:pcb-gates` runs the board measurements before the creepage cross-check, and pre-approves the read-only KiCad-Python scripts by script name (the interpreter path differs per machine). Tested live through Claude on the AC-DC board: every check runs without a permission prompt and nothing is written.
+- `emc_harmonics.py` prints a short summary (about 600 characters instead of 3,500); the full tables stay in `reports/emc-harmonics.md`.
 
 ## 0.3.1 (2026-11-16)
 - KiCad add-on: its description in KiCad's Plugin and Content Manager now says it works on Windows and Linux (it said "Tested on Windows only").
