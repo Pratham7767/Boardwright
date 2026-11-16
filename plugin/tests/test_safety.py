@@ -14,6 +14,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import emc_harmonics  # noqa: E402
 import hs_rules  # noqa: E402
+import impedance_check  # noqa: E402
+import pdn_check  # noqa: E402
 import mains_check  # noqa: E402
 import safety_class  # noqa: E402
 import spacing  # noqa: E402
@@ -165,6 +167,31 @@ def test_harmonics():
     p = emc_harmonics.plan([{"name": "SW", "f_hz": 100e3, "kind": "switcher"}])
     check("harmonics: a 100 kHz switcher fills the conducted band", p["conducted"] and p["conducted"][0]["count"] == 299,
           str(p["conducted"]))
+
+
+# --------------------------------------------------------------- impedance and PDN estimates
+def test_impedance():
+    z, ee = impedance_check.microstrip(3.0, 1.6, 0.035, 4.5)
+    check("impedance: 3.0 mm on 1.6 mm FR-4 is about 50 ohm (textbook)", 47 <= z <= 53, f"{z:.1f}")
+    check("impedance: effective er between 3 and 4.5", 3.0 < ee < 4.5, f"{ee:.2f}")
+    zd = impedance_check.diff_microstrip(0.8, 0.15, 1.0, 0.035, 4.3)
+    check("impedance: RP2350 USB geometry gives about 90 ohm differential", 85 <= zd <= 96, f"{zd:.1f}")
+    check("impedance: narrower trace has higher impedance",
+          impedance_check.microstrip(0.2, 1.6, 0.035, 4.5)[0] > impedance_check.microstrip(1.0, 1.6, 0.035, 4.5)[0])
+    zs = impedance_check.stripline(0.15, 0.5, 0.018, 4.2)
+    check("impedance: stripline estimate in a plausible range", 40 < zs < 70, f"{zs:.1f}")
+
+
+def test_pdn():
+    bank = [(100e-9, 0.4e-9, 0.01, "x")]
+    f0 = 1 / (2 * 3.14159265 * (0.4e-9 * 100e-9) ** 0.5)
+    check("pdn: a 100 nF 0402 capacitor bottoms out near its resonance at its ESR",
+          abs(pdn_check.z_bank(bank, f0) - 0.01) < 0.002, f"{pdn_check.z_bank(bank, f0):.4f}")
+    check("pdn: more capacitors in parallel lower the impedance",
+          pdn_check.z_bank(bank * 4, 1e6) < pdn_check.z_bank(bank, 1e6))
+    c = {"value": "100n", "footprint": "Capacitor_SMD:C_0402_1005Metric", "fields": {}}
+    C, L, R, note = pdn_check.cap_model(c)
+    check("pdn: 0402 ceramic model uses the typical 0.4 nH and is labelled as typical", abs(L - 0.4e-9) < 1e-12 and "typical" in note)
 
 
 if __name__ == "__main__":

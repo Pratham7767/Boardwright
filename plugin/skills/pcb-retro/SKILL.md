@@ -2,6 +2,7 @@
 name: pcb-retro
 description: After a board - look back at what cost time or went wrong in this project and propose concrete improvements to the pipeline
 disable-model-invocation: true
+allowed-tools: Write(reports/**), Edit(reports/**)
 ---
 
 Review how this project went and write `reports/retro.md`. Change nothing in the design.

@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.5.0 (2026-11-16)
+Phase 2 of the safety, EMC and high-speed plan, a reworked chat window, and commands that run end to end without permission prompts for read-only work.
+
+**New checks**
+- `emc_rules.py`: track over gaps in the adjacent ground pour, layer changes without a return via, cable ports with no filter or protection part, fast nets near the board edge, ground-pour coverage. Modelled on the published EMC rule lists of commercial checkers (no code taken from any tool). Nets on the hazardous side of a barrier are excluded.
+- `impedance_check.py`: impedance estimate per net class from the stackup (Hammerstad-Jensen microstrip with thickness correction; IPC-2141A stripline and coupled pairs). Checked against textbook values (3.0 mm on 1.6 mm FR-4: 49.7 ohm) and the RP2350 guide's USB geometry (90.9 ohm).
+- `pdn_check.py`: decoupling bank against each rail's target impedance (V x ripple / current step).
+- `parts_register.py`: safety-critical parts with certificate, standard and rating; flags certificates held only under IEC 60950/60065.
+- `precompliance_pack.py`: every report in one document for the responsible person and the test lab, with the tests only a lab can do.
+- `sim_export.py`: IPC-2581, ODB++ and STEP for HyperLynx, CST or SIwave run by a person.
+
+**Spacing tables**
+- Each table records which independent sources agree, and `tools/mark_table_checked.py` records a check against the purchased standard (who, which edition and table, when). Statuses stay "secondary source" until then.
+
+**Chat window**
+- Header with the project name; labelled Mode and Model menus; "You" and "Claude" as headings; quieter tool lines; native status bar; Send as the default button; shorter labels.
+
+**Commands**
+- Every pipeline command pre-approves the read-only scripts, the read-only KiCad queries and writes inside `reports/`; anything that changes the design still asks. A live `/boardwright:pcb-review` of the example board now runs to the end and writes its report.
+
+**Docs**
+- README rewritten: what it checks, stages, platforms, install, use, limits.
+
 ## 0.4.1 (2026-11-16): bug fixes from a bug hunt
 Every script was run on empty, brand-new, non-English-path and broken-config projects and on the AC-DC board.
 - **mains_check.py passed silently at stage 4.** It found the mains nets through the board, which has no nets before layout, so the X-capacitor and discharge checks were skipped. It now matches net classes against the schematic's own nets.

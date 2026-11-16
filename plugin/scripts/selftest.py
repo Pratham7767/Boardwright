@@ -70,12 +70,16 @@ def main():
             ("mains_check.py", [py, HERE / "mains_check.py", proj], (0, 1), "reports/mains-check.json"),
             ("creepage_rules.py", [py, HERE / "creepage_rules.py", proj], (0, 1), "reports/creepage.json"),
             ("emc_harmonics.py", [py, HERE / "emc_harmonics.py", proj], (0,), "reports/emc-harmonics.json"),
+            ("impedance_check.py", [py, HERE / "impedance_check.py", proj], (0, 1), "reports/impedance.json"),
+            ("pdn_check.py", [py, HERE / "pdn_check.py", proj], (0, 1), "reports/pdn.json"),
+            ("parts_register.py", [py, HERE / "parts_register.py", proj], (0,), "reports/parts-register.json"),
         ]
         if kpy:
             jobs += [
                 ("board_digest.py summary", [kpy, "-I", HERE / "board_digest.py", proj], (0,), None),
                 ("block_check.py", [kpy, "-I", HERE / "block_check.py", proj], (0, 1), "reports/block-check.json"),
                 ("hs_rules.py", [kpy, "-I", HERE / "hs_rules.py", proj], (0, 1), "reports/hs-check.json"),
+                ("emc_rules.py", [kpy, "-I", HERE / "emc_rules.py", proj], (0, 1), "reports/emc-rules.json"),
             ]
             if "barrier" in cfg:
                 jobs.append(("barrier_check.py", [kpy, "-I", HERE / "barrier_check.py", proj], (0, 1), "reports/barrier.json"))

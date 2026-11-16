@@ -88,6 +88,6 @@ Still open from that run:
 ## Safety, EMC and high-speed: phase 1 done in 0.4.0, next phases
 Phase 1 of the research plan (`E:/PCB/boardwright-research/reports/Boardwright safety EMC high speed plan.md` on the maintainer's machine) is built and tested on the AC-DC and USB sensor boards. Next:
 - **Before trusting any spacing gate:** buy IS/IEC 62368-1:2023 (and IEC 60664-1:2020) and check every row of `scripts/spacing_tables.json`, changing its status row by row.
-- **Phase 2:** automatic EMC layout rules (track over a plane gap, unstitched splits, unfiltered cable ports, ground coverage); an impedance estimate from the fab stackup (scikit-rf, BSD-3, optional cross-check); a register of safety-critical parts with certificate numbers; a PDN target-impedance estimate; a pre-compliance pack for the lab.
-- **Phase 3 (opt-in):** ngspice conducted-emission model with a LISN; transmission-line reflection check; gerber2ems (Apache-2.0) simulation of a USB pair; near-field scan import.
+- **Phase 2: done in 0.5.0** (EMC layout rules, impedance estimate, parts register, PDN estimate, pre-compliance pack, simulation export).
+- **Phase 3 (opt-in, not built):** ngspice conducted-emission model with a LISN (needs the ngspice command-line program, which KiCad does not ship); transmission-line reflection check; gerber2ems/openEMS simulation of a USB pair; near-field scan import. The IPC-2581/ODB++ export covers the commercial tools in the meantime.
 - Not built: 3-D clearance over part bodies, inner-layer and coated-board rules.

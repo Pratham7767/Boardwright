@@ -31,7 +31,11 @@
         "note": "after 5 s"
       }
     ],
-    "ps_above": "PS3"
+    "ps_above": "PS3",
+    "sources_agreeing": [
+      "research notes: ES1 60 Vdc / 30 Vrms, ES2 120 Vdc / 50 Vrms, PS1 15 W, PS2 100 W (lab summaries)"
+    ],
+    "checked": []
   },
   "impulse_voltage_F1": {
     "source": "IEC 60664-1:2020 Table F.1 (rated impulse voltage, V, by voltage line-to-neutral up to)",
@@ -79,7 +83,12 @@
         "III": 8000,
         "IV": 12000
       }
-    ]
+    ],
+    "sources_agreeing": [
+      "KiCad pcb_calculator iec60664.cpp (read 2026-11-16)",
+      "research notes: lab and vendor summaries (2500 V at 230/250 V, OVC II)"
+    ],
+    "checked": []
   },
   "clearance_transient_F2": {
     "source": "IEC 60664-1:2020 Table F.2, case A (inhomogeneous field), mm by impulse withstand kV up to",
@@ -195,7 +204,12 @@
         100,
         170
       ]
-    ]
+    ],
+    "sources_agreeing": [
+      "KiCad pcb_calculator iec60664.cpp",
+      "research notes: 1.5 mm basic / 3.0 mm reinforced at 250 V (MinMax, TI summaries)"
+    ],
+    "checked": []
   },
   "reinforced_impulse_step_5_2_5": {
     "source": "IEC 60664-1:2020 5.2.5: for reinforced insulation use the next higher preferred impulse value (else x1.6)",
@@ -233,7 +247,11 @@
         8.0,
         12.0
       ]
-    ]
+    ],
+    "sources_agreeing": [
+      "KiCad pcb_calculator iec60664.cpp"
+    ],
+    "checked": []
   },
   "clearance_peak_F8": {
     "source": "IEC 60664-1:2020 Table F.8, case A (inhomogeneous field), mm by steady-state/recurring peak kV up to",
@@ -359,7 +377,11 @@
         50,
         100
       ]
-    ]
+    ],
+    "sources_agreeing": [
+      "KiCad pcb_calculator iec60664.cpp"
+    ],
+    "checked": []
   },
   "creepage_F5": {
     "source": "IEC 60664-1:2020 Table F.5, mm by working voltage V rms up to (always use the next row up; KiCad's calculator interpolates V/100 between rows above 160 V, which can under-state)",
@@ -652,7 +674,12 @@
         1000,
         16.0
       ]
-    ]
+    ],
+    "sources_agreeing": [
+      "KiCad pcb_calculator iec60664.cpp (rows; KiCad interpolates above 160 V, Boardwright does not)",
+      "research notes: 2.5 mm basic / 5.0 mm reinforced at 250 V, PD2, IIIb (MinMax, TI summaries)"
+    ],
+    "checked": []
   },
   "altitude_A2": {
     "source": "IEC 60664-1:2020 Table A.2, clearance multiplication factor by altitude m up to",
@@ -694,7 +721,12 @@
         10000,
         3.02
       ]
-    ]
+    ],
+    "sources_agreeing": [
+      "KiCad pcb_calculator iec60664.cpp",
+      "research notes: 1.48 at 5000 m"
+    ],
+    "checked": []
   },
   "groove_6_8": {
     "source": "IEC 60664-1:2020 6.8 (a slot or groove counts in a creepage path only if at least this wide)",
@@ -704,7 +736,12 @@
       "2": 1.0,
       "3": 1.5
     },
-    "small_clearance_rule": "if the associated clearance is below 3 mm, the minimum width is one third of that clearance"
+    "small_clearance_rule": "if the associated clearance is below 3 mm, the minimum width is one third of that clearance",
+    "sources_agreeing": [
+      "KiCad pcb_calculator iec60664.cpp",
+      "research notes: 0.25 / 1.0 / 1.5 mm for PD1 / PD2 / PD3"
+    ],
+    "checked": []
   },
   "mains_parts": {
     "source": "IEC 62368-1 5.5.2.2 (X-capacitor discharge) and 5.7 (touch current), via summaries of the 2014 edition",
@@ -735,6 +772,10 @@
         "Y1"
       ],
       "note": "two Y2 in series may bridge reinforced insulation; state it with the field y_series=2"
-    }
+    },
+    "sources_agreeing": [
+      "research notes: 2014-edition summary only (single source)"
+    ],
+    "checked": []
   }
 }

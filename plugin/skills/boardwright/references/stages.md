@@ -46,11 +46,13 @@ Order: stackup and rules, placement, review, power routing, signal routing, pour
 5. Run the gate. Then run `barrier_check.py` if the board has an isolation barrier, and `block_check.py`. Put the rail currents from the power budget into `boardwright.json` under `block.currents` first, so track widths are checked against them. Explain or fix every warning in the report.
 - Proof the rules fire: once per project, check on a scratch copy that a deliberate violation (a track moved across the barrier, a class removed) produces an error. Record it in the report.
 - Report: board size and layers, rule table, key measured distances, routing method per net group, DRC counts, open items.
-- Gate: rule guard pass; DRC with schematic parity 0 errors; 0 unconnected. Hazardous boards: `safety_class.py`, `barrier_check.py` and then `creepage_rules.py` PASS (the last one needs fresh DRC and barrier results). Fast pairs: `hs_rules.py` (KiCad python) PASS.
+- Gate: rule guard pass; DRC with schematic parity 0 errors; 0 unconnected. Hazardous boards: `safety_class.py`, `barrier_check.py` and then `creepage_rules.py` PASS (the last one needs fresh DRC and barrier results). Fast pairs: `hs_rules.py` (KiCad python) PASS, and `impedance_check.py` within tolerance for every class in `high_speed.impedance`. Rails in `pdn`: run `pdn_check.py` and fix a rail that is over its target.
 
 ## 6 EMC and signal integrity
 - Fill the `emc` section of `boardwright.json` for this board: the switching loops (pads in current order), switch-node copper, noisy-to-quiet distances, protection parts to connector pins, track-to-edge clearance. Choosing what to measure and the limits is your job; say where each limit comes from or mark it as an engineering estimate.
 - List every clock and switcher in `emc.clocks` (frequency and source) and run `python scripts/emc_harmonics.py .`: it shows which harmonics fall in each emission band, which coincide, and the cable ports to probe first. Put that plan in the report.
+- Run `<kicad python> -I scripts/emc_rules.py .` (track over pour gaps, layer changes without a return via, unfiltered cable ports, edge, ground cover). Rate its findings with the others.
+- Optional, for a person with HyperLynx, CST or SIwave: `python scripts/sim_export.py .` writes IPC-2581, ODB++ and STEP to `sim/`.
 - Run `emc_geometry.py`. Rate each finding CRITICAL, HIGH, MEDIUM or LOW. CRITICAL means the board is likely to fail to work or to be unsafe as laid out.
 - Controlled-impedance or fast nets (USB, Ethernet, DDR, RF): follow `high-speed.md`. State the target impedance, the fab stackup it was calculated for, and the measured length matching. If none, say "none".
 - Fixes that change the schematic need the user's approval first.
@@ -65,7 +67,10 @@ Order: stackup and rules, placement, review, power routing, signal routing, pour
 - Report: totals, table of problem lines, swaps made, lines still open.
 - Gate: no end-of-life and no out-of-stock part.
 
+- Boards with safety parts: `python scripts/parts_register.py .` lists every safety-critical part with its certificate, standard and rating. Fill the `cert`, `cert_standard` and `rating` symbol fields from the certificates; leave "unverified" where you have none.
+
 ## 8 Release
 - Check that no KiCad process is rewriting the project, then run `python scripts/run_gates.py .`, then `block_check.py` again: its rows B6 and B7 compare the BOM with the placement file and check that the paste layers are not empty. It refills the zones on a copy, reruns DRC and exports from that copy.
 - `08-release.md`: gate summary for all eight stages; list of files in `fab/`; **every assumption and unverified item from every stage**, as a checklist the user ticks off; proposed waivers and their approval dates; first power-up steps; the limits from the skill. If any gate is open, say so in the first line.
 - Stop. Do not upload or order.
+- Run `python scripts/precompliance_pack.py .` last: it collects every report into `reports/precompliance.md` for the responsible person and the test lab.

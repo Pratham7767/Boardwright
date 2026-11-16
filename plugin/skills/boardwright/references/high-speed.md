@@ -34,6 +34,14 @@ Declare every differential pair and its limits in `boardwright.json`, each limit
 - `<kicad>/bin/python -I scripts/hs_rules.py .` (gate `layout.hs`) measures each pair itself: lengths including via barrels, skew in mm and ps, equal via counts, and a ground via within `max_return_via_mm` of every signal via. It does not depend on KiCad grouping the pair correctly.
 - A limit without a source is reported as "assumption". `max_return_via_mm` 1.5 is a working default, not a value from a standard.
 
+## Impedance estimate
+List each controlled-impedance net class with its target and the target's source:
+```json
+"high_speed": {"stackup": {"h_mm": 0.2, "er": 4.1, "t_mm": 0.035, "source": "JLC04161H-7628 stackup page, 2026-11-16"},
+  "impedance": [{"netclass": "USB", "target_diff_ohm": 90, "tolerance_pct": 10, "source": "USB 2.0 7.1.2"}]}
+```
+`python scripts/impedance_check.py .` estimates each class's impedance from its width and gap (Hammerstad-Jensen microstrip, IPC-2141A stripline and coupled pairs) and fails outside the tolerance. Without a stackup it uses KiCad's default and says so. The fab's calculator sets the final width.
+
 ## Stage 6: what to measure
 Add these to `boardwright.json` and the report. Where the script has no check for an item, measure it another way and say how:
 - Length and skew of every matched group (`track_length` entries, compared by you).
@@ -47,4 +55,4 @@ Add these to `boardwright.json` and the report. Where the script has no check fo
 
 ## Limits
 - Impedance depends on the fab's real materials and tolerances. Order impedance control from the fab if the interface needs it, and state that in the release checklist.
-- This plugin does not run signal-integrity or power-integrity simulation, and does not calculate impedance yet (planned: an estimate from the fab's stackup, labelled as such).
+- This plugin estimates impedance and the decoupling bank's impedance with closed-form models; it does not run field-solver or time-domain simulation. `sim_export.py` writes IPC-2581, ODB++ and STEP for a person to run HyperLynx, CST or SIwave.

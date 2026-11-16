@@ -471,6 +471,26 @@
    "loop_to": "layout.route_critical"
   },
   {
+   "id": "layout.impedance",
+   "stage": 5,
+   "kind": "gate",
+   "when": "fast",
+   "title": "Gate: impedance estimate of each controlled net class within tolerance of its target (impedance_check.py)",
+   "needs": [
+    "layout.rules"
+   ],
+   "run": "python scripts/impedance_check.py .",
+   "evidence": {
+    "json_ok": "reports/impedance.json",
+    "true_key": "pass"
+   },
+   "invalidated_by": [
+    "pro",
+    "pcb"
+   ],
+   "loop_to": "layout.rules"
+  },
+  {
    "id": "layout.proof_rules",
    "stage": 5,
    "kind": "model",
@@ -493,6 +513,22 @@
    },
    "invalidated_by": [
     "pcb",
+    "sch"
+   ]
+  },
+  {
+   "id": "layout.pdn",
+   "stage": 5,
+   "kind": "script",
+   "title": "PDN estimate: decoupling bank against each rail's target impedance (pdn_check.py; boardwright.json pdn)",
+   "needs": [
+    "layout.pours"
+   ],
+   "run": "python scripts/pdn_check.py .",
+   "evidence": {
+    "file": "reports/pdn.json"
+   },
+   "invalidated_by": [
     "sch"
    ]
   },
@@ -520,7 +556,9 @@
     "layout.reviewer",
     "layout.safety_class",
     "layout.creepage",
-    "layout.hs"
+    "layout.hs",
+    "layout.impedance",
+    "layout.pdn"
    ],
    "evidence": {
     "file_contains": [
@@ -579,6 +617,42 @@
    ]
   },
   {
+   "id": "emc.rules",
+   "stage": 6,
+   "kind": "script",
+   "parallel": "emc-measure",
+   "title": "EMC layout rules: track over pour gaps, layer changes without return vias, unfiltered ports, edge, ground cover (emc_rules.py)",
+   "needs": [
+    "emc.config"
+   ],
+   "run": "KiCad python: scripts/emc_rules.py .",
+   "evidence": {
+    "file": "reports/emc-rules.json"
+   },
+   "invalidated_by": [
+    "pcb"
+   ]
+  },
+  {
+   "id": "emc.export",
+   "stage": 6,
+   "kind": "script",
+   "title": "Optional: export IPC-2581 / ODB++ / STEP to sim/ for HyperLynx, CST or SIwave run by a person (sim_export.py)",
+   "needs": [
+    "emc.config"
+   ],
+   "run": "python scripts/sim_export.py .",
+   "evidence": {
+    "glob_min": [
+     "sim/*.xml",
+     1
+    ]
+   },
+   "invalidated_by": [
+    "pcb"
+   ]
+  },
+  {
    "id": "emc.si",
    "stage": 6,
    "kind": "model",
@@ -596,7 +670,8 @@
    "needs": [
     "emc.measure",
     "emc.si",
-    "emc.harmonics"
+    "emc.harmonics",
+    "emc.rules"
    ],
    "invalidated_by": [
     "pcb"
@@ -695,6 +770,22 @@
    "loop_to": "parts.select"
   },
   {
+   "id": "bom.parts_register",
+   "stage": 7,
+   "kind": "script",
+   "title": "Safety-critical parts register: certificate, standard and rating per part (parts_register.py)",
+   "needs": [
+    "bom.export"
+   ],
+   "run": "python scripts/parts_register.py .",
+   "evidence": {
+    "file": "reports/parts-register.json"
+   },
+   "invalidated_by": [
+    "sch"
+   ]
+  },
+  {
    "id": "release.gates",
    "stage": 8,
    "kind": "script",
@@ -732,12 +823,26 @@
    "run": "helper: gate-reviewer"
   },
   {
+   "id": "release.precompliance",
+   "stage": 8,
+   "kind": "script",
+   "title": "Pre-compliance pack for the responsible person and the test lab (precompliance_pack.py)",
+   "needs": [
+    "release.reviewer"
+   ],
+   "run": "python scripts/precompliance_pack.py .",
+   "evidence": {
+    "file": "reports/precompliance.md"
+   }
+  },
+  {
    "id": "release.report",
    "stage": 8,
    "kind": "model",
    "title": "Write 08-release.md: gate summary, fab/ files, checklist of every assumption",
    "needs": [
-    "release.reviewer"
+    "release.reviewer",
+    "release.precompliance"
    ],
    "evidence": {
     "file": "reports/08-release.md"

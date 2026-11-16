@@ -2,7 +2,7 @@
 
 A Claude Code plugin that takes a printed circuit board from an idea to fab files in KiCad, in eight gated stages. You watch every board change happen in the open KiCad window, and nothing is ever ordered or uploaded for you.
 
-**Status: 0.4.1, early testing.** Tested end to end on Windows 11 with KiCad 10.0.8 on two real boards. Linux is tested on Ubuntu 24.04 with KiCad 10.0.8 (installer, gate scripts, the KiCad button's window); a full board run there is still to be done; macOS is untested. A community plugin, not affiliated with the KiCad project or Anthropic. Install, update and test instructions are in the repository's README and `docs/`.
+**Status: 0.5.0.** Tested on Windows 11 and Ubuntu 24.04 with KiCad 10.0.8, on a mains flyback supply and a USB sensor board. macOS is untested. A community plugin, not affiliated with the KiCad project or Anthropic.
 
 ## What it does
 
@@ -79,6 +79,12 @@ python scripts/creepage_rules.py . [--write]  # spacing per barrier (IEC 60664-1
 python scripts/spacing.py --mains 230 --insulation reinforced   # the spacing calculation on its own
 <kicad>/bin/python -I scripts/hs_rules.py . [--write]   # pair skew, via parity, return vias ("high_speed")
 python scripts/emc_harmonics.py .             # clock and switcher harmonics against the emission bands
+<kicad>/bin/python -I scripts/emc_rules.py .  # EMC layout rules: pour gaps, return vias, cable ports, edge, ground cover
+python scripts/impedance_check.py .           # impedance estimate per net class ("high_speed.impedance")
+python scripts/pdn_check.py .                 # decoupling bank against each rail's target impedance ("pdn")
+python scripts/parts_register.py .            # safety-critical parts with certificate, standard, rating
+python scripts/sim_export.py .                # IPC-2581, ODB++, STEP into sim/ for HyperLynx, CST, SIwave
+python scripts/precompliance_pack.py .        # everything above in one document for the lab
 ```
 
 Exit codes: 0 pass, 1 a gate failed, 2 setup or tool problem. There is no option to skip a check.

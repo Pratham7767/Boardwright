@@ -22,10 +22,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bw_core as core                                              # noqa: E402
 
 DEFAULT_WIDTH = 480
-QUICK = (("Check setup", "/boardwright:pcb-doctor"),
+QUICK = (("Doctor", "/boardwright:pcb-doctor"),
          ("Continue", "/boardwright:pcb-run"),
-         ("Run gates", "/boardwright:pcb-gates"),
-         ("Review board", "/boardwright:pcb-review"))
+         ("Gates", "/boardwright:pcb-gates"),
+         ("Review", "/boardwright:pcb-review"))
 
 
 def out(msg: str) -> None:
@@ -73,8 +73,8 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             self.beat.Start(15000)
             self.stop_timer = wx.Timer(self)
             self.Bind(wx.EVT_TIMER, self.on_stop_timeout, self.stop_timer)
-            self.add(f"{core.APP_NAME}  ·  {self.project}\n", "dim")
-            self.add("This window talks to your own Claude Code. Messages use your Claude plan.\n\n", "dim")
+            self.add(f"{self.project}\n", "dim")
+            self.add("Runs your own Claude Code in this folder. Each message uses your Claude plan.\n\n", "dim")
             self.update_controls()
             self.recheck()
 
@@ -83,7 +83,14 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             p = self.panel = wx.Panel(self)
             root = wx.BoxSizer(wx.VERTICAL)
 
-            top = wx.BoxSizer(wx.HORIZONTAL)
+            head = wx.BoxSizer(wx.HORIZONTAL)
+            title = wx.StaticText(p, label=Path(self.project).name or self.project)
+            tf = title.GetFont()
+            tf.SetPointSize(tf.GetPointSize() + 2)
+            tf.SetWeight(wx.FONTWEIGHT_BOLD)
+            title.SetFont(tf)
+            title.SetToolTip(self.project)
+            head.Add(title, 1, wx.ALIGN_CENTER_VERTICAL)
             self.mode_choice = wx.Choice(p, choices=[core.MODES[k][0] for k in core.MODES])
             self.mode_choice.SetSelection(list(core.MODES).index(self.mode))
             self.mode_choice.Bind(wx.EVT_CHOICE, self.on_mode)
@@ -94,11 +101,17 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             self.new_btn.Bind(wx.EVT_BUTTON, lambda e: self.new_chat())
             self.setup_btn = wx.Button(p, label="Setup")
             self.setup_btn.Bind(wx.EVT_BUTTON, lambda e: self.toggle_setup())
-            top.Add(self.mode_choice, 1, wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, 6)
-            top.Add(self.model_choice, 0, wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, 6)
-            top.Add(self.new_btn, 0, wx.RIGHT, 4)
-            top.Add(self.setup_btn, 0)
-            root.Add(top, 0, wx.EXPAND | wx.ALL, 6)
+            head.Add(self.new_btn, 0, wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, 4)
+            head.Add(self.setup_btn, 0, wx.ALIGN_CENTER_VERTICAL)
+            root.Add(head, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
+            opts = wx.FlexGridSizer(cols=4, hgap=6, vgap=0)
+            opts.AddGrowableCol(1, 3)
+            opts.AddGrowableCol(3, 2)
+            opts.Add(wx.StaticText(p, label="Mode"), 0, wx.ALIGN_CENTER_VERTICAL)
+            opts.Add(self.mode_choice, 1, wx.EXPAND)
+            opts.Add(wx.StaticText(p, label="Model"), 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 6)
+            opts.Add(self.model_choice, 1, wx.EXPAND)
+            root.Add(opts, 0, wx.EXPAND | wx.ALL, 10)
 
             # --- setup panel (first run) ---
             self.setup = wx.Panel(p)
@@ -132,7 +145,8 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             root.Add(self.setup, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
             self.log = wx.TextCtrl(p, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2 | wx.TE_WORDWRAP)
-            root.Add(self.log, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 6)
+            self.log.SetMargins(8, 6)
+            root.Add(self.log, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
 
             # --- permission bar ---
             self.perm = wx.Panel(p)
@@ -144,7 +158,7 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             self.perm_detail = wx.TextCtrl(self.perm, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 70))
             pr = wx.BoxSizer(wx.HORIZONTAL)
             self.allow_btn = wx.Button(self.perm, label="Allow")
-            self.always_btn = wx.Button(self.perm, label="Allow, don't ask again")
+            self.always_btn = wx.Button(self.perm, label="Always allow")
             self.deny_btn = wx.Button(self.perm, label="Deny")
             self.allow_btn.Bind(wx.EVT_BUTTON, lambda e: self.answer(True))
             self.always_btn.Bind(wx.EVT_BUTTON, lambda e: self.answer(True, remember=True))
@@ -156,7 +170,7 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             ps.Add(pr, 0)
             self.perm.SetSizer(ps)
             self.perm.Hide()
-            root.Add(self.perm, 0, wx.EXPAND | wx.ALL, 6)
+            root.Add(self.perm, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
 
             quick = wx.BoxSizer(wx.HORIZONTAL)
             self.quick_btns = []
@@ -166,26 +180,26 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
                 b.Bind(wx.EVT_BUTTON, lambda e, t=text: self.send(t))
                 quick.Add(b, 1, wx.RIGHT, 4)
                 self.quick_btns.append(b)
-            root.Add(quick, 0, wx.EXPAND | wx.ALL, 6)
+            root.Add(quick, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
 
             self.inp = wx.TextCtrl(p, style=wx.TE_MULTILINE | wx.TE_WORDWRAP, size=(-1, 84))
-            self.inp.SetHint("Ask Claude about this board  (Enter sends, Shift+Enter = new line)")
+            self.inp.SetHint("Message Claude about this board. Enter sends; Shift+Enter adds a line.")
             self.inp.Bind(wx.EVT_KEY_DOWN, self.on_key)
-            root.Add(self.inp, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 6)
+            root.Add(self.inp, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
 
             row = wx.BoxSizer(wx.HORIZONTAL)
             self.send_btn = wx.Button(p, label="Send")
             self.send_btn.Bind(wx.EVT_BUTTON, lambda e: self.send_input())
             self.stop_btn = wx.Button(p, label="Stop")
             self.stop_btn.Bind(wx.EVT_BUTTON, lambda e: self.stop())
-            row.Add(self.send_btn, 1, wx.RIGHT, 4)
-            row.Add(self.stop_btn, 1)
-            root.Add(row, 0, wx.EXPAND | wx.ALL, 6)
-
-            self.status = wx.StaticText(p, label="", style=wx.ST_ELLIPSIZE_END)
-            self.status.SetForegroundColour(self.col["dim"])
-            root.Add(self.status, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+            self.send_btn.SetDefault()
+            row.AddStretchSpacer(1)
+            row.Add(self.stop_btn, 0, wx.RIGHT, 6)
+            row.Add(self.send_btn, 0)
+            root.Add(row, 0, wx.EXPAND | wx.ALL, 10)
             p.SetSizer(root)
+            self.status = self.CreateStatusBar(1, wx.STB_SIZEGRIP | wx.STB_ELLIPSIZE_END | wx.STB_SHOW_TIPS)
+            self.SetMinSize(wx.Size(360, 520))
 
         def _place(self, w: int, side: str) -> None:
             area = wx.Display(0).GetClientArea()
@@ -386,7 +400,7 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
                 bits.append("working...")
             elif self.last_turn:
                 bits.append(self.last_turn)
-            self.status.SetLabel("  |  ".join(bits))
+            self.status.SetStatusText("   \u00b7   ".join(bits))
 
         # ---------------- chat ----------------
         def ensure_session(self) -> bool:
@@ -422,7 +436,7 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             self.last_turn = ""
             self.log.Clear()
             self.at_line_start = True
-            self.add("New chat.\n\n", "dim")
+            self.add("New chat\n\n", "dim")
             self.update_controls()
 
         def on_mode(self, _e) -> None:
@@ -457,8 +471,8 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             if not self.ensure_session():
                 return False
             self.fresh_line()
-            self.add("You: ", "you", bold=True)
-            self.add(text + "\n", "you")
+            self.add("You\n", "you", bold=True)
+            self.add(text + "\n\n", "text")
             if not self.session.send(text):
                 self.line("Claude Code is not running; try again.", "bad")
                 self.drop_session()
@@ -472,7 +486,7 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             if self.need_header:
                 self.need_header = False
                 self.fresh_line()
-                self.add("Claude: ", "text", bold=True)
+                self.add("Claude\n", "ok", bold=True)
 
         def stop(self) -> None:
             if not self.busy:
@@ -499,10 +513,10 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
                 self.add(p)
                 self.turn_text += p
             elif kind == "tool":
-                self.line(("    ↳ " if p["sub"] else "  ⚙ ") + p["summary"], "dim")
+                self.line(("      \u203a " if p["sub"] else "   \u203a ") + p["summary"], "dim")
                 self.need_header = True
             elif kind == "tool_error":
-                self.line("    ✗ " + p, "warn")
+                self.line("   ! " + p, "warn")
             elif kind == "permission":
                 self.pending.append(p)
                 self.show_permission()
@@ -558,7 +572,7 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
                 self.ask_questions(p)
                 wx.CallAfter(self.show_permission)
                 return
-            self.perm_label.SetLabel("Claude asks to use: " + p["summary"].split(":")[0])
+            self.perm_label.SetLabel("Claude wants to use " + p["summary"].split(":")[0])
             detail = p.get("title") or ""
             body =json.dumps(p["input"], indent=2, ensure_ascii=False)
             self.perm_detail.SetValue((detail + "\n" if detail else "") + body)
@@ -573,10 +587,10 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             p = self.pending.pop(0)
             if allow:
                 self.session.allow(p["request_id"], p["input"], p["suggestions"] if remember else None)
-                self.line("    allowed" + (" (and remembered)" if remember else ""), "dim")
+                self.line("   Allowed" + (" (and remembered)" if remember else ""), "dim")
             else:
                 self.session.deny(p["request_id"])
-                self.line("    denied", "warn")
+                self.line("   Denied", "warn")
             self.show_permission()
 
         def ask_questions(self, p: dict) -> None:
