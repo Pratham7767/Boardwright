@@ -121,7 +121,13 @@ def parse_value(text: str, unit: str) -> float | None:
     t = text.strip().replace(",", ".")
     t = re.sub(r"(?i)meg", "M", t)
     t = re.sub(r"(?i)ohms?|Ω", "R" if unit == "R" else "", t)
-    m = re.search(r"(\d+(?:\.\d+)?)\s*([pnuµmkKMG]?)(\d*)\s*" + ("F?" if unit == "F" else "R?" if unit == "R" else "A?") + r"(?![\w.])", t)
+    letter = {"F": "F", "R": "R", "A": "A"}[unit]
+    lb = "" if unit == "A" else r"(?<![A-Za-z])"   # "T2A" is a 2 A fuse; "X2" before a capacitor value is a class
+    # prefer a number that carries a multiplier or the unit letter ("X2 0.33uF": 0.33uF, not the 2 of X2)
+    m = re.search(lb + r"(\d+(?:\.\d+)?)\s*([pnuµmkKMG]?)(\d*)\s*" + letter + r"?(?![\w.])", t)
+    strong = re.search(lb + r"(\d+(?:\.\d+)?)\s*([pnuµmkKMG])(\d*)\s*" + letter + r"?(?![\w.])", t) or         re.search(lb + r"(\d+(?:\.\d+)?)\s*()()" + letter + r"(?![\w.])", t)
+    if strong:
+        m = strong
     if not m:
         m = re.search(r"(\d+)([pnuµmkKMGR])(\d+)", t)          # 4u7, 4k7, 4R7
         if not m:

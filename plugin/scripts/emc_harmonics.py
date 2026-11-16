@@ -97,6 +97,14 @@ def main(argv: list) -> int:
         for c in clocks:
             if not c.get("name") or not c.get("f_hz"):
                 raise SetupError("every emc.clocks entry needs a name and f_hz")
+            try:
+                c["f_hz"] = float(c["f_hz"])
+                if c.get("edge_ns") is not None:
+                    c["edge_ns"] = float(c["edge_ns"])
+            except (TypeError, ValueError):
+                raise SetupError(f"emc.clocks '{c['name']}': f_hz and edge_ns must be numbers")
+            if not 1e3 <= c["f_hz"] <= 1e10 or (c.get("edge_ns") is not None and c["edge_ns"] <= 0):
+                raise SetupError(f"emc.clocks '{c['name']}': f_hz must be between 1 kHz and 10 GHz, edge_ns above 0")
     except SetupError as exc:
         print(f"emc_harmonics: setup problem: {exc}")
         return 2

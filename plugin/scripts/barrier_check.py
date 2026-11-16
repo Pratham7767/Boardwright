@@ -62,8 +62,22 @@ try:
 except ValueError as e:
     die(f"cannot parse {CFG_PATH}: {e}")
 BC = CFG.get("barrier")
+if not isinstance(BC, dict) and isinstance(CFG.get("safety"), dict) and CFG["safety"].get("barriers"):
+    # No hand-written 'barrier' section: take the hazardous classes and the distance from the 'safety'
+    # section, exactly as creepage_rules.py computes them, so the two checks measure the same barrier.
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    try:
+        from creepage_rules import plan_barriers
+        _plans = plan_barriers(CFG["safety"])
+    except Exception as e:          # SetupError / ValueError from the safety section
+        die(f"cannot derive the barrier from the safety section: {e}")
+    BC = {"hazard_netclasses": sorted({c for p in _plans for c in p["hot_classes"]}),
+          "min_mm": min(p["clearance_rule_mm"] for p in _plans), "top": 10, "include_zone_fill": True}
+    if len({p["clearance_rule_mm"] for p in _plans}) > 1:
+        print(f"Note: {len(_plans)} barriers with different distances; this run uses the smallest, {BC['min_mm']} mm.")
+    print(f"Barrier taken from the safety section: classes {BC['hazard_netclasses']}, {BC['min_mm']} mm")
 if not isinstance(BC, dict):
-    die("no 'barrier' section in boardwright.json")
+    die("no 'barrier' section (or 'safety.barriers') in boardwright.json")
 HAZ = BC.get("hazard_netclasses")
 if not HAZ or not isinstance(HAZ, list):
     die("barrier.hazard_netclasses must be a non-empty list")

@@ -119,7 +119,12 @@ def main(argv: list) -> int:
     ap.add_argument("--peak", type=float, help="recurring peak V across the barrier")
     ap.add_argument("--altitude", type=float, default=2000)
     a = ap.parse_args(argv)
-    r = required(a.mains, a.ovc, a.pd, a.mg, a.insulation, a.working, a.peak, a.altitude)
+    try:
+        r = required(a.mains, a.ovc, a.pd, a.mg, a.insulation, a.working, a.peak, a.altitude)
+    except ValueError as exc:
+        print(f"spacing: {exc}. The tables cover mains up to 1000 V, working voltages up to 1000 V rms and "
+              "altitudes up to 10000 m; outside them, use the standard directly.")
+        return 2
     print(f"clearance >= {r['clearance_mm']} mm, creepage >= {r['creepage_mm']} mm, slots count if >= {r['groove_min_mm']} mm wide")
     for u in r["rows_used"]:
         print("  " + u)

@@ -198,7 +198,11 @@ def check(project: Path, f: dict, plans: list) -> tuple:
         bmin = b.get("minimum_all_mm")
         bclasses = set(b.get("hazard_netclasses") or [])
         for p in plans:
-            if not bmin or not (bclasses & set(p["hot_classes"])):
+            if not (bclasses & set(p["hot_classes"])):
+                problems.append(f"barrier_check.py measured classes {sorted(bclasses)}, none of which is on the hazardous "
+                                f"side of '{p['name']}' ({', '.join(p['hot_classes'])}): the cross-check did not cover it")
+                continue
+            if not bmin:
                 continue
             rn_c, rn_k = f"bw_{p['slug']}_clearance", f"bw_{p['slug']}_creepage"
             if bmin + 1e-6 < p["clearance_rule_mm"] and not (hits.get(rn_c) or hits.get(rn_k)):

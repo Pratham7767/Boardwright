@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.1 (2026-11-16): bug fixes from a bug hunt
+Every script was run on empty, brand-new, non-English-path and broken-config projects and on the AC-DC board.
+- **mains_check.py passed silently at stage 4.** It found the mains nets through the board, which has no nets before layout, so the X-capacitor and discharge checks were skipped. It now matches net classes against the schematic's own nets.
+- **The creepage gate could not pass for a new user.** Its cross-check needs `barrier_check.py`, which only read the older `barrier` section. `barrier_check.py` now derives the barrier from `safety.barriers` when there is no `barrier` section.
+- **An empty or incomplete `safety` section passed** on a mains board; it now fails, and a mains domain or a mains-connected PROJECT.md without `safety.mains` stops mains_check.py.
+- **The cross-check could skip a barrier** whose classes the barrier measurement did not cover; that now fails.
+- **"X2 0.33uF" was read as 2 F** (the class tag before the value); the value parser now prefers a number with a multiplier or unit. Fuse ratings such as "T2A" still parse.
+- `emc_harmonics.py` crashed on a non-numeric frequency; it now reports a setup problem. `spacing.py` gives a message instead of a traceback for inputs beyond its tables.
+- New tests for each fix.
+
 ## 0.4.0 (2026-11-16): safety, EMC and high-speed checks (phase 1 of the research plan)
 Built from the research in "Boardwright safety EMC high speed plan". Every limit names its source and status; tables not yet checked against the purchased standards say "secondary source" or "unverified".
 

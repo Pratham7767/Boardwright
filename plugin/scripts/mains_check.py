@@ -133,6 +133,11 @@ def analyse(project: Path) -> tuple:
     cfg = load_config(project)
     s = cfg.get("safety")
     if not isinstance(s, dict) or not s.get("mains"):
+        from safety_class import mains_declared
+        has_mains_domain = isinstance(s, dict) and any(d.get("kind") == "mains" for d in s.get("domains") or [])
+        if mains_declared(project) or has_mains_domain:
+            raise SetupError("the board is mains-connected (PROJECT.md, or a domain of kind 'mains'), but "
+                             "boardwright.json has no safety.mains section (see references/high-voltage.md)")
         return None, [], ["no safety.mains section: the board is not mains-connected (nothing to check)"]
     mains = s["mains"]
     line, neutral = mains.get("line"), mains.get("neutral")
@@ -152,7 +157,10 @@ def analyse(project: Path) -> tuple:
         if n not in nets:
             raise SetupError(f"mains net {n} is not in the schematic netlist")
 
-    by_class = nets_by_class(f["pro"], board_nets(f["pcb"])) if f["pcb"].is_file() else {}
+    # match the net-class patterns against the schematic's own nets, so the check works at stage 4,
+    # before the board has any nets (the board's nets are added when it exists)
+    names = sorted(set(nets) | set(board_nets(f["pcb"]) if f["pcb"].is_file() else []))
+    by_class = nets_by_class(f["pro"], names)
     return run_checks(comps, nets, s, by_class)
 
 

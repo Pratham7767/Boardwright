@@ -41,6 +41,7 @@ def test_spacing():
     r = spacing.required(250, "II", 2, "IIIa", "reinforced")
     check("spacing: creepage never below clearance", r["creepage_mm"] >= r["clearance_mm"], str(r))
     check("spacing: unknown CTI = material group IIIb", spacing.material_group(None) == "IIIb")
+    check("spacing CLI: off-table input gives exit 2, not a crash", spacing.main(["--mains", "2000"]) == 2)
     try:
         spacing.required(250, "V", 2, "IIIb", "basic")
         check("spacing: bad overvoltage category rejected", False)
@@ -52,6 +53,9 @@ def test_helpers():
     check("parse: 0.33uF X2 305VAC", abs(parse_value("0.33uF X2 305VAC", "F") - 0.33e-6) < 1e-12)
     check("parse: 4k7", parse_value("4k7", "R") == 4700)
     check("parse: 1.5M 500V", parse_value("1.5M 500V", "R") == 1.5e6)
+    check("parse: class tag before the value (X2 0.33uF)", abs(parse_value("X2 0.33uF", "F") - 0.33e-6) < 1e-12)
+    check("parse: Y1 1nF", abs(parse_value("Y1 1nF", "F") - 1e-9) < 1e-15)
+    check("parse: fuse rating T2A", parse_value("T2A", "A") == 2.0)
     check("pattern: /AC* matches /AC1", pattern_matches("/AC*", "/AC1"))
     check("pattern: /TYPO_X does not match /X", not pattern_matches("/TYPO_X", "/X"))
 

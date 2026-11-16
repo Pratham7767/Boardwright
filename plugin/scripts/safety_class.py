@@ -73,6 +73,12 @@ def analyse(project: Path) -> tuple:
                          "supply's rated power to record its PS class.")
         return {"domains": [], "supplies": [], "barriers": []}, problems, notes
 
+    hazardous_board = mains_declared(project) or "barrier" in cfg or bool(s.get("mains"))
+    if hazardous_board and not s.get("domains"):
+        problems.append("the board is mains-connected or has a barrier, but safety.domains is empty: every net "
+                        "must be in a voltage domain (see references/high-voltage.md)")
+    if hazardous_board and not s.get("barriers"):
+        problems.append("the board is mains-connected or has a barrier, but safety.barriers is empty")
     nets = board_nets(f["pcb"])
     if not nets:
         raise SetupError(f"no nets found in {f['pcb'].name} (is the board empty?)")
