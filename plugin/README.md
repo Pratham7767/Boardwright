@@ -39,10 +39,11 @@ Both run the same checks.
 | `/boardwright:pcb-retro` | Looks back at a finished board and suggests improvements to Boardwright |
 | `/boardwright:pcb-undo` | Lists the saved steps, compares two of them and goes back to one |
 | `/boardwright:pcb-plan` | Optional routing plan: `on`, `approve c1`, `reject c1`, `approve all`. Only you approve |
+| `/boardwright:pcb-diagnostics` | Optional record of how the work went: `on`, `on without prompts`, `off`, `status`, `report`, `export`, `delete`. Only you turn it on; nothing is sent by itself ([details](../docs/PRIVACY.md)) |
 
 Commands only run read-only checks without asking. Anything that changes your design asks you first.
 
-Each command picks its own model. `pcb-run`, `pcb-auto`, `pcb-new`, `pcb-plan` and `pcb-retro` use Sonnet. `pcb-gates`, `pcb-doctor` and `pcb-undo` use Haiku. `pcb-review` uses Opus.
+Each command picks its own model. `pcb-run`, `pcb-auto`, `pcb-new`, `pcb-plan` and `pcb-retro` use Sonnet. `pcb-gates`, `pcb-doctor` and `pcb-undo` use Haiku; `pcb-diagnostics` uses Sonnet. `pcb-review` uses Opus.
 
 ## Helpers
 

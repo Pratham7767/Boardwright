@@ -51,6 +51,7 @@ Other commands:
 | `/boardwright:pcb-auto <idea>` | Designs a whole board with as few stops as possible |
 | `/boardwright:pcb-undo` | Lists the saved steps and goes back to an earlier one |
 | `/boardwright:pcb-plan on` | Optional, for bigger boards: Claude proposes where tracks may run, and only you approve |
+| `/boardwright:pcb-diagnostics on` | Optional: keeps a private record of how the work went, so you can send a report back if you want |
 
 ## The eight stages
 
@@ -84,6 +85,10 @@ After every edit, Boardwright saves a snapshot of your design files. It is kept 
 
 Most commands run on the cheaper Sonnet or Haiku models. At the end of most stages a helper on the strongest model, Opus, checks the work before the stage counts. Details: [plugin/README.md](plugin/README.md).
 
+## Diagnostics (optional, off by default)
+
+If you want to help improve Boardwright, type `/boardwright:pcb-diagnostics on`. From then on it keeps a record in your project folder of how the work goes: your prompts (or only how many, with `on without prompts`), which models ran and what they cost, errors and failed checks. Keys, e-mail addresses and your user name are removed first. Nothing is sent: `/boardwright:pcb-diagnostics export` makes a zip, you read it, and you send it yourself if you want to. Turn it off with `/boardwright:pcb-diagnostics off`. Details: [privacy and diagnostics](docs/PRIVACY.md).
+
 New to these words? See the [glossary](docs/GLOSSARY.md).
 
 ## Important limits
@@ -106,6 +111,7 @@ New to these words? See the [glossary](docs/GLOSSARY.md).
 - [Test guide](docs/TESTING.md): what to try if you are helping test Boardwright
 - [How the pipeline works](plugin/README.md): the commands, checks and helpers
 - [The KiCad chat button](kicad-addon/README.md)
+- [Privacy and diagnostics](docs/PRIVACY.md): what is recorded, only if you turn it on, and how to send it
 - [What is planned next](docs/ROADMAP.md)
 - [For maintainers](docs/RELEASING.md)
 - [Other projects used](THIRD_PARTY.md)

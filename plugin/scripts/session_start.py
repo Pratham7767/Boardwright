@@ -50,7 +50,7 @@ def main() -> None:
         print("boardwright project, but its scripts/ folder is missing or incomplete. Run: "
               f'python "{PLUGIN_SCRIPTS / "init_project.py"}" . --update-scripts')
         return
-    stale = sorted(f.name for f in list(PLUGIN_SCRIPTS.glob("*.py")) + [PLUGIN_SCRIPTS / "pipeline.json", PLUGIN_SCRIPTS / "spacing_tables.json"]
+    stale = sorted(f.name for f in list(PLUGIN_SCRIPTS.glob("*.py")) + list(PLUGIN_SCRIPTS.glob("*.json"))
                    if f.name not in ("session_start.py", "setup.py", "selftest.py", "init_project.py")
                    and (local / f.name).is_file() and digest(local / f.name) != digest(f))
     out = ["boardwright session start (from the plugin's hook; you need not run status.py or plan.py again now):"]

@@ -26,6 +26,12 @@ Undo after every edit, cheaper board editing, an optional routing plan, more fac
 - Commands now set their own model: `pcb-run`, `pcb-auto`, `pcb-new`, `pcb-plan` and `pcb-retro` on Sonnet; `pcb-gates`, `pcb-doctor` and `pcb-undo` on Haiku; `pcb-review` on Opus.
 - `gate-reviewer` (Opus) now checks stages 2, 4, 5, 6, 7 and 8 of every board by default (before, only 2, 5, 6 and 8 when needed). `"reviewer": false` in `boardwright.json` turns it off except on hazardous or fast boards. New reviewer steps at stage 4 (schematic) and stage 7 (BOM: every flagged, unverified or failing line, and three at random).
 
+**Diagnostics (optional, off by default)**
+- `/boardwright:pcb-diagnostics on` (or `on without prompts`) starts a private record in `.boardwright/diagnostics/`: prompts, models, token use and cost (Claude Code's own figure, and an estimate from Anthropic's list prices read 2026-11-17), tool errors, refusals, API errors, failed checks and the stage reached, read from Claude Code's own session files by the end-of-turn and end-of-session hooks. Keys, tokens, e-mail addresses, the home folder and the user name are removed first.
+- Only the user turns it on or off: a prompt hook records it from what they typed, and Claude's attempts to change the setting are refused.
+- `report` (with a plain summary Claude writes from the numbers), `export` (a zip) and `delete`. Nothing is sent: the user sends the zip through the new GitHub issue form **Diagnostics report**, or by e-mail if an address is set in `plugin/scripts/diagnostics.json`. See `docs/PRIVACY.md`.
+- Fixed on the way: a project's `scripts/` folder now gets every data file the scripts read (the factory profiles and prices were missing, so `fab_rules.py` failed inside a project).
+
 **Other AI agents**
 - New projects get an `AGENTS.md` (rules and how to resume) for Codex, OpenCode, Grok and others.
 - `plugin/scripts/bw_mcp.py` is a small tool server (MCP) with read-only and checking tools only: `status`, `plan`, `run_gates`, `sch_check`, `history_list`, `fab_check`, `routing_plan_show` and `board_find`.

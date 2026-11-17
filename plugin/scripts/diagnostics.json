@@ -1,0 +1,5 @@
+{
+  "_about": "Where users can send a diagnostics report they made with /boardwright:pcb-diagnostics export. Nothing is ever sent automatically: the user attaches the file themselves. Leave email empty to offer only the GitHub issue form.",
+  "github_issue_form": "https://github.com/Pratham7767/Boardwright/issues/new?template=diagnostics.yml",
+  "email": ""
+}

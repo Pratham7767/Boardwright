@@ -85,6 +85,7 @@ def main() -> int:
                                    "$null=[scriptblock]::Create((Get-Content -Raw install/install.ps1))"])
     run("add-on tests (fake Claude Code)", [py, "kicad-addon/tests/test_core.py"])
     run("safety, EMC and high-speed checks (planted faults)", [py, "plugin/tests/test_safety.py"])
+    run("diagnostics: consent, recording, redaction, report, export", [py, "plugin/tests/test_diagnostics.py"])
     run("lifecycle check (fake LCSC answers)", [py, "plugin/tests/test_lifecycle.py"])
     run("history, lock, edits, router, routing plan, fab rules", [py, "plugin/tests/test_editing.py"])
     if not QUICK:

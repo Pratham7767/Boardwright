@@ -1,0 +1,37 @@
+name: Diagnostics report
+description: Send a Boardwright diagnostics report (made on your computer with /boardwright:pcb-diagnostics export) to help improve the product.
+title: "Diagnostics: "
+labels: ["diagnostics"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. This report helps us see where the pipeline wastes time or money, and where it goes wrong.
+
+        **This page is public.** Anyone can read an issue and its attachments on this repository. Open `report.md` from your zip file first and remove anything you do not want to share (prompts, part names, project details). If you prefer, send the zip by e-mail instead (the export command says how, when e-mail is set up).
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: Consent
+      options:
+        - label: I have read report.md, and I agree to share this report publicly to help improve Boardwright.
+          required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened, in a few words
+      description: What were you designing, and what went well or badly?
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: The report
+      description: Drag the boardwright-diagnostics-....zip file into this box (it is in .boardwright/diagnostics/ in your project folder). Or paste the short summary that the export command printed.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Boardwright version
+      placeholder: "0.6.0"
