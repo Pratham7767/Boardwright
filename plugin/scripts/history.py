@@ -76,6 +76,9 @@ class Store:
     """Where the steps live: the project's git repository, or a private one in .boardwright/."""
 
     def __init__(self, proj: Path):
+        # One spelling of every path: Windows may hand us a short name (RUNNER~1) for a folder whose
+        # files resolve to the long name, and relative_to() would then say the file is not inside it.
+        proj = Path(proj).resolve()
         self.proj = proj
         top = self._plain(["git", "-C", str(proj), "rev-parse", "--show-toplevel"])
         if top:
