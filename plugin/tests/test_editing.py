@@ -92,7 +92,7 @@ def hist(proj, *args):
 
 
 def hook(proj, mode, payload, sid="s1"):
-    env = dict(os.environ, CLAUDE_PROJECT_DIR=str(proj))
+    env = dict(os.environ, CLAUDE_PROJECT_DIR=str(proj), BOARDWRIGHT_HOOK_DEBUG="1")
     payload = dict(payload, session_id=payload.get("session_id", sid))
     return run([PY, SCRIPTS / "edit_hooks.py", mode], env=env, stdin=json.dumps(payload))
 
@@ -185,10 +185,11 @@ def test_hooks():
     before = int(re.search(r"# (\d+) steps", out).group(1))
     dru = proj / "usb-sensor-test.kicad_dru"
     dru.write_bytes(dru.read_bytes() + b"\n# edited\n")
-    hook(proj, "post", {"tool_name": "Edit", "tool_input": {"file_path": str(dru)}}, "s1")
+    _, hook_out = hook(proj, "post", {"tool_name": "Edit", "tool_input": {"file_path": str(dru)}}, "s1")
     code, out = hist(proj, "list")
     after = int(re.search(r"# (\d+) steps", out).group(1))
-    check("hooks: post after a design file change saves a history step", after == before + 1, f"{before} -> {after}")
+    check("hooks: post after a design file change saves a history step", after == before + 1,
+          f"{before} -> {after}; hook said: {hook_out.strip()[-600:]}")
     hook(proj, "stop", {}, "s1")
 
     code, out = hook(proj, "pre", {"tool_name": "Write", "tool_input": {

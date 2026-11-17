@@ -127,5 +127,7 @@ if __name__ == "__main__":
     try:
         main()
     except Exception:
-        pass
+        if os.environ.get("BOARDWRIGHT_HOOK_DEBUG"):     # tests: show what went wrong
+            import traceback
+            traceback.print_exc()
     sys.exit(0)
