@@ -189,4 +189,7 @@ def main(argv: list) -> int:
 
 
 if __name__ == "__main__":
+    sys.path.insert(0, __import__("os").path.dirname(__import__("os").path.abspath(__file__)))
+    import kicad_python  # under any Python: rerun with KiCad's own, which has pcbnew
+    kicad_python.ensure(__file__)
     sys.exit(main(sys.argv[1:]))

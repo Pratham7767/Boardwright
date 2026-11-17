@@ -1,6 +1,7 @@
 ---
 name: pcb-doctor
 description: Check that KiCad, the live link and the helper tools are set up for the PCB pipeline
+model: haiku
 disable-model-invocation: true
 allowed-tools: Bash(python *scripts/doctor.py*), Bash(python3 *scripts/doctor.py*), PowerShell(python *scripts/doctor.py*)
 ---

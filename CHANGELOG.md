@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.6.0 (2026-11-17)
+Undo after every edit, cheaper board editing, an optional routing plan, more factory profiles, and a split between cheap models that do the work and the strongest model that checks it. Many ideas come from Backplane (see `THIRD_PARTY.md`); no code was copied.
+
+**Design history**
+- A hook saves a snapshot of the design files after every edit. `history.py . list | diff | restore` and the new `/boardwright:pcb-undo` command use it. Snapshots live on a hidden git ref (`refs/boardwright/steps`), or in `.boardwright/history.git` when the folder is not a git repository. Files are stored byte for byte. A restore saves the current state first, and refuses while KiCad has the file open.
+- `history.py . stage-commit N "name"` commits only the design files and `reports/` after a stage passes.
+- One editor at a time: a lock stops two Claude sessions from editing the same board. The second can still read. The lock frees at the end of the turn or after 30 minutes idle.
+
+**Editing**
+- `bw_edit.py`: find, move, set, add, delete, netclass, rule, refill, place and route in one call. It answers with the DRC difference (new, fixed and unchanged errors; unconnected before and after). KiCad must not have the board open; otherwise use the live KiCad tools.
+- `place` puts a part within a given distance of a pin, avoiding other parts' courtyards and other nets' copper.
+- `route` is a simple grid router. It uses the net class width and clearance, 45 and 90 degree turns, and vias. It refuses mains, hazardous and fast nets. On the example board it routed five short nets in about 8 seconds with no new DRC errors.
+- Routing plan mode, optional and off by default: `/boardwright:pcb-plan on`. Claude proposes corridors in `reports/routing-plan.md` and on KiCad's User.4 layer. Only the designer approves, by typing `/boardwright:pcb-plan approve c1`. A hook records it from what the designer typed, so Claude cannot approve its own plan. Nothing is routed outside an approved corridor. `routing_plan.py . verify` checks it.
+
+**Checks**
+- `fab_rules.py`: factory profiles for JLCPCB, PCBWay, OSH Park (2-layer service) and Eurocircuits, read from each factory's own pages on 2026-11-16. Every value has its page and date. Values a factory does not publish are "unverified". `write` adds a marked section to the `.kicad_dru` that never loosens the board's own settings. Choose the factory with "fab" in `boardwright.json`.
+- The release check "Fab files up to date" fails when any file in `fab/` is older than the board or schematic.
+- `lifecycle_check.py`: reads LCSC's public product data (no key, one request a second, cached 7 days). Discontinued fails. A part LCSC flags but does not list as discontinued is "nrnd (check)" for a person to confirm. Parts with no LCSC number are "unverified", with links. It is the distributor's status, not the manufacturer's.
+
+**Running the board scripts**
+- The scripts that read the board (`bw_edit.py`, `board_digest.py`, the barrier, EMC and fast-signal checks) now find KiCad's own Python and restart under it by themselves, so plain `python scripts/...` works. The first benchmark showed Claude spending six to eight tool calls searching the disk for KiCad's Python and then editing the board file by hand instead.
+
+**Models**
+- Commands now set their own model: `pcb-run`, `pcb-auto`, `pcb-new`, `pcb-plan` and `pcb-retro` on Sonnet; `pcb-gates`, `pcb-doctor` and `pcb-undo` on Haiku; `pcb-review` on Opus.
+- `gate-reviewer` (Opus) now checks stages 2, 4, 5, 6, 7 and 8 of every board by default (before, only 2, 5, 6 and 8 when needed). `"reviewer": false` in `boardwright.json` turns it off except on hazardous or fast boards. New reviewer steps at stage 4 (schematic) and stage 7 (BOM: every flagged, unverified or failing line, and three at random).
+
+**Other AI agents**
+- New projects get an `AGENTS.md` (rules and how to resume) for Codex, OpenCode, Grok and others.
+- `plugin/scripts/bw_mcp.py` is a small tool server (MCP) with read-only and checking tools only: `status`, `plan`, `run_gates`, `sch_check`, `history_list`, `fab_check`, `routing_plan_show` and `board_find`.
+- Every stage can be resumed from the files (`status.py`, `plan.py`) by any session or agent.
+
+**Tests**
+- New: `plugin/tests/test_editing.py` (49 checks), `test_lifecycle.py` and `test_mcp.py`, all run by `python tools/check_all.py`.
+- New benchmark harness `tools/bench/`: five editing jobs, two runs each, on Sonnet. Against 0.5.0, the ten runs cost 24% less ($2.88 against $3.77) and all passed (9 of 10 before); routing used about 60% fewer tokens. Details and limits: `docs/benchmark.md`.
+
 ## 0.5.0 (2026-11-16)
 Phase 2 of the safety, EMC and high-speed plan, a reworked chat window, and commands that run end to end without permission prompts for read-only work.
 

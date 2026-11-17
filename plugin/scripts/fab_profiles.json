@@ -1,0 +1,72 @@
+{
+  "_about": "Published minimums of each board factory, read from its own pages. Every value names its page and the day it was read. A value the page does not state is null: never a guess. Re-read a factory's pages when its values are older than 180 days (fab_rules.py says so). Units: mm.",
+  "fabs": {
+    "jlcpcb": {
+      "name": "JLCPCB",
+      "pages": {"caps": "https://jlcpcb.com/capabilities/pcb-capabilities"},
+      "read": "2026-11-16",
+      "values": [
+        {"key": "track_width", "value": 0.10, "layers": [1, 2], "page": "caps", "note": "min trace width 0.10 mm (4 mil), 1-2 layers"},
+        {"key": "track_width", "value": 0.09, "layers": [4, 6], "page": "caps", "note": "min trace width 0.09 mm (3.5 mil), multilayer"},
+        {"key": "clearance", "value": 0.10, "layers": [1, 2], "page": "caps", "note": "min spacing 0.10 mm (4 mil), 1-2 layers"},
+        {"key": "clearance", "value": 0.09, "layers": [4, 6], "page": "caps", "note": "min spacing 0.09 mm (3.5 mil), multilayer"},
+        {"key": "via_drill", "value": 0.15, "layers": [2, 6], "page": "caps", "note": "min via hole 0.15 mm (0.1 mm only for boards up to 1 mm thick with ENIG/OSP)"},
+        {"key": "via_diameter", "value": 0.25, "layers": [2, 6], "page": "caps", "note": "min via diameter 0.25 mm (0.2 mm only for boards up to 1 mm thick with ENIG/OSP)"},
+        {"key": "npth_hole", "value": 0.50, "layers": [1, 32], "page": "caps", "note": "min NPTH hole 0.50 mm"},
+        {"key": "edge_clearance", "value": 0.20, "layers": [1, 32], "page": "caps", "note": "copper to routed board edge at least 0.2 mm (V-cut edges 0.4 mm)"},
+        {"key": "hole_to_hole", "value": 0.20, "layers": [1, 32], "page": "caps", "note": "via hole to hole 0.2 mm (pad hole to hole 0.45 mm)"},
+        {"key": "hole_to_track", "value": 0.20, "layers": [1, 32], "page": "caps", "note": "via hole to track 0.2 mm; PTH to track 0.28 mm minimum, 0.35 mm recommended"},
+        {"key": "annular_width", "value": null, "layers": [1, 32], "page": "caps", "note": "not stated as a ring width on the page (via diameter and hole are)"},
+        {"key": "silk_line", "value": 0.15, "layers": [1, 32], "page": "caps", "note": "silkscreen line width at least 0.15 mm"},
+        {"key": "silk_text_height", "value": 1.0, "layers": [1, 32], "page": "caps", "note": "silkscreen text height 1.0 mm (40 mil)"}
+      ]
+    },
+    "pcbway": {
+      "name": "PCBWay",
+      "pages": {"caps": "https://www.pcbway.com/capabilities.html"},
+      "read": "2026-11-16",
+      "values": [
+        {"key": "track_width", "value": 0.10, "layers": [1, 32], "page": "caps", "note": "min manufacturable trace 0.1 mm (4 mil)"},
+        {"key": "clearance", "value": 0.10, "layers": [1, 32], "page": "caps", "note": "min manufacturable spacing 0.1 mm (4 mil)"},
+        {"key": "via_drill", "value": 0.15, "layers": [1, 32], "page": "caps", "note": "min drill 0.15 mm; holes under 0.2 mm cost extra"},
+        {"key": "via_diameter", "value": null, "layers": [1, 32], "page": "caps", "note": "not stated as a diameter (ring is)"},
+        {"key": "annular_width", "value": 0.15, "layers": [1, 32], "page": "caps", "note": "min annular ring 0.15 mm (6 mil) for pads with vias"},
+        {"key": "npth_hole", "value": null, "layers": [1, 32], "page": "caps", "note": "not stated"},
+        {"key": "edge_clearance", "value": 0.25, "layers": [1, 32], "page": "caps", "note": "advanced table: line to board edge 0.25 mm by CNC milling (0.20 mm in the advanced column); the standard table does not state it"},
+        {"key": "hole_to_hole", "value": null, "layers": [1, 32], "page": "caps", "note": "not stated in the standard table"},
+        {"key": "silk_line", "value": 0.15, "layers": [1, 32], "page": "caps", "note": "silkscreen line width 0.15 mm"},
+        {"key": "silk_text_height", "value": 0.8, "layers": [1, 32], "page": "caps", "note": "silkscreen text height 0.8 mm"}
+      ]
+    },
+    "oshpark": {
+      "name": "OSH Park (2-layer service)",
+      "pages": {"two": "https://docs.oshpark.com/services/two-layer/"},
+      "read": "2026-11-16",
+      "values": [
+        {"key": "track_width", "value": 0.1524, "layers": [2, 2], "page": "two", "note": "6 mil minimum trace"},
+        {"key": "clearance", "value": 0.1524, "layers": [2, 2], "page": "two", "note": "6 mil minimum spacing"},
+        {"key": "via_drill", "value": 0.254, "layers": [2, 2], "page": "two", "note": "10 mil minimum drill"},
+        {"key": "annular_width", "value": 0.127, "layers": [2, 2], "page": "two", "note": "5 mil minimum annular ring"},
+        {"key": "edge_clearance", "value": 0.381, "layers": [2, 2], "page": "two", "note": "15 mil from the nominal board edge"},
+        {"key": "silk_line", "value": 0.127, "layers": [2, 2], "page": "two", "note": "5 mil recommended minimum (3 mil for short lines and text)"},
+        {"key": "silk_text_height", "value": null, "layers": [2, 2], "page": "two", "note": "not stated"},
+        {"key": "hole_to_hole", "value": null, "layers": [2, 2], "page": "two", "note": "not stated"}
+      ]
+    },
+    "eurocircuits": {
+      "name": "Eurocircuits",
+      "pages": {"tol": "https://www.eurocircuits.com/technical-guidelines/understanding-manufacturing-tolerances-on-a-pcb/tolerances-on-a-pcb/",
+                "class": "https://www.eurocircuits.com/technical-guidelines/pcb-design-guidelines/classification/"},
+      "read": "2026-11-16",
+      "values": [
+        {"key": "track_width", "value": null, "layers": [1, 32], "page": "class", "note": "set by the pattern class; the class table is published only as an image, so it is not read here"},
+        {"key": "clearance", "value": null, "layers": [1, 32], "page": "class", "note": "set by the pattern class (image table)"},
+        {"key": "annular_width", "value": null, "layers": [1, 32], "page": "class", "note": "set by the pattern class (image table); 0.30 mm recommended for connected NPTH holes"},
+        {"key": "hole_to_hole", "value": 0.25, "layers": [1, 32], "page": "tol", "note": "minimum hole to hole distance 0.25 mm"},
+        {"key": "edge_clearance", "value": 0.45, "layers": [1, 32], "page": "tol", "note": "board edge to copper, outer and inner layers, 0.45 mm (allows a V-cut); inner layers 0.40 mm"},
+        {"key": "silk_line", "value": 0.10, "layers": [1, 32], "page": "tol", "note": "legend minimum line width 0.10 mm"},
+        {"key": "silk_text_height", "value": 1.0, "layers": [1, 32], "page": "tol", "note": "legend minimum height for legibility 1.00 mm"}
+      ]
+    }
+  }
+}

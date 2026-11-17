@@ -11,3 +11,11 @@ Boardwright's own code is MIT-licensed (see `LICENSE`). It does **not** include 
 | Claude Code (Anthropic) | runs the pipeline; each user brings their own account | Anthropic's terms | https://code.claude.com |
 
 The design rules in `plugin/skills/boardwright/references/` are short paraphrases with citations of public application notes and articles (TI, ST, Raspberry Pi, Espressif, Nordic, ROHM, Vishay, Phil's Lab, Altium, KiCad docs). Each file lists its sources. Read the originals for the full text.
+
+## Ideas, not code
+
+Version 0.6 borrows several ideas from [Backplane](https://github.com/BackplaneWorks/Backplane) (MIT licence): the one-call edit tool that answers with the DRC difference, the router, placing a part next to a pin, snapshots after every edit, one editor at a time, the routing plan the designer approves, factory profiles with the page and date, and flagging out-of-date factory files. No Backplane code was copied.
+
+## Data read at run time
+
+The part lifecycle check (`lifecycle_check.py`) reads LCSC's public product data when you run it. Nothing from LCSC is copied into this repository.

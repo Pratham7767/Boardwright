@@ -77,37 +77,38 @@ Details for each stage are in [references/stages.md](references/stages.md). Read
 | 7 | BOM: stock, price, lifecycle | no end-of-life and no out-of-stock part at the suppliers in `PROJECT.md` | `07-bom.md` |
 | 8 | Release | `run_gates.py` exports from a freshly refilled copy; `08-release.md` lists every assumption the user must verify | `08-release.md` |
 
-Run the gates with the system Python: `python scripts/run_gates.py . --no-export` (`python3` on macOS and Linux). The barrier and EMC scripts need KiCad's bundled Python (it has `pcbnew`): `<kicad>/bin/python -I scripts/barrier_check.py .`
+Run the gates with the system Python: `python scripts/run_gates.py . --no-export` (`python3` on macOS and Linux). The scripts that read the board (barrier, EMC, fast-signal, digest, `bw_edit.py`) need KiCad's own Python: they find it and restart under it by themselves, so run them the same way, for example `python scripts/barrier_check.py .`. Never search the disk for KiCad's Python.
 
 A gate that cannot be closed (for example a supplier that cannot be checked) is reported as **NOT PASSED (open)** and carried into the release checklist. Only the user can decide to go on with an open gate, and the release report must say so at the top.
 
 ## Who does what
 
-The main session makes every design decision and reviews every gate. Run it on the strongest model you have. Mechanical work goes to cheaper helpers. A helper starts with no context, so give it a complete brief: files, exact inputs, what "done" looks like, what it must not touch. Do small jobs (a few tool calls) yourself; a helper costs more than it saves for those.
+**Cheap models do the work; the strongest model checks it.** Tokens go where they buy the most: doing a task (reading, looking up, editing, writing a report) is done by the cheapest model that can do it well, and deciding whether the result is right is done by the strongest model. The commands set this up themselves: `/boardwright:pcb-run`, `pcb-auto`, `pcb-new`, `pcb-plan` and `pcb-retro` run on Sonnet; `pcb-gates`, `pcb-doctor` and `pcb-undo` only run scripts and run on Haiku; `pcb-review` is verification and runs on Opus.
 
-| Helper | Model | Use for | You check afterwards |
+| Who | Model | Does | Checked by |
 |---|---|---|---|
-| `datasheet-reader` | Sonnet | one part per helper: pin table, absolute maximums, footprint drawing, each with page numbers | open the cited pages for every pin you wire and every limit you rely on |
-| `part-scout` | Haiku | stock, price and lifecycle for a list of part numbers | spot-check three lines, and every line flagged or marked unverified |
-| `pcb-mechanic` | Sonnet | pushing track and via coordinates you chose, DRC loops, silkscreen cleanup, running gate scripts | DRC counts yourself, plus barrier and high-voltage distances |
-| `gate-reviewer` | Opus | an independent second look at a stage report before the gate counts | read its findings; you still own the decision |
+| main session (the commands above) | Sonnet | the stage work: interview, choices, schematic, layout edits with `bw_edit.py`, reports | `gate-reviewer` at every gate, and the scripts |
+| `datasheet-reader` | Sonnet | one part per helper: pin table, absolute maximums, footprint drawing, each with page numbers | the main session opens the cited pages for every pin wired; `gate-reviewer` at stage 2 |
+| `part-scout` | Haiku | stock, price and lifecycle for a list of part numbers | `gate-reviewer` at stage 7: every flagged, unverified or failing line and three at random |
+| `pcb-mechanic` | Sonnet | pushing track and via coordinates already chosen, DRC loops, silkscreen cleanup, running gate scripts | DRC counts and distances, then `gate-reviewer` |
+| scripts (`run_gates.py`, `sch_check.py`, the safety, EMC and fast-signal checks) | none | every measurable rule | they are the check |
+| `gate-reviewer` | Opus | verifies one stage against its evidence before the gate counts; changes nothing | its findings go to the user |
 
-Run helpers in parallel when their inputs are independent: one `datasheet-reader` per part in stage 2, `part-scout` on batches of about 15 lines in stage 7. Never run two helpers that write the same file, and never more than one helper that edits the board.
+A helper starts with no context, so give it a complete brief: files, exact inputs, what "done" looks like, what it must not touch. Do small jobs (a few tool calls) yourself; a helper costs more than it saves for those. Run helpers in parallel when their inputs are independent: one `datasheet-reader` per part in stage 2, `part-scout` on batches of about 15 lines in stage 7. Never run two helpers that write the same file, and never more than one helper that edits the board.
 
-When `gate-reviewer` runs:
-- Main session not on Opus: stages 2, 5, 6 and 8 of every board. Set `"reviewer": true` in `boardwright.json` so the planner adds the reviewer steps; it adds them by itself for hazardous and fast boards.
-- Hazardous voltage: every stage, whatever the main model.
-- Fast signals or four or more layers: stages 5 and 6, whatever the main model.
-- Any time the user asks.
+`gate-reviewer` runs at stages 2, 4, 5, 6, 7 and 8 of every board (the planner adds the steps; `"reviewer": false` in `boardwright.json` turns them off, except on hazardous or fast boards). On hazardous boards it also checks stages 1 and 3. A gate does not count until its reviewer says "gate may count" or the user has seen and accepted each finding. Do not ask the reviewer to redo work: give it the stage number and let it check the evidence.
 
-Never delegate: choosing parts, pin assignments, placement decisions, routes for mains, switch nodes and feedback lines, rule values, waivers, the EMC judgement, and the release checklist.
+Never hand to a helper: choosing parts, pin assignments, placement decisions, routes for mains, switch nodes and feedback lines, rule values, waivers, the EMC judgement, and the release checklist. These stay in the main session and are always part of what `gate-reviewer` checks.
 
 ## Working with KiCad
 
 - Board edits go through the `kicad-live` tools while KiCad has the board open, so the user sees each change and can undo it. Never write a `.kicad_pcb` file that KiCad has open. Details and known traps: [references/live-mode.md](references/live-mode.md).
 - KiCad cannot edit schematics live. Say what you will change, edit with the schematic tools, ask the user to reload, then run ERC.
-- Save with KiCad's save action and make a git commit at the end of each stage.
-- Autorouting only when the user asks, and only for low-risk signal nets. You route power, switch nodes, feedback and fast nets by hand, and review and DRC-check every autorouted net.
+- Save with KiCad's save action. When a stage's gate passes, run `python scripts/history.py . stage-commit <N> "<stage name>"`: it commits only the design files and `reports/` (in a folder without git it saves a history step instead).
+- Design history: the plugin's hook saves a step after every edit to a design file. `python scripts/history.py . list` shows them; `/boardwright:pcb-undo` takes the user back to one. Restore only when the user asks.
+- One editor at a time: the hook gives this session the board's edit lock at its first edit and frees it at the end of the turn. If a tool is denied because another session holds the lock, do not work around it (no other tool, no raw file write): read only, and tell the user which session holds it.
+- Board edits while KiCad does not have the board open: one `python scripts/bw_edit.py . '<ops>'` call per batch (find, move, set, add, delete, netclass, rule, refill, place, route). It answers with the DRC difference, so no separate DRC run is needed for that batch. Ops and examples: [references/efficiency.md](references/efficiency.md) and the script's header.
+- The router (`bw_edit` `route`) is for low-risk signal nets only. It refuses mains, hazardous and fast nets by itself; never route those any other way than by hand. You route power, switch nodes, feedback and fast nets by hand, and review every routed net in the DRC difference and the digest.
 - Boards with fast signals or four or more layers: [references/high-speed.md](references/high-speed.md).
 - Suppliers, hand checks and regional cost: [references/suppliers.md](references/suppliers.md).
 - Design choices that make a board right the first time (stackup, return paths, widths and spacing, crystals, USB protection, inrush, fiducials, KiCad board setup), from Phil's Lab, Robert Feranec's workshop, Altium, ST, TI and the KiCad docs: [references/design-practice.md](references/design-practice.md). Read it before stage 4 and again before stage 5, and choose the stackup from it before placing anything.

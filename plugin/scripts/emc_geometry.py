@@ -56,6 +56,10 @@ EC = CFG.get("emc")
 if not isinstance(EC, dict):
     die("no 'emc' section in boardwright.json")
 
+if __name__ == "__main__":
+    sys.path.insert(0, __import__("os").path.dirname(__import__("os").path.abspath(__file__)))
+    import kicad_python  # under any Python: rerun with KiCad's own, which has pcbnew
+    kicad_python.ensure(__file__)
 import pcbnew  # noqa: E402  (only available in KiCad's Python)
 
 B = pcbnew.LoadBoard(pcbs[0])

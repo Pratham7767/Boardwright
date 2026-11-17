@@ -31,7 +31,7 @@ Declare every differential pair and its limits in `boardwright.json`, each limit
              "max_vias_each": 2, "source": "RP2350 hardware design guide, section 5.1"}]}
 ```
 - `python scripts/hs_rules.py . --write` (stage 5, with the other rules) writes KiCad `skew` and `length` rules, and `diff_pair_gap` / `diff_pair_uncoupled` when the net names follow KiCad's pair convention (`_P`/`_N`, `+`/`-`).
-- `<kicad>/bin/python -I scripts/hs_rules.py .` (gate `layout.hs`) measures each pair itself: lengths including via barrels, skew in mm and ps, equal via counts, and a ground via within `max_return_via_mm` of every signal via. It does not depend on KiCad grouping the pair correctly.
+- `python scripts/hs_rules.py .` (gate `layout.hs`) measures each pair itself: lengths including via barrels, skew in mm and ps, equal via counts, and a ground via within `max_return_via_mm` of every signal via. It does not depend on KiCad grouping the pair correctly.
 - A limit without a source is reported as "assumption". `max_return_via_mm` 1.5 is a working default, not a value from a standard.
 
 ## Impedance estimate

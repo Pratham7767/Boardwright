@@ -1,5 +1,5 @@
 {
-  "description": "boardwright: project status and plan at the start of a session, only inside a boardwright project",
+  "description": "boardwright: project status at session start; design history after each edit; one editor at a time. All only inside a boardwright project.",
   "hooks": {
     "SessionStart": [
       {
@@ -9,6 +9,52 @@
             "type": "command",
             "command": "python \"${CLAUDE_PLUGIN_ROOT}/scripts/session_start.py\" 2>/dev/null || python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/session_start.py\" 2>/dev/null || true",
             "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PLUGIN_ROOT}/scripts/edit_hooks.py\" prompt 2>/dev/null || python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/edit_hooks.py\" prompt 2>/dev/null || true",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|Bash|mcp__plugin_boardwright_.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PLUGIN_ROOT}/scripts/edit_hooks.py\" pre 2>/dev/null || python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/edit_hooks.py\" pre 2>/dev/null || true",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|Bash|mcp__plugin_boardwright_.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PLUGIN_ROOT}/scripts/edit_hooks.py\" post 2>/dev/null || python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/edit_hooks.py\" post 2>/dev/null || true",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PLUGIN_ROOT}/scripts/edit_hooks.py\" stop 2>/dev/null || python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/edit_hooks.py\" stop 2>/dev/null || true",
+            "timeout": 15
           }
         ]
       }

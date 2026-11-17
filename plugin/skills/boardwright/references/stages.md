@@ -51,7 +51,7 @@ Order: stackup and rules, placement, review, power routing, signal routing, pour
 ## 6 EMC and signal integrity
 - Fill the `emc` section of `boardwright.json` for this board: the switching loops (pads in current order), switch-node copper, noisy-to-quiet distances, protection parts to connector pins, track-to-edge clearance. Choosing what to measure and the limits is your job; say where each limit comes from or mark it as an engineering estimate.
 - List every clock and switcher in `emc.clocks` (frequency and source) and run `python scripts/emc_harmonics.py .`: it shows which harmonics fall in each emission band, which coincide, and the cable ports to probe first. Put that plan in the report.
-- Run `<kicad python> -I scripts/emc_rules.py .` (track over pour gaps, layer changes without a return via, unfiltered cable ports, edge, ground cover). Rate its findings with the others.
+- Run `python scripts/emc_rules.py .` (track over pour gaps, layer changes without a return via, unfiltered cable ports, edge, ground cover). Rate its findings with the others.
 - Optional, for a person with HyperLynx, CST or SIwave: `python scripts/sim_export.py .` writes IPC-2581, ODB++ and STEP to `sim/`.
 - Run `emc_geometry.py`. Rate each finding CRITICAL, HIGH, MEDIUM or LOW. CRITICAL means the board is likely to fail to work or to be unsafe as laid out.
 - Controlled-impedance or fast nets (USB, Ethernet, DDR, RF): follow `high-speed.md`. State the target impedance, the fab stackup it was calculated for, and the measured length matching. If none, say "none".
@@ -63,6 +63,8 @@ Order: stackup and rules, placement, review, power routing, signal routing, pour
 - Export the BOM (reference, value, footprint, MPN, supplier number). Split it into batches of about 15 lines and run one `part-scout` per batch in parallel.
 - Lines LCSC does not cover go through the hand-check flow in `suppliers.md`: you write the list with links, the user reads the numbers. Report cost in the user's currency as that file describes.
 - A line passes only with stock above the build quantity and a lifecycle status that is not end-of-life, obsolete or not-recommended-for-new-designs. "Could not check" is not a pass.
+- `python scripts/lifecycle_check.py .` looks up every part that has an LCSC number on LCSC's public product data (no key, one request a second, answers cached for 7 days). A discontinued part fails. A part LCSC flags but does not list as discontinued is reported as "nrnd (check)": confirm it on the manufacturer's page. Parts with no LCSC number are "unverified" with links to check by hand. This is the distributor's status, not the manufacturer's: say so in the report.
+- The stock and lifecycle lines come from cheap helpers and LCSC; `gate-reviewer` checks them before the gate counts.
 - You propose substitutes; the user approves them. Every substitute goes back through stage 2 (datasheet, pin table, footprint) before it is placed.
 - Report: totals, table of problem lines, swaps made, lines still open.
 - Gate: no end-of-life and no out-of-stock part.

@@ -18,7 +18,7 @@ for _s in (sys.stdout, sys.stderr):
             pass
 
 GITIGNORE = ["*.kicad_prl", "*-backups/", "fp-info-cache", "__pycache__/",
-             ".env", "secrets.env", "~*.lck", ".history/"]
+             ".env", "secrets.env", "~*.lck", ".history/", ".boardwright/"]
 
 
 def main():

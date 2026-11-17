@@ -6,6 +6,10 @@ The circuit-board words used in Boardwright, explained simply.
 
 **Clearance.** The shortest distance through the air between two pieces of copper. Too little, and electricity can jump across.
 
+**Corridor.** In the optional routing plan, an area of the board where Claude may run tracks for a group of nets. Only the designer approves it.
+
+**Courtyard.** The outline around a part that no other part should enter. It leaves room to place and solder the part.
+
 **Creepage.** The shortest distance between two pieces of copper along the board's surface. Dirt and moisture on the surface can let current creep across, so this distance must be long enough too.
 
 **Datasheet.** The manufacturer's document for a part: its pins, limits and how to use it.
@@ -31,6 +35,8 @@ The circuit-board words used in Boardwright, explained simply.
 **KiCad.** The free, open-source program used to design the board.
 
 **Mains.** The power from the wall socket: 230 V in India and Europe, 120 V in the US.
+
+**Lifecycle.** Whether a part is still being made and sold, or is being phased out (discontinued).
 
 **Net.** One electrical connection: everything that is wired together.
 

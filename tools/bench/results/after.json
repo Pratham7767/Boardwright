@@ -1,0 +1,122 @@
+[
+ {
+  "task": "rotate_holes",
+  "run": 1,
+  "pass": true,
+  "why": [],
+  "context_tokens": 823195,
+  "output_tokens": 3419,
+  "turns": 15,
+  "wall_s": 104,
+  "cost_usd": 0.474,
+  "error": false
+ },
+ {
+  "task": "rotate_holes",
+  "run": 2,
+  "pass": true,
+  "why": [],
+  "context_tokens": 719781,
+  "output_tokens": 2324,
+  "turns": 16,
+  "wall_s": 73,
+  "cost_usd": 0.357,
+  "error": false
+ },
+ {
+  "task": "netclass",
+  "run": 1,
+  "pass": true,
+  "why": [],
+  "context_tokens": 499198,
+  "output_tokens": 2276,
+  "turns": 9,
+  "wall_s": 60,
+  "cost_usd": 0.308,
+  "error": false
+ },
+ {
+  "task": "netclass",
+  "run": 2,
+  "pass": true,
+  "why": [],
+  "context_tokens": 802005,
+  "output_tokens": 2827,
+  "turns": 13,
+  "wall_s": 135,
+  "cost_usd": 0.38,
+  "error": false
+ },
+ {
+  "task": "route_short",
+  "run": 1,
+  "pass": true,
+  "why": [],
+  "context_tokens": 939346,
+  "output_tokens": 2929,
+  "turns": 16,
+  "wall_s": 72,
+  "cost_usd": 0.413,
+  "error": false
+ },
+ {
+  "task": "route_short",
+  "run": 2,
+  "pass": true,
+  "why": [],
+  "context_tokens": 781458,
+  "output_tokens": 2374,
+  "turns": 13,
+  "wall_s": 75,
+  "cost_usd": 0.365,
+  "error": false
+ },
+ {
+  "task": "place_decap",
+  "run": 1,
+  "pass": true,
+  "why": [],
+  "context_tokens": 1071547,
+  "output_tokens": 2924,
+  "turns": 17,
+  "wall_s": 241,
+  "cost_usd": 0.429,
+  "error": false
+ },
+ {
+  "task": "place_decap",
+  "run": 2,
+  "pass": true,
+  "why": [],
+  "context_tokens": 1265433,
+  "output_tokens": 4342,
+  "turns": 19,
+  "wall_s": 124,
+  "cost_usd": 0.506,
+  "error": false
+ },
+ {
+  "task": "drc_fix",
+  "run": 1,
+  "pass": true,
+  "why": [],
+  "context_tokens": 531563,
+  "output_tokens": 2418,
+  "turns": 10,
+  "wall_s": 48,
+  "cost_usd": 0.293,
+  "error": false
+ },
+ {
+  "task": "drc_fix",
+  "run": 2,
+  "pass": true,
+  "why": [],
+  "context_tokens": 463215,
+  "output_tokens": 1488,
+  "turns": 9,
+  "wall_s": 38,
+  "cost_usd": 0.266,
+  "error": false
+ }
+]

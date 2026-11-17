@@ -220,11 +220,13 @@ def design_files(project):
 
 
 def project_properties(project, cfg):
-    """hazardous / fast / machine_assembly from the project files; "review" (an independent
-    reviewer at stages 2, 5 and 6) when the board is hazardous or fast, or when boardwright.json
-    has "reviewer": true (set it when the main session does not run on the strongest model)."""
+    """hazardous / fast / machine_assembly from the project files; "review": the independent
+    reviewer (gate-reviewer, on the strongest model) checks the gated stages before they count.
+    Cheaper models do the work and the strongest one verifies it, so review is on by default;
+    "reviewer": false in boardwright.json turns it off, except on hazardous or fast boards."""
     props = _base_properties(project, cfg)
-    if props & {"hazardous", "fast"} or (isinstance(cfg, dict) and cfg.get("reviewer") is True):
+    off = isinstance(cfg, dict) and cfg.get("reviewer") is False
+    if props & {"hazardous", "fast"} or not off:
         props.add("review")
     return props
 

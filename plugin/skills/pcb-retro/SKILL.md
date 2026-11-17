@@ -1,6 +1,7 @@
 ---
 name: pcb-retro
 description: After a board - look back at what cost time or went wrong in this project and propose concrete improvements to the pipeline
+model: sonnet
 disable-model-invocation: true
 allowed-tools: Write(reports/**), Edit(reports/**)
 ---

@@ -15,8 +15,12 @@ Use the script that answers the question. Do not page through tool listings or o
 | Do the gates pass? What failed? | `python scripts/run_gates.py . --no-export` (prints errors grouped by type) | opening `drc.json` |
 | Is the barrier intact? EMC geometry? | `barrier_check.py`, `emc_geometry.py` | measuring pad by pad |
 | Are the block rules met (decoupling distance, protection parts at connectors, crystal load, I2C pull-ups, track width for current, release files)? | `block_check.py` | checking part by part |
+| Where exactly is this pad, track or via, and how big is it? | `bw_edit.py . '{"find": {"kind": "pad", "ref": "U1"}}'` | parsing the board file, or writing a parser |
+| Change the board (move, rotate, set width, add or delete tracks and vias, net class, rule, refill) | one `bw_edit.py` call with every op in a list; it answers with the new DRC difference | many small tool calls, then a separate DRC |
+| Put a capacitor next to a pin | `bw_edit.py . '{"place": {"ref": "C5", "near": "U1.17", "within": 2}}'` | trying positions by hand |
+| Route ordinary nets (LEDs, pull-ups, slow signals) | `bw_edit.py . '{"route": ["/LED1", "/SDA"]}'` | writing a router; drawing every segment by hand |
 
-`board_digest.py`, `barrier_check.py`, `emc_geometry.py` and `block_check.py` need KiCad's bundled Python.
+`board_digest.py`, `bw_edit.py`, `barrier_check.py`, `emc_geometry.py` and `block_check.py` read the board with KiCad's own Python; they find it and restart under it by themselves, so run them with plain `python`. Never search the disk for KiCad's Python. `bw_edit.py` edits the board file, so KiCad must not have it open; when it does, edit with the `kicad-live` tools (`bw_edit.py ... --dry-run` lists a route's segments for `pcb_add_tracks`).
 
 ## Datasheets: read pages, not files
 

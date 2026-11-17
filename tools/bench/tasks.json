@@ -1,0 +1,136 @@
+{
+  "_about": "Benchmark tasks on a copy of examples/usb-sensor-test. 'prep' changes the copy before the run (prep.py), 'check' verifies the result (check.py). Prompts say what to do, never how.",
+  "tasks": [
+    {
+      "id": "rotate_holes",
+      "prompt": "Rotate the four mounting holes H1, H2, H3 and H4 to 45 degrees, each in place (do not move them). Save the board. KiCad is not running; work on the files in this folder.",
+      "prep": [],
+      "check": {
+        "pose": [
+          {
+            "ref": "H1",
+            "x": 103.5,
+            "y": 103.5,
+            "rot": 45
+          },
+          {
+            "ref": "H2",
+            "x": 126.5,
+            "y": 103.5,
+            "rot": 45
+          },
+          {
+            "ref": "H3",
+            "x": 103.5,
+            "y": 136.5,
+            "rot": 45
+          },
+          {
+            "ref": "H4",
+            "x": 126.5,
+            "y": 136.5,
+            "rot": 45
+          }
+        ]
+      }
+    },
+    {
+      "id": "netclass",
+      "prompt": "Add a net class named I2C with track width 0.25 mm and clearance 0.2 mm, and assign the nets /I2C_SCL and /I2C_SDA to it, so that KiCad's DRC uses it. KiCad is not running; work on the files in this folder.",
+      "prep": [],
+      "check": {
+        "netclass": {
+          "name": "I2C",
+          "track_width": 0.25,
+          "clearance": 0.2,
+          "nets": [
+            "/I2C_SCL",
+            "/I2C_SDA"
+          ]
+        }
+      }
+    },
+    {
+      "id": "route_short",
+      "prompt": "Five nets on the board have no tracks: /LED_STATUS, /LED_STATUS_A, /LED_PWR_A, /CC1 and /CC2. Route them on the board at their net class width, with no new DRC errors. Save the board. KiCad is not running; work on the files in this folder.",
+      "prep": [
+        {
+          "unroute": [
+            "/LED_STATUS",
+            "/LED_STATUS_A",
+            "/LED_PWR_A",
+            "/CC1",
+            "/CC2"
+          ]
+        }
+      ],
+      "check": {
+        "routed": [
+          "/LED_STATUS",
+          "/LED_STATUS_A",
+          "/LED_PWR_A",
+          "/CC1",
+          "/CC2"
+        ]
+      }
+    },
+    {
+      "id": "place_decap",
+      "prompt": "C3 is a 100 nF decoupling capacitor that has been moved off the board and its tracks removed. Place it on the front, with its centre within 3 mm of the U1 pad on the same supply net as C3 pin 1, without overlapping other parts, and route it. No new DRC errors. Save the board. KiCad is not running; work on the files in this folder.",
+      "prep": [
+        {
+          "unroute_part": "C3"
+        },
+        {
+          "move": {
+            "ref": "C3",
+            "x": 140.0,
+            "y": 112.0
+          }
+        }
+      ],
+      "check": {
+        "near_pin": {
+          "ref": "C3",
+          "pad": "1",
+          "max_mm": 3.0
+        },
+        "routed_part": "C3"
+      }
+    },
+    {
+      "id": "drc_fix",
+      "prompt": "The board has new DRC errors. Run DRC, find what causes them and fix it, changing nothing else. Save the board. KiCad is not running; work on the files in this folder.",
+      "prep": [
+        {
+          "stray_track": {
+            "net": "/SWCLK",
+            "layer": "F.Cu",
+            "from": [
+              120.0,
+              118.0
+            ],
+            "to": [
+              124.0,
+              118.0
+            ],
+            "width": 0.2
+          }
+        }
+      ],
+      "check": {
+        "no_stray": {
+          "net": "/SWCLK",
+          "from": [
+            120.0,
+            118.0
+          ],
+          "to": [
+            124.0,
+            118.0
+          ]
+        }
+      }
+    }
+  ]
+}

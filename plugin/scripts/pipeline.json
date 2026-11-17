@@ -253,13 +253,26 @@
    "loop_to": "sch.draw"
   },
   {
+   "id": "sch.reviewer",
+   "stage": 4,
+   "kind": "helper",
+   "when": "review",
+   "title": "Independent second look at the schematic: pins, decoupling, enables, polarity against the parts report",
+   "needs": [
+    "sch.check",
+    "sch.erc"
+   ],
+   "run": "helper: gate-reviewer"
+  },
+  {
    "id": "sch.report",
    "stage": 4,
    "kind": "model",
    "title": "Write 04-schematic.md: ERC counts, each warning explained",
    "needs": [
     "sch.check",
-    "sch.erc"
+    "sch.erc",
+    "sch.reviewer"
    ],
    "evidence": {
     "file": "reports/04-schematic.md"
@@ -752,6 +765,34 @@
    "parallel": "stage7"
   },
   {
+   "id": "bom.reviewer",
+   "stage": 7,
+   "kind": "helper",
+   "when": "review",
+   "title": "Independent check of the cheap helpers' BOM lookups: every flagged, unverified or out-of-stock line, and three random lines",
+   "needs": [
+    "bom.scout"
+   ],
+   "run": "helper: gate-reviewer"
+  },
+  {
+   "id": "bom.lifecycle",
+   "stage": 7,
+   "kind": "script",
+   "parallel": "stage7",
+   "title": "Lifecycle of every part with an LCSC number (lifecycle_check.py): discontinued fails; flagged and unverified parts are checked by hand",
+   "needs": [
+    "bom.export"
+   ],
+   "run": "python scripts/lifecycle_check.py .",
+   "evidence": {
+    "file": "reports/lifecycle.json"
+   },
+   "invalidated_by": [
+    "sch"
+   ]
+  },
+  {
    "id": "bom.report",
    "stage": 7,
    "kind": "gate",
@@ -759,7 +800,9 @@
    "needs": [
     "bom.scout",
     "bom.handcheck",
-    "bom.assembly"
+    "bom.assembly",
+    "bom.reviewer",
+    "bom.lifecycle"
    ],
    "evidence": {
     "file_contains": [

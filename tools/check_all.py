@@ -5,8 +5,9 @@
     python tools/check_all.py --quick    skip the KiCad-dependent selftest
 
 Checks: version numbers agree; every Python file compiles; pyflakes (if installed);
-installer syntax; the add-on's tests (fake Claude Code, no account needed); the add-on
-build; the plugin selftest on a copy of examples/usb-sensor-test (needs KiCad 9/10);
+installer syntax; the add-on's tests (fake Claude Code, no account needed); the safety,
+lifecycle and editing tests (history, lock, bw_edit, router, routing plan, fab rules); the
+tool server for other AI agents; the add-on build; the plugin selftest on a copy of examples/usb-sensor-test (needs KiCad 9/10);
 `claude plugin validate` (if Claude Code is installed). Exit 0 when everything that
 ran passed. Standard library only.
 """
@@ -74,6 +75,16 @@ def main() -> int:
                                    "$null=[scriptblock]::Create((Get-Content -Raw install/install.ps1))"])
     run("add-on tests (fake Claude Code)", [py, "kicad-addon/tests/test_core.py"])
     run("safety, EMC and high-speed checks (planted faults)", [py, "plugin/tests/test_safety.py"])
+    run("lifecycle check (fake LCSC answers)", [py, "plugin/tests/test_lifecycle.py"])
+    run("history, lock, edits, router, routing plan, fab rules", [py, "plugin/tests/test_editing.py"])
+    if not QUICK:
+        import tempfile
+        tmp = Path(tempfile.mkdtemp(prefix="bw-mcp-")) / "usb-sensor-test"
+        shutil.copytree(ROOT / "examples/usb-sensor-test", tmp, ignore=shutil.ignore_patterns("fab"))
+        subprocess.run([py, str(ROOT / "plugin/scripts/init_project.py"), str(tmp), "--update-scripts"],
+                       capture_output=True)
+        run("tool server for other AI agents (MCP)", [py, "plugin/tests/test_mcp.py", str(tmp)])
+        shutil.rmtree(tmp.parent, ignore_errors=True)
     run("add-on build", [py, "kicad-addon/build.py"])
     if QUICK:
         skip("plugin selftest on the example board", "--quick")

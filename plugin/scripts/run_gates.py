@@ -401,6 +401,43 @@ def jlc_assembly_files(fab, stem, bom, pos):
             {jbom.name, jcpl.name})
 
 
+def fab_up_to_date(project):
+    """Fail when any file in fab/ is older than the newest board or schematic file: the factory
+    files would not match the design. Only those two are compared: the factory files are made from
+    them, and KiCad rewrites the .kicad_pro just from opening the project."""
+    name = "Fab files up to date"
+    fab = project / "fab"
+    skip = {"fab", "reports", "scripts", ".git", ".boardwright", ".history"}
+    try:
+        fab_files = [] if not fab.is_dir() else [
+            (f.stat().st_mtime, f) for f in fab.rglob("*")
+            if f.is_file() and not f.name.startswith(".")]
+        if not fab_files:
+            return result(name, "note", "no fab files yet")
+        design = []
+        for root, dirs, files in os.walk(project):
+            dirs[:] = [d for d in dirs if d not in skip and not d.endswith("-backups")]
+            for fn in files:
+                if fn.endswith((".kicad_sch", ".kicad_pcb")):
+                    p = Path(root) / fn
+                    design.append((p.stat().st_mtime, p))
+    except OSError as exc:
+        return result(name, "tool-error", f"cannot read file times: {exc}"[:200])
+    if not design:
+        return result(name, "note", "no design files found")
+    newest_t, newest = max(design, key=lambda x: x[0])
+    older = [(t, f) for t, f in fab_files if t < newest_t]
+    if older:
+        oldest = min(older, key=lambda x: x[0])[1]
+        return result(name, "FAIL",
+                      f"{len(older)} of {len(fab_files)} fab files are older than the design. "
+                      f"Oldest: {oldest.relative_to(project).as_posix()}. "
+                      f"Newer design file: {newest.relative_to(project).as_posix()}. "
+                      f"Run python scripts/run_gates.py . again to make fresh files")
+    return result(name, "pass", f"{len(fab_files)} fab files are newer than the newest design file "
+                                f"({newest.relative_to(project).as_posix()})")
+
+
 def write_reports(project, cli, results, detail=()):
     reports = project / "reports"
     lines = ["# Gate results", "", "| Gate | Status | Detail |", "| --- | --- | --- |"]
@@ -464,6 +501,8 @@ def main():
     if export and all(r["status"] in ("pass", "note", "not run") for r in results):
         print("Exports: refill check, Gerbers, drill, placement, BOM, schematic PDF")
         results += export_all(cli, project, stem, sch, pcb, reports)
+    if not sch_only:              # after the export, so a fresh export passes
+        results.append(fab_up_to_date(project))
 
     specs = [("ERC", "erc.json", False)] + ([] if sch_only else [("DRC", "drc.json", True)])
     if any(r["name"] == "DRC after zone refill" for r in results):

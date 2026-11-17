@@ -49,6 +49,8 @@ Other commands:
 | `/boardwright:pcb-gates` | Runs every check and changes nothing |
 | `/boardwright:pcb-review` | Reviews a board you already have and writes a report |
 | `/boardwright:pcb-auto <idea>` | Designs a whole board with as few stops as possible |
+| `/boardwright:pcb-undo` | Lists the saved steps and goes back to an earlier one |
+| `/boardwright:pcb-plan on` | Optional, for bigger boards: Claude proposes where tracks may run, and only you approve |
 
 ## The eight stages
 
@@ -70,6 +72,17 @@ Other commands:
 - **Radio interference (EMC).** It looks for common layout mistakes that make a board noisy, and lists the frequencies to test first.
 - **Fast signals.** For USB and other fast connections, it checks track lengths, the layer changes and the estimated impedance.
 - **Power.** It estimates whether each power supply has enough small capacitors near the chips.
+- **Factory limits.** Profiles for JLCPCB, PCBWay, OSH Park and Eurocircuits. Each value comes from the factory's own page, with the page and date. A value the factory does not publish is marked "unverified".
+- **Out-of-date factory files.** The release check fails if any file in `fab/` is older than the board or circuit drawing.
+- **Part lifecycle.** For parts with an LCSC number, it reads LCSC's public product data and fails on a discontinued part. This is the seller's status, not the maker's.
+
+## Undo
+
+After every edit, Boardwright saves a snapshot of your design files. It is kept out of your way, in a hidden place inside git (or in a hidden folder if your board is not in a git repository). Type `/boardwright:pcb-undo` to see the steps and go back to one. Before it goes back, it saves the current state, so you can undo the undo. Only one Claude session can edit a board at a time, so two windows cannot overwrite each other.
+
+## Cheap models do the work, the strongest one checks it
+
+Most commands run on the cheaper Sonnet or Haiku models. At the end of most stages a helper on the strongest model, Opus, checks the work before the stage counts. Details: [plugin/README.md](plugin/README.md).
 
 New to these words? See the [glossary](docs/GLOSSARY.md).
 
