@@ -20,6 +20,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+# A Windows console or CI log may not be UTF-8: never crash while printing a check's output.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 ROOT = Path(__file__).resolve().parent.parent
 QUICK = "--quick" in sys.argv
 results: list = []
@@ -37,6 +44,9 @@ def run(name: str, cmd: list, cwd: Path = ROOT, ok_codes=(0,), timeout: int = 90
     print(f"[{'ok' if ok else 'FAIL'}] {name}")
     if not ok:
         print("    " + "\n    ".join(out[-15:]))
+        if os.environ.get("GITHUB_ACTIONS"):
+            # an annotation: readable from the run's page and the API without signing in
+            print(f"::error title={name}::" + " | ".join(out[-12:]).replace("%", "%25")[:3000])
     return ok
 
 

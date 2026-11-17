@@ -16,6 +16,11 @@ import subprocess
 import sys
 import tempfile
 import time
+
+# A runner (GitHub Actions) may have no git name or e-mail: give the commits these tests make one.
+for _k, _v in (("GIT_AUTHOR_NAME", "test"), ("GIT_AUTHOR_EMAIL", "test@example.invalid"),
+               ("GIT_COMMITTER_NAME", "test"), ("GIT_COMMITTER_EMAIL", "test@example.invalid")):
+    os.environ.setdefault(_k, _v)
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent

@@ -1,6 +1,6 @@
 ---
 name: pcb-mechanic
-description: Mechanical KiCad work from a complete brief: pushes given track and via coordinates, runs DRC loops and gate scripts, cleans silkscreen. Makes no design decisions.
+description: "Mechanical KiCad work from a complete brief: pushes given track and via coordinates, runs DRC loops and gate scripts, cleans silkscreen. Makes no design decisions."
 model: sonnet
 ---
 

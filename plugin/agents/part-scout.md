@@ -1,6 +1,6 @@
 ---
 name: part-scout
-description: Stage 7 BOM lookups: stock, price and lifecycle for a batch of about 15 part numbers from the supplier's site. Never substitutes parts.
+description: "Stage 7 BOM lookups: stock, price and lifecycle for a batch of about 15 part numbers from the supplier's site. Never substitutes parts."
 model: haiku
 ---
 
