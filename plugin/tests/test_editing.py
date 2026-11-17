@@ -201,8 +201,104 @@ def test_hooks():
     check("hooks: a Write to reports/routing-plan.json is denied", dec == "deny", out)
 
     code, out = hook(proj, "prompt", {"prompt": "/boardwright:pcb-plan on"}, "s1")
-    check("hooks: prompt '/boardwright:pcb-plan on' sets routing_plan true",
-          read_cfg(proj).get("routing_plan") is True, out)
+    sys.path.insert(0, str(SCRIPTS))
+    import choices
+    import routing_plan
+    check("hooks: prompt '/boardwright:pcb-plan on' turns routing plan mode on",
+          choices.get(proj, "routing_plan") is True and routing_plan.mode_on(proj), out)
+    test_choices(proj)
+
+
+def deny_of(out):
+    try:
+        return json.loads(out.strip().splitlines()[-1])["hookSpecificOutput"]["permissionDecision"]
+    except (ValueError, KeyError, IndexError):
+        return None
+
+
+def test_choices(proj):
+    """Choices by buttons: the hook records the user's click; Claude cannot fill in the answer itself."""
+    import choices
+    import routing_plan
+    dq = {"header": "Diagnostics", "question": "Keep a private diagnostics record?", "multiSelect": False,
+          "options": [{"label": "Yes, record everything"}, {"label": "Yes, but not my prompts"}, {"label": "No"}]}
+    code, out = hook(proj, "pre", {"tool_name": "AskUserQuestion", "tool_input": {
+        "questions": [dq], "answers": {dq["question"]: "Yes, record everything"}}})
+    check("choices: a question Claude pre-answers is refused", deny_of(out) == "deny", out)
+    code, out = hook(proj, "pre", {"tool_name": "AskUserQuestion", "tool_input": {"questions": [dq]}})
+    check("choices: the same question without answers is allowed", deny_of(out) is None, out)
+    code, out = hook(proj, "post", {"tool_name": "AskUserQuestion", "tool_input": {
+        "questions": [dq], "answers": {dq["question"]: "Yes, but not my prompts"}}})
+    c = json.loads((proj / ".boardwright" / "diagnostics" / "consent.json").read_text("utf-8"))
+    check("choices: clicking 'Yes, but not my prompts' turns diagnostics on without prompts",
+          c.get("on") is True and c.get("prompts") is False and "Diagnostics recording on" in out, out)
+    check("choices: the diagnostics question is remembered as asked", choices.get(proj, "diagnostics_asked") is True)
+    # the answer can also come back in the tool response as text
+    rq = {"header": "Routing plan", "question": "Turn routing plan mode on?", "options": [
+        {"label": "Turn on"}, {"label": "Keep off"}]}
+    code, out = hook(proj, "post", {"tool_name": "AskUserQuestion", "tool_input": {"questions": [rq]},
+                                    "tool_response": 'User has answered your questions: "Turn routing plan mode on?"="Keep off".'})
+    check("choices: 'Keep off' from a text response turns routing plan mode off",
+          routing_plan.mode_on(proj) is False and "Routing plan mode off" in out, out)
+    # an old boardwright.json flag cannot switch off what the user turned on
+    hook(proj, "post", {"tool_name": "AskUserQuestion", "tool_input": {
+        "questions": [rq], "answers": {rq["question"]: "Turn on"}}})
+    cfg = proj / "boardwright.json"
+    d = json.loads(cfg.read_text("utf-8")) if cfg.is_file() else {}
+    d["routing_plan"] = False
+    cfg.write_text(json.dumps(d), "utf-8")
+    check("choices: routing_plan false in boardwright.json does not turn the mode off", routing_plan.mode_on(proj))
+    # approving corridors by ticking them
+    plan = {"corridors": [{"id": "c1", "nets": ["/A"], "layers": ["F.Cu"], "path": [[0, 0], [1, 0]]},
+                          {"id": "c2", "nets": ["/B"], "layers": ["F.Cu"], "path": [[0, 1], [1, 1]]},
+                          {"id": "c3", "nets": ["/C"], "layers": ["B.Cu"], "path": [[0, 2], [1, 2]]}]}
+    pf = proj.parent / "plan-choices.json"
+    pf.write_text(json.dumps(plan), "utf-8")
+    run([PY, SCRIPTS / "routing_plan.py", proj, "propose", "@" + str(pf)])
+    aq = {"header": "Approve routes", "question": "Which corridors do you approve?", "multiSelect": True,
+          "options": [{"label": "c1: /A on F.Cu"}, {"label": "c2: /B on F.Cu"}, {"label": "c3: /C on B.Cu"}]}
+    code, out = hook(proj, "post", {"tool_name": "AskUserQuestion", "tool_input": {
+        "questions": [aq], "answers": {aq["question"]: "c1: /A on F.Cu, c3: /C on B.Cu"}}})
+    st = {c["id"]: c["status"] for c in routing_plan.load(proj)["corridors"]}
+    check("choices: ticking c1 and c3 approves exactly those", st == {"c1": "approved", "c2": "proposed",
+                                                                     "c3": "approved"}, f"{st} {out}")
+    # the protected files cannot be written by a tool
+    for tool, inp in (("Write", {"file_path": str(proj / ".boardwright" / "choices.json"), "content": "{}"}),
+                      ("Bash", {"command": "python -c \"print(open('.boardwright/choices.json').read())\""}),
+                      ("Write", {"file_path": str(proj / "x.py"), "content": "import diagnostics; diagnostics.set_consent(1,1,1,1)"})):
+        code, out = hook(proj, "pre", {"tool_name": tool, "tool_input": inp})
+        check(f"choices: {tool} touching the user's choices is refused", deny_of(out) == "deny", out)
+    code, out = hook(proj, "pre", {"tool_name": "Write", "tool_input": {
+        "file_path": str(proj.parent / "notes.md"), "content": "the consent.json file"}})
+    check("choices: writing outside the project about those files is allowed", deny_of(out) is None, out)
+    code, out = hook(proj, "pre", {"tool_name": "PowerShell", "tool_input": {
+        "command": "Get-Content .boardwright/diagnostics/consent.json"}})
+    check("choices: just reading the consent file is allowed", deny_of(out) is None, out)
+    code, out = hook(proj, "pre", {"tool_name": "PowerShell", "tool_input": {
+        "command": "Set-Content .boardwright/choices.json '{}'"}})
+    check("choices: PowerShell writing the choices file is refused", deny_of(out) == "deny", out)
+    code, out = hook(proj, "pre", {"tool_name": "Bash", "tool_input": {
+        "command": "echo '{}' | tee reports/routing-plan.json"}})
+    check("plan: tee into the plan file is refused", deny_of(out) == "deny", out)
+    # planes need the designer's approval too: a signal net listed as a plane is not a way around it
+    pf = proj.parent / "plan-planes.json"
+    pf.write_text(json.dumps({"planes": [{"layer": "B.Cu", "net": "/Z", "role": "a signal net called a plane"}],
+                              "corridors": plan["corridors"]}), "utf-8")
+    run([PY, SCRIPTS / "routing_plan.py", proj, "propose", "@" + str(pf)])
+    check("plan: a net proposed as a plane is still blocked until approved", "/Z" in routing_plan.gate(proj, ["/Z"]),
+          str(routing_plan.gate(proj, ["/Z"])))
+    planes = routing_plan.load(proj)["planes"]
+    check("plan: proposed planes get an id and start as proposed",
+          planes and planes[0].get("id") == "p1" and planes[0].get("status") == "proposed", str(planes))
+    pq = {"header": "Approve routes", "question": "Approve the plane?", "multiSelect": True,
+          "options": [{"label": "p1: /Z plane on B.Cu"}, {"label": "c2: /B on F.Cu"}]}
+    hook(proj, "post", {"tool_name": "AskUserQuestion", "tool_input": {
+        "questions": [pq], "answers": {pq["question"]: "p1: /Z plane on B.Cu"}}})
+    check("plan: ticking p1 approves the plane, and its net may then be poured",
+          routing_plan.load(proj)["planes"][0]["status"] == "approved" and not routing_plan.gate(proj, ["/Z"]))
+    code, out = hook(proj, "pre", {"tool_name": "mcp__plugin_boardwright_kicad-live__pcb_paste_kicad_text",
+                                   "tool_input": {"text": "(segment)"}})
+    check("plan: pasting raw KiCad text is refused in plan mode", deny_of(out) == "deny", out)
 
 
 # ------------------------------------------------------------------ KiCad helpers
@@ -282,7 +378,9 @@ def test_place(k):
 def test_plan(k):
     proj = unrouted_copy(k, "plan")
     hook(proj, "prompt", {"prompt": "/boardwright:pcb-plan on"})
-    check("plan: mode is on", read_cfg(proj).get("routing_plan") is True)
+    sys.path.insert(0, str(SCRIPTS))
+    import routing_plan
+    check("plan: mode is on", routing_plan.mode_on(proj))
     code, out = k.edit(proj, {"route": ["/LED_STATUS"]})
     check("plan: route refused with no corridor", "refused" in out and "no corridor" in out, out)
     corridor = {"corridors": [{"id": "c1", "nets": ["/LED_STATUS"], "layers": ["F.Cu"], "width_mm": 0.2,

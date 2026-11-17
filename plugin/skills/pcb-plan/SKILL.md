@@ -19,4 +19,4 @@ How to propose a plan (mode on):
 1. Read the stackup and the net classes. Choose a reference plane for each signal layer.
 2. Group the nets into corridors: nets that run together, with one layer (or two, with the via places in the path), a width from the net class or the impedance target, and a path of points from pads to pads.
 3. Write the plan as JSON and run `python scripts/routing_plan.py . propose @plan.json`, then `python scripts/routing_plan.py . draw` (KiCad closed) so the corridors show on the User.4 layer.
-4. Tell the designer how to look (turn on User.4 in KiCad, or read `reports/routing-plan.md`) and how to answer: `/boardwright:pcb-plan approve c1 c2`, `reject c3`, `approve all`. Then stop.
+4. Tell the designer how to look (turn on User.4 in KiCad, or read `reports/routing-plan.md`), then ask the `Approve routes` question with buttons (see "Asking the user" in the skill). The plugin records what they tick. Route only what the plugin's note says is approved.

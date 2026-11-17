@@ -50,8 +50,10 @@ Other commands:
 | `/boardwright:pcb-review` | Reviews a board you already have and writes a report |
 | `/boardwright:pcb-auto <idea>` | Designs a whole board with as few stops as possible |
 | `/boardwright:pcb-undo` | Lists the saved steps and goes back to an earlier one |
-| `/boardwright:pcb-plan on` | Optional, for bigger boards: Claude proposes where tracks may run, and only you approve |
-| `/boardwright:pcb-diagnostics on` | Optional: keeps a private record of how the work went, so you can send a report back if you want |
+| `/boardwright:pcb-plan` | Optional, for bigger boards: Claude proposes where tracks may run, and only you approve |
+| `/boardwright:pcb-diagnostics` | Optional: keeps a private record of how the work went, so you can send a report back if you want |
+
+You rarely need to type these. When a choice is yours (guided or express, routing plan mode, which routes to approve, diagnostics), Claude asks with buttons and you click. The commands are there if you prefer typing.
 
 ## The eight stages
 
@@ -87,7 +89,7 @@ Most commands run on the cheaper Sonnet or Haiku models. At the end of most stag
 
 ## Diagnostics (optional, off by default)
 
-If you want to help improve Boardwright, type `/boardwright:pcb-diagnostics on`. From then on it keeps a record in your project folder of how the work goes: your prompts (or only how many, with `on without prompts`), which models ran and what they cost, errors and failed checks. Keys, e-mail addresses and your user name are removed first. Nothing is sent: `/boardwright:pcb-diagnostics export` makes a zip, you read it, and you send it yourself if you want to. Turn it off with `/boardwright:pcb-diagnostics off`. Details: [privacy and diagnostics](docs/PRIVACY.md).
+Once per project, Claude asks with buttons whether you want this (or type `/boardwright:pcb-diagnostics on`). If you say yes, from then on it keeps a record in your project folder of how the work goes: your prompts (or only how many, with `on without prompts`), which models ran and what they cost, errors and failed checks. Keys, e-mail addresses and your user name are removed first. Nothing is sent: `/boardwright:pcb-diagnostics export` makes a zip, you read it, and you send it yourself if you want to. Turn it off with `/boardwright:pcb-diagnostics off`. Details: [privacy and diagnostics](docs/PRIVACY.md).
 
 New to these words? See the [glossary](docs/GLOSSARY.md).
 

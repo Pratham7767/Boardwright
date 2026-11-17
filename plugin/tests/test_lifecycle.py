@@ -42,9 +42,14 @@ def main() -> int:
     answers["C12345"] = ans("normal", True)
     rows = lc.run(parts, {}, date(2026, 1, 1), fetcher=lambda k: answers[k], sleep=lambda s: None)
     check("nrnd is listed, not failed (exit 0)", lc.exit_code(rows) == 0)
+    data = lc.report_data(rows)
+    check("json pass is true with only nrnd (agrees with exit 0)", data["pass"] is True, str(data["pass"]))
+    check("check_by_hand lists the nrnd and the unverified part",
+          sorted(h["status"] for h in data["check_by_hand"]) == ["nrnd", "unverified"], str(data["check_by_hand"]))
     answers["C12345"] = ans("stop_product", True)
     rows = lc.run(parts, {}, date(2026, 1, 1), fetcher=lambda k: answers[k], sleep=lambda s: None)
     check("exit 1 with eol", lc.exit_code(rows) == 1)
+    check("json pass is false with eol", lc.report_data(rows)["pass"] is False)
 
     cache = {"C12345": {"date": "2026-01-01", "answer": ans("normal", False)}}
     boom = lambda k: (_ for _ in ()).throw(AssertionError("network used"))  # noqa: E731

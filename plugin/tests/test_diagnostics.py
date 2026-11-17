@@ -73,7 +73,7 @@ def main():
     iters = [{"input_tokens": 1000, "output_tokens": 200, "cache_read_input_tokens": 5000,
               "cache_creation_input_tokens": 400, "cache_creation": {"ephemeral_5m_input_tokens": 100, "ephemeral_1h_input_tokens": 300}},
              {"input_tokens": 500, "output_tokens": 100, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0}]
-    opus_usage = {"input_tokens": 9999, "output_tokens": 9999, "iterations": iters, "inference_geo": "us", "speed": "standard"}
+    opus_usage = {"input_tokens": 9999, "output_tokens": 9999, "iterations": iters, "inference_geo": "global", "speed": "standard"}
     lines = [
         {"type": "user", "timestamp": "2026-11-17T09:00:00.000Z", "message": {"role": "user", "content": "OLD prompt before consent"}},
         dict(asst("msg_old", "claude-opus-5-5", {"input_tokens": 777777, "output_tokens": 1}, 0), timestamp="2026-11-17T09:30:00.000Z"),
@@ -150,6 +150,70 @@ def main():
           and "[redacted:bearer]" in D.redact("Authorization: Bearer abc.def")
           and "[redacted:private-key]" in D.redact("-----BEGIN RSA PRIVATE KEY-----\nxx\n-----END RSA PRIVATE KEY-----"))
 
+    # more secret kinds
+    rd = D.redact
+    check("openai-style keys (incl. sk-proj-)", rd("sk-proj-" + "aB3_-" * 8) == "[redacted:openai-key]"
+          and rd("key sk-" + "A" * 24 + " end") == "key [redacted:openai-key] end")
+    check("anthropic key still its own kind", rd("sk-ant-api03-" + "x" * 30) == "[redacted:anthropic-key]")
+    check("firecrawl key", rd("fc-" + "a1" * 12) == "[redacted:firecrawl-key]")
+    check("google key", rd("AIza" + "Sy" * 17) == "[redacted:google-key]")
+    check("slack token", rd("xoxb-123456789012-abcdefABCDEF") == "[redacted:slack-token]")
+    jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abcdefgh12345678"
+    check("jwt", rd("t=" + jwt) == "t=[redacted:jwt]" or "[redacted:jwt]" in rd("see " + jwt), rd(jwt))
+    check("key=value keeps the key, hides the value",
+          rd("api_key=abc123") == "api_key=[redacted:secret]" and rd("secret: s3cr3t!") == "secret: [redacted:secret]"
+          and rd("TOKEN = xyz") == "TOKEN = [redacted:secret]" and rd("pwd=1") == "pwd=[redacted:secret]"
+          and "hunter2" not in rd("auth=hunter2") and "hunter2" not in rd("passwd: hunter2"), rd("api_key=abc123"))
+    check("'password <value>'", rd("the password hunter2 was") == "the [redacted:password] was", rd("the password hunter2 was"))
+    check("harmless words stay", rd("the tokens were fine, authority") == "the tokens were fine, authority")
+    saved = D._PATTERNS
+    old_git = D._git_config
+    D._git_config = lambda k: {"user.name": "Zebediah Quux", "user.email": "zq@corp.test"}.get(k, "")
+    try:
+        D._PATTERNS = D._build_patterns()
+        out = rd("by Zebediah Quux <zq@corp.test> and zq@corp.test")
+        check("git user name and e-mail redacted", "Zebediah" not in out and "zq@corp" not in out, out)
+        D._git_config = lambda k: ""
+        D._PATTERNS = D._build_patterns()
+        check("no git config: no crash", rd("Zebediah Quux") == "Zebediah Quux")
+    finally:
+        D._git_config, D._PATTERNS = old_git, saved
+
+    # fast mode / region pricing: tokens counted, cost unknown
+    fp = tmp / "fastproj"
+    fp.mkdir()
+    ftr = tdir / "fast-1.jsonl"
+    jl(ftr, [asst("f1", "claude-sonnet-5-5", {"input_tokens": 1000, "output_tokens": 500}, 21),
+             asst("f2", "claude-sonnet-5-5", {"input_tokens": 2000, "output_tokens": 100, "speed": "fast"}, 22),
+             asst("f3", "claude-opus-5-5", {"input_tokens": 3000, "output_tokens": 100, "inference_geo": "us"}, 23),
+             asst("f4", "claude-opus-5-5", {"input_tokens": 4000, "output_tokens": 100, "inference_geo": "global", "speed": "standard"}, 24)])
+    D.set_consent(fp, True, False, "x", since=since)
+    D.record(fp, "fast-1", ftr)
+    D.cmd_report(fp)
+    RF = json.loads((fp / ".boardwright" / "diagnostics" / "report.json").read_text("utf-8"))
+    mdf = (fp / ".boardwright" / "diagnostics" / "report.md").read_text("utf-8")
+    check("fast / US requests counted, tokens kept", RF["totals"]["nonstandard_requests"] == 2 and RF["totals"]["input"] == 10000,
+          str(RF["totals"]))
+    check("fast / US cost unknown, not guessed", RF["models"]["claude-sonnet-5-5"]["cost_usd"] is None
+          and RF["models"]["claude-opus-5-5"]["cost_usd"] is None and RF["totals"]["cost_estimate_usd"] is None)
+    check("report lists the not-estimated requests",
+          "2 requests in fast mode / US-only inference: cost not estimated (different price)" in mdf)
+    check("standard / global requests still priced", RF["models"]["claude-sonnet-5-5"]["nonstandard_requests"] == 1
+          and not D.nonstandard({"geo": "global", "speed": "standard"}) and not D.nonstandard({}))
+
+    # report rewrite keeps the summary Claude wrote
+    rp0 = d / "report.md"
+    mdtxt = rp0.read_text("utf-8")
+    check("fresh report has the placeholder", "_Not written yet._" in mdtxt)
+    mine = "We routed the board. It was slow at the DRC step.\nThe cost was small."
+    head, tail = mdtxt.split("## Summary in plain words", 1)
+    tail = tail[tail.index("Generated "):]
+    rp0.write_text(head + "## Summary in plain words\n\n" + mine + "\n\n" + tail, "utf-8")
+    D.cmd_report(proj)
+    after = rp0.read_text("utf-8")
+    check("report keeps Claude's summary", mine in after and "_Not written yet._" not in after and "<!-- CLAUDE" not in after)
+    check("kept summary appears once, rest regenerated", after.count("We routed the board") == 1 and "## Totals" in after)
+
     # incremental
     size1 = tr.stat().st_size
     state1 = json.loads((d / "state.json").read_text())
@@ -191,7 +255,11 @@ def main():
     D.set_consent(proj, True, False, "yes but not my prompts", since=since)
     D.record(proj, "sess-1", tr)
     D.cmd_report(proj)
+    sm = d / "report.md"
+    h, t_ = sm.read_text("utf-8").split("## Summary in plain words", 1)
+    sm.write_text(h + "## Summary in plain words\n\nSummary written by Claude.\n\n" + t_[t_.index("Generated "):], "utf-8")
     D.cmd_export(proj)
+    check("export keeps the summary", "Summary written by Claude." in sm.read_text("utf-8"))
     text = all_text(d)
     S4 = json.loads((d / "sessions" / "sess-1.json").read_text("utf-8"))
     check("prompts false: count and lengths only", len(S4["prompts"]) == 3 and all(p["text"] is None and p["chars"] > 0 for p in S4["prompts"]))

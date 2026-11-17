@@ -6,7 +6,7 @@ There is one optional feature that keeps a record of how your work goes, so you 
 
 ## Turning it on and off
 
-Type one of these in Claude Code, in your project folder:
+Once per project, Claude asks with three buttons: **Yes, record everything**, **Yes, but not my prompts**, or **No**. Your click is recorded by the plugin itself; Claude cannot answer for you (the plugin refuses a question whose answer Claude fills in). You can also type one of these in Claude Code, in your project folder:
 
 | You type | What happens |
 |---|---|
@@ -16,7 +16,7 @@ Type one of these in Claude Code, in your project folder:
 | `/boardwright:pcb-diagnostics delete` | Removes everything recorded (asks first) |
 | `/boardwright:pcb-diagnostics status` | Shows what is recorded and how much |
 
-Only you can turn it on. The plugin records your decision from the words you typed; Claude has no command for it, and the plugin refuses if Claude tries to change the setting.
+Only you can turn it on. The plugin records your decision from the words you typed or the button you clicked; Claude has no command for it, and the plugin refuses when Claude tries to change the setting with its tools. These guards stop accidents and ordinary attempts; a program written on purpose to get around them could still change the file, which is why Boardwright's rules forbid it and the strong-model reviewer checks for it.
 
 ## What is recorded
 

@@ -61,7 +61,8 @@ def profiles() -> dict:
 def copper_layers(pro: dict, pcb: Path) -> int:
     try:
         text = pcb.read_text("utf-8", errors="replace")
-        return len(set(re.findall(r'\(\d+\s+"((?:F|B|In\d+)\.Cu)"\s+signal', text))) or 2
+        # every copper layer of the layer table counts, whatever its type (signal, power, mixed, jumper)
+        return len(set(re.findall(r'\(\d+\s+"((?:F|B|In\d+)\.Cu)"\s+\w+', text))) or 2
     except OSError:
         return 2
 

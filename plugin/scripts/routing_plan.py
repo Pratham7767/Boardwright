@@ -5,7 +5,8 @@
     python scripts/routing_plan.py . show                            the plan as a table
     python scripts/routing_plan.py . verify               is every track of a planned net inside its corridor?
 
-A mode the designer chooses: "routing_plan": true in boardwright.json. Off by default.
+A mode the designer chooses, off by default: Claude asks with buttons, or the designer types
+`/boardwright:pcb-plan on`. The choice is kept in .boardwright/choices.json, which only the plugin's hooks write.
 
 plan.json: {"planes": [{"layer": "In1.Cu", "net": "/GND", "role": "reference for F.Cu"}],
             "corridors": [{"id": "c1", "nets": ["/I2C_SDA", "/I2C_SCL"], "layers": ["F.Cu"],
@@ -49,6 +50,12 @@ def plan_path(proj: Path) -> Path:
 
 
 def mode_on(proj: Path) -> bool:
+    """The user's choice, kept in .boardwright/choices.json where only the user's own answer can change it.
+    An older project's "routing_plan": true in boardwright.json still counts as on (turning the mode on is
+    never a risk); a false there cannot switch off what the user turned on."""
+    import choices
+    if choices.get(proj, "routing_plan") is not None:
+        return bool(choices.get(proj, "routing_plan"))
     try:
         return bool(load_config(proj).get("routing_plan"))
     except Exception:
@@ -72,8 +79,9 @@ def save(proj: Path, plan: dict) -> None:
           "Proposed by Claude. Only the designer approves: `/boardwright:pcb-plan approve c1 c2`, `reject c3`, "
           "`approve all`. Corridors are drawn on the User.4 layer.", ""]
     if plan.get("planes"):
-        md += ["## Reference planes", ""] + md_table(["layer", "net", "role"],
-                                                      [[p["layer"], p["net"], p.get("role", "")] for p in plan["planes"]]) + [""]
+        md += ["## Reference planes", ""] + md_table(["id", "status", "layer", "net", "role"],
+                                                      [[p.get("id", ""), p.get("status", "proposed"), p["layer"], p["net"],
+                                                        p.get("role", "")] for p in plan["planes"]]) + [""]
     md += ["## Corridors", ""] + md_table(["id", "status", "nets", "layers", "width mm", "impedance", "why"], rows)
     if plan.get("log"):
         md += ["", "## Decisions", ""] + [f"- {l}" for l in plan["log"][-30:]]
@@ -86,9 +94,10 @@ def decide(proj: Path, words: list, said: str) -> str:
         return ""
     plan = load(proj)
     ids = [w.strip(",") for w in words[1:] if w.strip(",")]
-    known = {c["id"]: c for c in plan["corridors"]}
+    items = plan["corridors"] + plan.get("planes", [])
+    known = {c["id"]: c for c in items if c.get("id")}
     if ids == ["all"]:
-        ids = [c["id"] for c in plan["corridors"] if c["status"] == "proposed"]
+        ids = [c["id"] for c in items if c.get("id") and c.get("status") == "proposed"]
     bad = [i for i in ids if i not in known]
     status = "approved" if words[0] == "approve" else "rejected"
     stamp = time.strftime("%Y-%m-%d %H:%M")
@@ -119,10 +128,11 @@ def gate(proj: Path, nets: list) -> dict:
     if not mode_on(proj):
         return {}
     plan = load(proj)
-    plane_nets = {p.get("net") for p in plan.get("planes", [])}
+    # pours and stitching vias of a plane net are not corridor work, but only once the designer approved the plane
+    plane_nets = {p.get("net") for p in plan.get("planes", []) if p.get("status") == "approved"}
     out = {}
     for n in nets:
-        if n in plane_nets:                      # pours and stitching vias of a plane net are not corridor work
+        if n in plane_nets:
             continue
         c = corridor_for(plan, n)
         if c is None:
@@ -175,7 +185,16 @@ def cmd_propose(proj: Path, src: str) -> int:
         out.append(f"{c['id']}: {c['status']}")
     plan["corridors"] = list(old.values())
     if "planes" in new:
-        plan["planes"] = new["planes"]
+        before = {(p.get("layer"), p.get("net")): p for p in plan.get("planes", [])}
+        planes = []
+        for i, p in enumerate(new["planes"], 1):
+            p = dict(p)
+            p["id"] = f"p{i}"
+            prev = before.get((p.get("layer"), p.get("net")))
+            p["status"] = prev.get("status", "proposed") if prev else "proposed"
+            planes.append(p)
+            out.append(f"{p['id']}: {p['status']}")
+        plan["planes"] = planes
     plan["log"].append(time.strftime("%Y-%m-%d %H:%M") + " Claude proposed " + ", ".join(out))
     save(proj, plan)
     print("saved reports/routing-plan.md: " + "; ".join(out))
@@ -226,7 +245,7 @@ def cmd_draw(proj: Path) -> int:
 
 def cmd_show(proj: Path) -> int:
     plan = load(proj)
-    print(f"routing plan mode: {'on' if mode_on(proj) else 'off'} (boardwright.json routing_plan)")
+    print(f"routing plan mode: {'on' if mode_on(proj) else 'off'} (the designer's choice)")
     if not plan["corridors"]:
         print("no plan yet")
         return 0

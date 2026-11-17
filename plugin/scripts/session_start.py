@@ -57,6 +57,15 @@ def main() -> None:
     out += run(local / "status.py", proj) + [""] + run(local / "plan.py", proj)
     if len(out) > MAX_LINES:
         out = out[:MAX_LINES] + [f"... ({len(out) - MAX_LINES} more lines: python scripts/plan.py .)"]
+    try:
+        sys.path.insert(0, str(PLUGIN_SCRIPTS))
+        import choices
+        decided = (proj / ".boardwright" / "diagnostics" / "consent.json").is_file()
+        if not decided and not choices.get(proj, "diagnostics_asked"):
+            out.append("Diagnostics not decided yet: at a natural pause, ask the user once with the Diagnostics "
+                       "question (buttons) described in the skill. Never decide it yourself.")
+    except Exception:
+        pass
     if stale:
         out.append(f"Note: {len(stale)} script(s) in scripts/ differ from this plugin version ({', '.join(stale)}). "
                    "Offer the user: python \"" + str(PLUGIN_SCRIPTS / "init_project.py") + "\" . --update-scripts")

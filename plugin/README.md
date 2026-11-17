@@ -94,7 +94,7 @@ Two of the ops need a note:
 - `place` puts a part within a given distance of a pin. It avoids other parts' courtyards and other nets' copper.
 - `route` is a simple grid router. It uses the net class width and clearance, 45 and 90 degree turns, and vias. It refuses mains, hazardous and fast nets: safety domains above ES1, fast pairs, and net classes named like USB, HDMI, Ethernet, PCIe, LVDS, MIPI, DDR, HV or mains. Those are routed by hand.
 
-**Routing plan (optional, off by default).** Type `/boardwright:pcb-plan on`. Claude proposes corridors, writes them to `reports/routing-plan.md` and draws them on KiCad's User.4 layer. Only you approve, by typing `/boardwright:pcb-plan approve c1` (or `reject`, or `approve all`). A hook records your approval from what you typed, so Claude cannot approve its own plan. Nothing is routed outside an approved corridor. This is suggested for boards with 4 or more layers or more than about 60 nets.
+**Routing plan (optional, off by default).** On bigger boards Claude asks with buttons whether you want it (or type `/boardwright:pcb-plan on`). Approving routes is also a click: Claude lists the corridors as tick boxes. Claude proposes corridors, writes them to `reports/routing-plan.md` and draws them on KiCad's User.4 layer. Only you approve, by typing `/boardwright:pcb-plan approve c1` (or `reject`, or `approve all`). A hook records your approval from what you typed, so Claude cannot approve its own plan. Nothing is routed outside an approved corridor. This is suggested for boards with 4 or more layers or more than about 60 nets.
 
 **Boards that plug into the wall**
 

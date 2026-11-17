@@ -201,6 +201,17 @@ def exit_code(rows: list) -> int:
     return 1 if any(r["status"] == "eol" for r in rows) else 0
 
 
+def report_data(rows: list) -> dict:
+    """Content of reports/lifecycle.json. `pass` is false only when a part is eol (the exit code agrees);
+    nrnd and unverified parts are listed under `check_by_hand`."""
+    bad = [r for r in rows if r["status"] in ("eol", "nrnd")]
+    unv = [r for r in rows if r["status"] == "unverified"]
+    hand = [{"refs": r["refs"], "mpn": r["mpn"], "lcsc": r["lcsc"], "status": r["status"], "words": r["words"],
+             "links": r["links"]} for r in rows if r["status"] in ("nrnd", "unverified")]
+    return {"rows": rows, "eol_or_nrnd": len(bad), "unverified": len(unv),
+            "pass": not any(r["status"] == "eol" for r in rows), "errors": len(bad), "check_by_hand": hand}
+
+
 def main(argv: list) -> int:
     args = [a for a in argv if not a.startswith("--")]
     refresh, offline = "--refresh" in argv, "--offline" in argv
@@ -234,8 +245,7 @@ def main(argv: list) -> int:
     if unv:
         md += ["", "## Unverified: check by hand", ""]
         md += [f"- {', '.join(r['refs'])} {r['mpn']}: {r['words']}. " + " ; ".join(r["links"]) for r in unv]
-    write_report(project, "lifecycle", {"rows": rows, "eol_or_nrnd": len(bad), "unverified": len(unv),
-                                        "pass": not bad, "errors": len(bad)}, md)
+    write_report(project, "lifecycle", report_data(rows), md)
     w = [max(len(str(c)) for c in col) for col in zip(head[:4], *[t[:4] for t in table])]
     for t in [head[:4]] + [t[:4] for t in table]:
         print("  ".join(str(c).ljust(n) for c, n in zip(t, w)))

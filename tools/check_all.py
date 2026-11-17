@@ -88,6 +88,9 @@ def main() -> int:
     run("diagnostics: consent, recording, redaction, report, export", [py, "plugin/tests/test_diagnostics.py"])
     run("lifecycle check (fake LCSC answers)", [py, "plugin/tests/test_lifecycle.py"])
     run("history, lock, edits, router, routing plan, fab rules", [py, "plugin/tests/test_editing.py"])
+    run("history: projects sharing a repository, parallel saves, non-English names", [py, "plugin/tests/test_history.py"])
+    run("edit tool: dry run, all-or-nothing batches, via clearance, corridors", [py, "plugin/tests/test_edit_fixes.py"])
+    run("factory profiles: layer count and rows", [py, "plugin/tests/test_fab_rules.py"])
     if not QUICK:
         import tempfile
         tmp = Path(tempfile.mkdtemp(prefix="bw-mcp-")) / "usb-sensor-test"

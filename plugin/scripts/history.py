@@ -8,7 +8,7 @@
     python scripts/history.py . stage-commit N NAME              commit the design files: "stage N: NAME passed"
     python scripts/history.py . lock status|take WHO|release WHO one editor at a time
 
-Steps are git commits on a hidden ref, refs/boardwright/steps, built from a private index: no branch
+Steps are git commits on a hidden ref, refs/boardwright/steps/<id> (one per project), built from a private index: no branch
 moves, nothing is staged in your index and your own commits are untouched. A project inside a git
 repository keeps them in that repository; any other project gets its own private store in
 .boardwright/history.git. Design files: the board, schematics, project, rules, symbol and footprint
@@ -22,11 +22,14 @@ Standard library only. Exit 0 ok, 1 refused (lock held, KiCad has the file open)
 """
 from __future__ import annotations
 
+import contextlib
+import hashlib
 import json
 import os
 import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 
 for _s in (sys.stdout, sys.stderr):
@@ -36,7 +39,11 @@ for _s in (sys.stdout, sys.stderr):
         except Exception:
             pass
 
-REF = "refs/boardwright/steps"
+OLD_REF = "refs/boardwright/steps"      # the one shared ref of older versions (a plain ref, not a folder)
+REF_BASE = "refs/boardwright/steps/"    # now one ref per project: REF_BASE + <id>
+LEGACY_BASE = "refs/boardwright/legacy/"
+LOCK_WAIT_S = 10
+LOCK_STALE_INDEX_S = 60
 DESIGN_EXT = (".kicad_pcb", ".kicad_sch", ".kicad_pro", ".kicad_dru", ".kicad_sym", ".kicad_mod", ".kicad_wks")
 DESIGN_NAMES = ("sym-lib-table", "fp-lib-table", "boardwright.json")
 SKIP_DIRS = {".git", ".boardwright", ".history", "fab", "__pycache__", "node_modules", "scripts"}
@@ -92,7 +99,14 @@ class Store:
             if not (self.gitdir / "HEAD").is_file():
                 own_dir(proj)
                 subprocess.run(["git", "init", "-q", "--bare", str(self.gitdir)], check=True)
-        self.index = self.gitdir / "boardwright-steps.index"
+        try:
+            rel = self.proj.relative_to(self.top).as_posix()
+        except ValueError:
+            rel = "."
+        self.is_top = rel in (".", "")
+        self.id = "root" if self.is_top else hashlib.sha1(rel.encode("utf-8")).hexdigest()[:10]
+        self.ref = REF_BASE + self.id
+        self.prefix = "" if self.is_top else rel + "/"
 
     @staticmethod
     def _plain(cmd):
@@ -102,11 +116,12 @@ class Store:
             die("git is not installed; the design history needs it (https://git-scm.com).")
         return r.stdout.strip() if r.returncode == 0 else ""
 
-    def git(self, *args, index=False, check=True, binary=False, stdin=None):
+    def git(self, *args, index=None, check=True, binary=False, stdin=None):
         env = dict(os.environ, GIT_DIR=str(self.gitdir), GIT_WORK_TREE=str(self.top), **IDENT)
         if index:
-            env["GIT_INDEX_FILE"] = str(self.index)
-        r = subprocess.run(["git", "-c", "core.autocrlf=false", "-c", "core.safecrlf=false", *args],
+            env["GIT_INDEX_FILE"] = str(index)
+        r = subprocess.run(["git", "-c", "core.autocrlf=false", "-c", "core.safecrlf=false",
+                            "-c", "core.quotepath=false", *args],
                            cwd=str(self.top), env=env, capture_output=True, input=stdin,
                            **({} if binary else {"text": True, "encoding": "utf-8", "errors": "replace"}))
         if check and r.returncode != 0:
@@ -117,10 +132,56 @@ class Store:
         return p.resolve().relative_to(self.top).as_posix()
 
     def head(self) -> str:
-        return self.git("rev-parse", "-q", "--verify", REF, check=False)
+        return self.git("rev-parse", "-q", "--verify", self.ref, check=False)
+
+    @contextlib.contextmanager
+    def lock(self):
+        """A lock file in the git dir, so that parallel snaps take turns. Waits up to 10 s; stale after 60 s."""
+        p = self.gitdir / "boardwright-steps.lock"
+        deadline = time.time() + LOCK_WAIT_S
+        while True:
+            try:
+                os.close(os.open(str(p), os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+                break
+            except (FileExistsError, PermissionError):
+                try:
+                    if time.time() - p.stat().st_mtime > LOCK_STALE_INDEX_S:
+                        p.unlink()
+                        continue
+                except OSError:
+                    pass
+                if time.time() > deadline:
+                    raise RuntimeError("the history lock is busy: " + str(p))
+                time.sleep(0.05)
+        try:
+            yield
+        finally:
+            try:
+                p.unlink()
+            except OSError:
+                pass
+
+    def migrate(self):
+        """Older versions kept every project's steps on the one ref refs/boardwright/steps. A plain ref blocks
+        the folder refs/boardwright/steps/, so it is moved aside (nothing is lost); the project that is the
+        repository top takes it over as its own history."""
+        if not self.git("rev-parse", "-q", "--verify", OLD_REF, check=False):
+            if not (self.is_top and not self.head()):
+                return
+        with self.lock():
+            old = self.git("rev-parse", "-q", "--verify", OLD_REF, check=False)
+            if old:
+                self.git("update-ref", "-d", OLD_REF, old)
+                self.git("update-ref", LEGACY_BASE + old[:12], old, "0" * 40, check=False)
+            if self.is_top and not self.head():
+                src = old or self.git("for-each-ref", "--sort=-committerdate", "--count=1",
+                                      "--format=%(objectname)", LEGACY_BASE, check=False)
+                if src:
+                    self.git("update-ref", self.ref, src, "0" * 40)
 
     def steps(self) -> list:
         """Oldest first: [(commit, unix time, note)]."""
+        self.migrate()
         h = self.head()
         if not h:
             return []
@@ -131,24 +192,34 @@ class Store:
         files = design_files(self.proj)
         if not files:
             return None
-        if self.index.exists():
-            self.index.unlink()
-        self.git("read-tree", "--empty", index=True)
-        rels = [self.rel(f) for f in files]
-        # Stored byte for byte (--no-filters): git's line-ending and attribute conversions would make a
-        # restore differ from the file that was saved.
-        shas = self.git("hash-object", "-w", "--no-filters", "--", *[str(f) for f in files]).split()
-        info = "".join(f"100644 {sha}\t{rel}\n" for sha, rel in zip(shas, rels))
-        # bytes, not text: in text mode Windows writes CR LF, and every path would end in a CR
-        self.git("update-index", "--add", "--index-info", index=True, stdin=info.encode("utf-8"), binary=True)
-        tree = self.git("write-tree", index=True)
-        parent = self.head()
-        if parent and self.git("rev-parse", parent + "^{tree}") == tree:
-            return None
-        args = ["commit-tree", tree, "-m", note or "edit"] + (["-p", parent] if parent else [])
-        new = self.git(*args)
-        self.git("update-ref", REF, new, parent or "0" * 40)
-        return new
+        self.migrate()
+        # A private index file per call (parallel hooks must not share one), removed afterwards.
+        idx = self.gitdir / f"boardwright-steps.{os.getpid()}.{uuid.uuid4().hex[:8]}.index"
+        try:
+            self.git("read-tree", "--empty", index=idx)
+            rels = [self.rel(f) for f in files]
+            # Stored byte for byte (--no-filters): git's line-ending and attribute conversions would make a
+            # restore differ from the file that was saved.
+            shas = self.git("hash-object", "-w", "--no-filters", "--", *[str(f) for f in files]).split()
+            if not shas or len(shas) != len(rels):
+                return None
+            info = "".join(f"100644 {sha}\t{rel}\n" for sha, rel in zip(shas, rels))
+            # bytes, not text: in text mode Windows writes CR LF, and every path would end in a CR
+            self.git("update-index", "--add", "--index-info", index=idx, stdin=info.encode("utf-8"), binary=True)
+            tree = self.git("write-tree", index=idx)
+            with self.lock():
+                parent = self.head()
+                if parent and self.git("rev-parse", parent + "^{tree}") == tree:
+                    return None
+                args = ["commit-tree", tree, "-m", note or "edit"] + (["-p", parent] if parent else [])
+                new = self.git(*args)
+                self.git("update-ref", self.ref, new, parent or "0" * 40)
+            return new
+        finally:
+            try:
+                idx.unlink()
+            except OSError:
+                pass
 
 
 def step_commit(store: Store, n: str) -> str:
@@ -177,7 +248,7 @@ def cmd_list(store: Store, args):
     if not steps:
         print("no steps yet (one is saved after each edit to a design file)")
         return 0
-    where = ".boardwright/history.git" if store.private else f"{REF} in the project's git repository"
+    where = ".boardwright/history.git" if store.private else f"{store.ref} in the project's git repository"
     print(f"# {len(steps)} steps, kept in {where}. step | time | what")
     for i in range(len(steps), max(0, len(steps) - n), -1):
         c, t, note = steps[i - 1]
@@ -202,7 +273,10 @@ def cmd_restore(store: Store, args):
     if not args:
         die("usage: restore N [--force]")
     c = step_commit(store, args[0])
-    rels = [l for l in store.git("ls-tree", "-r", "--name-only", c).splitlines() if l]
+    listing = store.git("-c", "core.quotepath=false", "ls-tree", "-r", "-z", "--name-only", c, binary=True)
+    # only files that belong to this project (older shared history may hold other projects' files)
+    rels = [r for r in (b.decode("utf-8", "replace") for b in listing.split(b"\0") if b)
+            if r.startswith(store.prefix) and ".." not in r.split("/")]
     open_ = kicad_has_open(store, rels)
     if open_ and "--force" not in args:
         print("KiCad has these open: " + ", ".join(open_) + ". Close them in KiCad first (or add --force and "

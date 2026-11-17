@@ -25,8 +25,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import history  # noqa: E402
+import choices  # noqa: E402
 import routing_plan  # noqa: E402
 
+OTHER_KICAD_WRITE = re.compile(r"^mcp__kicad-(pcb|schematic)__(add|remove|move|place|set|connect|wire|no_connect|"
+                               r"modify|auto|fill|update|autoroute)")
 WRITE_MCP = re.compile(
     r"^mcp__plugin_boardwright_kicad-(live__(pcb_(add|delete|place|align|paste|refill|revert|save|set)"
     r"|sch_(add|delete|set)|lib_(create|copy|add|upgrade)|kicad_run_action)"
@@ -46,7 +49,52 @@ def is_edit(tool: str, inp: dict) -> bool:
         writes = re.search(r'"(move|set|add|delete|netclass|rule|refill|place|route)"\s*:', cmd)
         return ("bw_edit.py" in cmd and (bool(writes) or "@" in cmd)) or bool(
             re.search(r"history\.py\S*\s+\S+\s+restore", cmd))
-    return bool(WRITE_MCP.match(tool))
+    return bool(WRITE_MCP.match(tool) or OTHER_KICAD_WRITE.match(tool))
+
+
+def answers_of(inp: dict, response) -> dict:
+    """{question text: chosen label(s)} from an answered question. The chat window fills the answers in
+    after the user clicks; Claude cannot set them (pre-filled ones are refused in plan_guard)."""
+    out = {}
+    if isinstance(inp.get("answers"), dict):
+        out.update({str(k): str(v) for k, v in inp["answers"].items()})
+    if isinstance(response, dict):
+        for key in ("answers", "answer"):
+            if isinstance(response.get(key), dict):
+                out.update({str(k): str(v) for k, v in response[key].items()})
+    elif isinstance(response, str):
+        out.update({k: v for k, v in re.findall(r'"([^"]+)"\s*=\s*"([^"]*)"', response)})
+    return out
+
+
+def record_answers(proj: Path, inp: dict, response) -> str:
+    """Apply the user's button choices for the questions Boardwright knows (choices.QUESTIONS)."""
+    ans = answers_of(inp, response)
+    done = []
+    for q in inp.get("questions") or []:
+        header, text = str(q.get("header", "")), str(q.get("question", ""))
+        if header == "Diagnostics":
+            choices.set_choice(proj, "diagnostics_asked", True, "asked in chat")
+        if header not in choices.QUESTIONS or text not in ans:
+            continue
+        picked = ans[text]
+        how = "chosen in chat: " + picked
+        if header == "Diagnostics":
+            import diagnostics
+            on = picked.startswith("Yes")
+            prompts = on and "not my prompts" not in picked
+            diagnostics.set_consent(proj, on, prompts, how)
+            done.append("Diagnostics recording " + ("on" + ("" if prompts else ", prompts left out") if on else "off")
+                        + " (the user's choice, recorded by the plugin; nothing is sent anywhere).")
+        elif header == "Routing plan":
+            on = picked.startswith("Turn on")
+            choices.set_choice(proj, "routing_plan", on, how)
+            done.append(f"Routing plan mode {'on' if on else 'off'} (the designer's choice, recorded by the plugin).")
+        elif header == "Approve routes":
+            ids = [p.split(":")[0].strip() for p in re.split(r",\s*(?=[cp]\d+\s*:)", picked) if ":" in p]
+            msg = routing_plan.decide(proj, ["approve", *ids], how) if ids else ""
+            done.append(msg or "No corridor approved.")
+    return " ".join(done)
 
 
 def record_diagnostics(proj: Path, session: str, transcript: str) -> None:
@@ -66,23 +114,51 @@ def record_diagnostics(proj: Path, session: str, transcript: str) -> None:
                      creationflags=flags, start_new_session=os.name != "nt")
 
 
+PROTECTED = re.compile(r"consent\.json|choices\.json|set_consent|set_choice")
+# a plain look at a file (cat, type, Get-Content, head, tail) with no redirect, pipe into a writer, or second command
+READ_ONLY = re.compile(r"^\s*(cat|type|head|tail|Get-Content|gc)\s+[^|;&<>`$()]*$", re.I)
+
+
+def inside(proj: Path, p: str) -> bool:
+    try:
+        Path(p).resolve().relative_to(proj.resolve())
+        return True
+    except (ValueError, OSError):
+        return False
+
+
 def plan_guard(proj: Path, tool: str, inp: dict) -> str:
     """Why a tool must not run under the routing plan or diagnostics consent rules, or ''."""
+    if tool == "AskUserQuestion" and inp.get("answers") and any(
+            str(q.get("header", "")) in choices.QUESTIONS for q in inp.get("questions") or []):
+        return "these questions are the user's to answer: ask them without filling in answers."
+    if tool in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
+        fp = str(inp.get("file_path") or inp.get("notebook_path") or "")
+        body = " ".join(str(inp.get(k, "")) for k in ("content", "new_string", "new_source"))
+        if Path(fp).name in ("consent.json", "choices.json") or (inside(proj, fp) and PROTECTED.search(body)):
+            return "the user's own choices (diagnostics, routing plan) are changed only by the user's answer."
     if tool in ("Edit", "Write", "MultiEdit") and Path(str(inp.get("file_path", ""))).name == "consent.json":
         return "diagnostics consent is the user's alone: they type /boardwright:pcb-diagnostics on or off."
-    if tool in ("Bash", "PowerShell") and re.search(r"consent\.json|set_consent", str(inp.get("command", ""))):
+    if tool in ("Bash", "PowerShell") and PROTECTED.search(str(inp.get("command", ""))) and not READ_ONLY.match(
+            str(inp.get("command", ""))):
         return "diagnostics consent is the user's alone: they type /boardwright:pcb-diagnostics on or off."
     if tool in ("Edit", "Write", "MultiEdit") and Path(str(inp.get("file_path", ""))).name.startswith("routing-plan."):
         return ("routing plan: the plan file records the designer's decisions and is not edited by hand. Propose changes with "
                 "routing_plan.py propose; the designer approves with /boardwright:pcb-plan.")
     cmd = str(inp.get("command", "")) if tool in ("Bash", "PowerShell") else ""
     target = r"\S*routing-plan\.(?:json|md)"
+    if cmd and re.search(r"\btee\b[^|;&]*" + target, cmd):
+        return "routing plan: the plan file is not written from the shell; use routing_plan.py propose."
     if cmd and re.search(r">>?\s*['\"]?" + target                       # redirected into it
                          + r"|\bsed\b[^|;&]*\s-i[^|;&]*" + target          # edited in place
                          + r"|\b(?:cp|mv|copy|move|Copy-Item|Move-Item)\b[^|;&]*\s" + target + r"['\"]?\s*(?:$|[|;&])"
                          + r"|(?:Set-Content|Out-File|Add-Content)\b[^|;&]*" + target
                          + r"|" + target + r"['\"]?\)\.write_text|open\(['\"]" + target + r"['\"],\s*['\"][wa]", cmd):
         return "routing plan: the plan file is not written from the shell; use routing_plan.py propose."
+    if routing_plan.mode_on(proj) and (tool.endswith("kicad-live__pcb_paste_kicad_text") or re.match(
+            r"^mcp__kicad-pcb__(add_trace|add_via|autoroute_pcb|add_copper_zone)", tool)):
+        return ("routing plan mode is on: add tracks with bw_edit.py or pcb_add_tracks, which check each net's "
+                "approved corridor; this tool cannot be checked.")
     if tool.endswith("kicad-live__pcb_add_tracks") or tool.endswith("kicad-live__pcb_add_vias"):
         nets = sorted({str(s.get("net", "")) for s in (inp.get("segments") or inp.get("vias") or [])} - {""})
         blocked = routing_plan.gate(proj, nets)
@@ -121,11 +197,8 @@ def main() -> None:
         if m:
             words = m.group(1).split()
             if words and words[0] in ("on", "off"):
-                cfg = proj / "boardwright.json"
-                d = json.loads(cfg.read_text("utf-8")) if cfg.is_file() else {}
-                d["routing_plan"] = words[0] == "on"
-                cfg.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n", "utf-8")
-                print(f"Routing plan mode turned {words[0]} by the designer (recorded by the plugin in boardwright.json).")
+                choices.set_choice(proj, "routing_plan", words[0] == "on", "typed: " + said)
+                print(f"Routing plan mode turned {words[0]} by the designer (recorded by the plugin).")
             else:
                 msg = routing_plan.decide(proj, words, said)
                 if msg:
@@ -146,6 +219,10 @@ def main() -> None:
                     "Boardwright: another Claude session is editing this board: " + history.describe(other)
                     + ". Only one session edits at a time. Read only, or tell the user to finish or close the "
                     "other session (the lock frees at the end of its turn, or after 30 minutes idle).")}}))
+    elif mode == "post" and tool == "AskUserQuestion":
+        msg = record_answers(proj, inp, data.get("tool_response"))
+        if msg:
+            print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": msg}}))
     elif mode == "post":
         if is_edit(tool, inp):
             history.lock_take(proj, who, "session " + who[:8])

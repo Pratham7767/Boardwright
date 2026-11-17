@@ -67,7 +67,7 @@ Before you change the design, take the edit lock (`python scripts/history.py . l
 
 ## Routing plan: only the designer approves
 
-If `boardwright.json` has `"routing_plan": true`, tracks may only run inside corridors the designer has approved. You may propose corridors. You may not approve them, and you may not edit the routing plan file in `reports/` by hand. In Claude Code the designer types `/boardwright:pcb-plan approve c1 c3`. In any other agent, ask the user which corridors they approve; the approval is recorded only by the user themselves, in Claude Code. Until they do, do not route those nets.
+If the designer turned routing plan mode on (`python scripts/routing_plan.py . show` says so), tracks may only run inside corridors the designer has approved. You may propose corridors. You may not approve them, and you may not edit the routing plan file in `reports/` by hand. In Claude Code the designer types `/boardwright:pcb-plan approve c1 c3`. In any other agent, ask the user which corridors they approve; the approval is recorded only by the user themselves, in Claude Code. Until they do, do not route those nets.
 
 ## Who does what
 

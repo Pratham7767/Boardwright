@@ -26,7 +26,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit|Bash|mcp__plugin_boardwright_.*",
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell|AskUserQuestion|mcp__plugin_boardwright_.*|mcp__kicad-pcb__.*|mcp__kicad-schematic__.*",
         "hooks": [
           {
             "type": "command",
@@ -38,7 +38,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit|Bash|mcp__plugin_boardwright_.*",
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell|AskUserQuestion|mcp__plugin_boardwright_.*|mcp__kicad-pcb__.*|mcp__kicad-schematic__.*",
         "hooks": [
           {
             "type": "command",

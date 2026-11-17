@@ -12,6 +12,9 @@ notifications/initialized, tools/list, tools/call, ping.
 Tools: status, plan, run_gates, sch_check, history_list, fab_check, routing_plan_show, board_find.
 There are deliberately NO editing tools: no board edits, no restore, no routing-plan approval, no
 plan --done. Editing stays in the agent's own shell under the project rules (AGENTS.md).
+Every tool refuses a `project` folder that has neither PROJECT.md nor boardwright.json. run_gates always
+runs with --no-export (it never regenerates fab/). history_list never creates a history: with none yet
+it answers "no history yet".
 Each tool runs one script in the project folder with a 300 s timeout and returns its output text
 and exit code (0 passed, 1 a check failed, 2 setup problem). Results are cut at about 20,000 characters.
 """
@@ -48,12 +51,11 @@ def _schema(props=None, required=None):
 TOOLS = [
     ("status", "Where the project is: gates, stage reports, PROJECT.md headlines (read-only).", _schema()),
     ("plan", "What to do next: READY NOW steps, user steps, failed gates, reopened steps (read-only).", _schema()),
-    ("run_gates", "Run the rule guard, ERC and DRC. With no_export (default true) it never makes fab files. "
-     "Writes reports/gates.json. Exit 0 passed, 1 failed.",
-     _schema({"no_export": {"type": "boolean", "default": True,
-                            "description": "Skip the fab export (default true). Use false only at release."}})),
+    ("run_gates", "Run the rule guard, ERC and DRC. Always runs with --no-export: it never makes or "
+     "changes fab files (the release is made in the agent's own shell). Writes reports/gates.json. "
+     "Exit 0 passed, 1 failed.", _schema()),
     ("sch_check", "Schematic checks: fields, footprints, pins, unconnected pins, decoupling.", _schema()),
-    ("history_list", "The saved design steps, newest first.",
+    ("history_list", "The saved design steps, newest first (read-only: answers \"no history yet\" when there is none).",
      _schema({"count": {"type": "integer", "default": 20, "description": "How many steps."}})),
     ("fab_check", "Board setup and net classes against the factory's published minimums (changes nothing).",
      _schema({"fab": {"type": "string", "description": "Factory name (default: from boardwright.json)."}})),
@@ -67,15 +69,25 @@ TOOLS = [
 
 
 def _kicad_python():
-    from run_gates import find_kicad_cli
-    cli = find_kicad_cli()
-    if not cli:
-        return None
-    for name in ("python.exe", "python3", "python"):
-        p = Path(cli).resolve().parent / name
-        if p.exists():
-            return str(p)
-    return None
+    from kicad_python import find
+    return find()
+
+
+def is_project(proj):
+    return (Path(proj) / "PROJECT.md").is_file() or (Path(proj) / "boardwright.json").is_file()
+
+
+def has_history(proj):
+    """True when the project already has saved steps. Never creates anything."""
+    if (Path(proj) / ".boardwright" / "history.git" / "HEAD").is_file():
+        return True
+    try:
+        r = subprocess.run(["git", "-C", str(proj), "for-each-ref", "--count=1", "--format=%(refname)",
+                            "refs/boardwright/steps"], capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=30, stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return r.returncode == 0 and bool(r.stdout.strip())
 
 
 def _command(name, a, proj):
@@ -86,10 +98,7 @@ def _command(name, a, proj):
     if name == "plan":
         return [py, s("plan.py"), proj]
     if name == "run_gates":
-        cmd = [py, s("run_gates.py"), proj]
-        if a.get("no_export", True):
-            cmd.append("--no-export")
-        return cmd
+        return [py, s("run_gates.py"), proj, "--no-export"]
     if name == "sch_check":
         return [py, s("sch_check.py"), proj]
     if name == "history_list":
@@ -120,6 +129,10 @@ def call_tool(name, args):
     proj = Path(args.get("project") or Path.cwd()).resolve()
     if not proj.is_dir():
         return f"project folder not found: {proj}", True
+    if not is_project(proj):
+        return f"not a Boardwright project: {proj} has neither PROJECT.md nor boardwright.json", True
+    if name == "history_list" and not has_history(proj):
+        return "no history yet (no design step has been saved in this project)\n[exit code 0]", False
     try:
         cmd = _command(name, args, str(proj))
     except (ValueError, TypeError) as e:

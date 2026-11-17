@@ -100,6 +100,20 @@ A helper starts with no context, so give it a complete brief: files, exact input
 
 Never hand to a helper: choosing parts, pin assignments, placement decisions, routes for mains, switch nodes and feedback lines, rule values, waivers, the EMC judgement, and the release checklist. These stay in the main session and are always part of what `gate-reviewer` checks.
 
+## Asking the user: buttons, not commands
+
+The user should never have to remember a command. When a choice is theirs, ask with the AskUserQuestion tool, so they click a button. Three choices are protected: the plugin records them from the button the user clicks, and refuses a question whose answers you fill in yourself. Use these headers and option labels exactly, or the click is not recorded:
+
+| When | header | question (your words) | options, exactly |
+|---|---|---|---|
+| once per project, when the session-start note says diagnostics are not decided, at a pause (not mid-task) | `Diagnostics` | one or two sentences: Boardwright can keep a private record of how this project goes (prompts, models, cost, errors) on this computer, which they can send back if they choose; nothing is sent by itself | `Yes, record everything` / `Yes, but not my prompts` / `No` |
+| before stage 5 on boards with 4 or more copper layers, more than about 60 nets or fast interfaces | `Routing plan` | what the mode does, in one sentence | `Turn on` / `Keep off` |
+| after proposing or changing a routing plan (`routing_plan.py propose` and `draw`) | `Approve routes` | which corridors they approve; set `multiSelect: true` | one option per corridor, `c1: /SDA, /SCL on F.Cu` (the id, a colon, then what it is); at most 4 per question, so ask several questions for more |
+
+The plugin's note after the answer says what was recorded. If the user picks "Other" or closes the question, nothing changes: ask again later or go on without it. The typed commands (`/boardwright:pcb-diagnostics on`, `/boardwright:pcb-plan on`, `/boardwright:pcb-plan approve c1`) still work for users who prefer them.
+
+Ask the other choices with buttons too (no hook needed): guided or express mode, which entry point, a proposed waiver, a part swap, going on with an open gate.
+
 ## Working with KiCad
 
 - Board edits go through the `kicad-live` tools while KiCad has the board open, so the user sees each change and can undo it. Never write a `.kicad_pcb` file that KiCad has open. Details and known traps: [references/live-mode.md](references/live-mode.md).

@@ -13,12 +13,12 @@ Start a new PCB project in the current folder using the boardwright skill.
 
 1. If `scripts/run_gates.py` is missing here, run `python "${CLAUDE_PLUGIN_ROOT}/scripts/init_project.py" .` to create the project files and copy the gate scripts.
 2. Run `python scripts/doctor.py .` and show the table. If anything is marked FAIL, explain the fix in one line each and stop until it is fixed.
-3. Mode: use the first argument if it is `guided` or `express`. Otherwise ask the user which one they want, with one line describing each.
+3. Mode: use the first argument if it is `guided` or `express`. Otherwise ask with buttons (AskUserQuestion, header `Mode`): `Guided` (I explain as we go, one topic at a time) and `Express` (I stop only when a decision is yours).
 4. Entry point: if the folder already has a `.kicad_sch` with parts in it, ask whether to start from that schematic (see "Entry points" in the skill) or from a new idea. Record the answer in `PROJECT.md`.
 5. Idea: use the rest of the arguments if given. In guided mode, interview the user as stage 1 describes. In express mode, ask only for missing must-haves.
 6. Write the answers into `PROJECT.md`, classify the board (highest voltage, mains yes/no), and if hazardous voltage is present, do the "Tell the user first" step from the high-voltage reference before anything else.
-7. Routing plan mode: if the spec has 4 or more copper layers, more than about 60 nets, or fast interfaces, tell the user in two lines that they can turn on routing plan mode: Claude proposes routing corridors, they approve each one, and nothing is routed outside an approved corridor. It is their choice: they turn it on by typing `/boardwright:pcb-plan on`. Never turn it on yourself. On simple boards, do not mention it.
-8. Diagnostics, once, in one or two lines: Boardwright can keep a private record of how this project goes (prompts, models, cost, errors) on this computer, so the user can send a report back to improve it if they wish; it is off unless they type `/boardwright:pcb-diagnostics on`, and nothing is ever sent by itself. Never turn it on yourself, and do not ask again.
+7. Routing plan mode: if the spec has 4 or more copper layers, more than about 60 nets, or fast interfaces, ask the `Routing plan` question with buttons (see "Asking the user" in the skill): Claude proposes routing corridors, they approve each one, and nothing is routed outside an approved corridor. Never turn it on yourself. On simple boards, do not mention it.
+8. Diagnostics: ask the `Diagnostics` question once, with buttons (see "Asking the user" in the skill). Never turn it on yourself, and do not ask again.
 9. Write `reports/01-spec.md` and stop for the user to confirm it.
 
 Arguments: $ARGUMENTS

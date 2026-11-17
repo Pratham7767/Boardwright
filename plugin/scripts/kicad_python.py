@@ -14,14 +14,27 @@ import sys
 from pathlib import Path
 
 
+MAC_PYTHON = Path("Contents/Frameworks/Python.framework/Versions/Current/bin/python3")
+
+
+def candidates(cli: str | None) -> list:
+    """Where KiCad's Python can be, best first. Windows and Linux: next to kicad-cli. macOS: inside the app
+    bundle (KiCad.app/Contents/MacOS/kicad-cli -> KiCad.app/Contents/Frameworks/Python.framework/...)."""
+    out = []
+    if cli:
+        base = Path(cli).resolve().parent
+        out += [base / n for n in ("python.exe", "python3", "python")]
+        if base.name == "MacOS":
+            out.append(base.parent.parent / MAC_PYTHON)
+        out += [a / MAC_PYTHON for a in base.parents if a.suffix == ".app"]
+    out += [Path("/Applications/KiCad/KiCad.app") / MAC_PYTHON, Path("/Applications/KiCad.app") / MAC_PYTHON]
+    return out
+
+
 def find() -> str | None:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from run_gates import find_kicad_cli
-    cli = find_kicad_cli()
-    if not cli:
-        return None
-    for name in ("python.exe", "python3", "python"):
-        p = Path(cli).resolve().parent / name
+    for p in candidates(find_kicad_cli()):
         if p.exists():
             return str(p)
     return None

@@ -74,17 +74,23 @@ def f2(x):
 class Rules:
     def __init__(self, proj: Path, files: dict):
         self.proj, self.files = proj, files
+        self.pro_path = files["pro"]
+        self.reload()
+
+    def use(self, path: Path):
+        """Read the classes from another file (a dry run keeps its changes outside the project)."""
+        self.pro_path = path
         self.reload()
 
     def reload(self):
-        pro = json.loads(self.files["pro"].read_text("utf-8"))
+        pro = json.loads(self.pro_path.read_text("utf-8"))
         ns = pro.get("net_settings") or {}
         self.classes = {c.get("name"): c for c in ns.get("classes") or [] if c.get("name")}
         self.cache = {}
 
     def class_of(self, net: str) -> str:
         if net not in self.cache:
-            by = nets_by_class(self.files["pro"], [net])
+            by = nets_by_class(self.pro_path, [net])
             hits = [c for c, ns in by.items() if net in ns and c != "Default"]
             self.cache[net] = hits[0] if hits else "Default"
         return self.cache[net]
@@ -350,6 +356,48 @@ def op_set(bd: Board, a, ctx):
     return out
 
 
+def _corridor_check(bd: Board, proj: Path):
+    """In routing plan mode: inside(net, points, layers) raises ValueError unless every point lies in the
+    net's corridor on one of the layers (any corridor layer when layers is None) or within 1 mm of the
+    net's own pads. Without plan mode, or for a net with no corridor (plane nets), it accepts everything."""
+    import routing_plan
+    if not routing_plan.mode_on(proj):
+        return lambda net, pts, layers: None
+    pc = bd.pcbnew
+    plan = routing_plan.load(proj)
+    cache = {}
+
+    def inside(net, pts, layers):
+        c = routing_plan.corridor_for(plan, net) if net else None
+        if c is None:
+            return
+        if net not in cache:
+            cache[net] = routing_plan.corridor_polys(bd.b, c)
+        polys = cache[net]
+        lids = [bd.b.GetLayerID(n) for n in layers] if layers else list(polys)
+        pads = [p for fp in bd.fps.values() for p in fp.Pads() if p.GetNetname() == net]
+        for x, y in pts:
+            pt = bd.P(x, y)
+            if any(polys.get(lid) is not None and polys[lid].Contains(pt) for lid in lids):
+                continue
+            near = False
+            for p in pads:
+                for lid in (lids or [pc.F_Cu]):
+                    if not p.IsOnLayer(lid):
+                        continue
+                    ps = pc.SHAPE_POLY_SET()
+                    p.TransformShapeToPolygon(ps, lid, int(1.0 * MM), int(0.005 * MM), pc.ERROR_OUTSIDE)
+                    if ps.OutlineCount() and ps.Contains(pt):
+                        near = True
+                        break
+                if near:
+                    break
+            if not near:
+                raise ValueError(f"add: point {f2(x)},{f2(y)} of {net} is outside its corridor {c['id']} "
+                                 "and not within 1 mm of the net's pads (routing plan mode)")
+    return inside
+
+
 def op_add(bd: Board, a, ctx):
     pc = bd.pcbnew
     out = []
@@ -358,12 +406,14 @@ def op_add(bd: Board, a, ctx):
                                                      for i in a["add"]} - {""}))
     if planned:
         raise ValueError("routing plan: " + "; ".join(f"{n}: {w}" for n, w in planned.items()))
+    inside = _corridor_check(bd, ctx["proj"])
     for item in a["add"]:
         if "track" in item:
             t = item["track"]
             net = bd.b.FindNet(t["net"]) if t.get("net") else None
             if t.get("net") and net is None:
                 raise ValueError("no net " + t["net"])
+            inside(t.get("net", ""), [t["from"], t["to"]], [t.get("layer", "F.Cu")])
             tr = pc.PCB_TRACK(bd.b)
             tr.SetStart(bd.P(*t["from"]))
             tr.SetEnd(bd.P(*t["to"]))
@@ -376,6 +426,7 @@ def op_add(bd: Board, a, ctx):
         elif "via" in item:
             v = item["via"]
             net = bd.b.FindNet(v["net"]) if v.get("net") else None
+            inside(v.get("net", ""), [v["at"]], None)
             r = ctx["rules"](v.get("net", ""))
             via = pc.PCB_VIA(bd.b)
             via.SetPosition(bd.P(*v["at"]))
@@ -415,7 +466,7 @@ def op_netclass(bd: Board, a, ctx):
     if not name:
         raise ValueError("netclass needs a name")
     f = ctx["files"]
-    pro = json.loads(f["pro"].read_text("utf-8"))
+    pro = ctx.get("pro_json") or json.loads(f["pro"].read_text("utf-8"))
     ns = pro.setdefault("net_settings", {})
     classes = ns.setdefault("classes", [])
     default = next((c for c in classes if c.get("name") == "Default"), {})
@@ -435,10 +486,16 @@ def op_netclass(bd: Board, a, ctx):
             pats[:] = [x for x in pats if x.get("pattern") != p]
             pats.append({"netclass": name, "pattern": p})
     ctx["pro_json"] = pro
-    f["pro"].write_text(json.dumps(pro, indent=2) + "\n", "utf-8")
-    ctx["rules"].reload()
+    if ctx.get("dry"):                       # a dry run writes nothing: the rules read a temp copy outside the project
+        if "tmp_pro" not in ctx:
+            ctx["tmp_pro"] = Path(tempfile.mkdtemp(prefix="bwpro")) / "dry.kicad_pro"
+        ctx["tmp_pro"].write_text(json.dumps(pro, indent=2) + "\n", "utf-8")
+        ctx["rules"].use(ctx["tmp_pro"])
+    else:
+        f["pro"].write_text(json.dumps(pro, indent=2) + "\n", "utf-8")
+        ctx["rules"].reload()
     missing = [n for n in nc.get("nets") or [] if bd.b.FindNet(n) is None]
-    out = [f"netclass {name}: " + ", ".join(f"{k} {nc[k]}" for k in nc if k not in ("name", "nets", "patterns"))
+    out = [f"netclass {name}" + (" (dry run, would write the .kicad_pro)" if ctx.get("dry") else "") + ": " + ", ".join(f"{k} {nc[k]}" for k in nc if k not in ("name", "nets", "patterns"))
            + f"; {len(nc.get('nets') or []) + len(nc.get('patterns') or [])} pattern(s)"]
     if missing:
         out.append("  warning: no such net on the board: " + ", ".join(missing))
@@ -471,7 +528,7 @@ def sexpr_block(text: str, start: int) -> int:
 def op_rule(bd: Board, a, ctx):
     r = a["rule"]
     dru = ctx["files"]["dru"]
-    text = dru.read_text("utf-8") if dru.exists() else "(version 1)\n"
+    text = ctx["dru_text"] if "dru_text" in ctx else (dru.read_text("utf-8") if dru.exists() else "(version 1)\n")
     name = r.get("remove") or r.get("name")
     if not name:
         raise ValueError("rule needs a name (or remove)")
@@ -484,8 +541,11 @@ def op_rule(bd: Board, a, ctx):
         if not body.strip().startswith("(rule"):
             raise ValueError('rule.text must be a whole (rule "name" ...) block')
         text = text.rstrip() + "\n\n" + body.strip() + "\n"
-    dru.write_text(text, "utf-8")
-    return [f"rule {name}: " + ("removed" if "remove" in r else ("replaced" if m else "added"))]
+    ctx["dru_text"] = text
+    if not ctx.get("dry"):
+        dru.write_text(text, "utf-8")
+    return [f"rule {name}: " + ("removed" if "remove" in r else ("replaced" if m else "added"))
+            + (" (dry run, would write the .kicad_dru)" if ctx.get("dry") else "")]
 
 
 def op_refill(bd: Board, a, ctx):
@@ -512,7 +572,6 @@ def overlaps(a, b, clearance_mm) -> bool:
 
 
 def op_place(bd: Board, a, ctx):
-    pc = bd.pcbnew
     q = a["place"]
     fp = bd.fps.get(q["ref"])
     if fp is None:
@@ -522,6 +581,21 @@ def op_place(bd: Board, a, ctx):
     rots = q.get("rot", [0, 90, 180, 270])
     rots = rots if isinstance(rots, list) else [rots]
     side = q.get("side", "F")
+    start = (fp.GetPosition(), fp.GetOrientationDegrees(), fp.GetLayer())
+    try:
+        return _place(bd, ctx, q, fp, target, within, rots, side)
+    except Exception:
+        # put the part back exactly where it was (side, position, rotation)
+        if fp.GetLayer() != start[2]:
+            fp.Flip(fp.GetPosition(), False)
+        fp.SetPosition(start[0])
+        fp.SetOrientationDegrees(start[1])
+        fp.BuildCourtyardCaches()
+        raise
+
+
+def _place(bd: Board, ctx, q, fp, target, within, rots, side):
+    pc = bd.pcbnew
     if (side == "B") != (fp.GetLayer() == pc.B_Cu):
         fp.Flip(fp.GetPosition(), False)
     cy_layer = pc.B_CrtYd if side == "B" else pc.F_CrtYd
@@ -699,19 +773,35 @@ def main(argv) -> int:
               "the segments to send with pcb_add_tracks.")
         return 2
     rules = Rules(proj, files)
-    ctx = {"proj": proj, "files": files, "rules": rules}
-    before = None if read_only or "--no-drc" in argv else drc(pcb)
+    ctx = {"proj": proj, "files": files, "rules": rules, "dry": dry}
+    # the project files as they were: a failed batch puts them back (all or nothing)
+    saved = {k: (files[k].read_bytes() if files[k].exists() else None) for k in ("pro", "dru")}
+    before = None if read_only or dry or "--no-drc" in argv else drc(pcb)
     bd = Board(pcb)
     out, failed = [], False
-    for o in ops:
-        name = next(k for k in o if k in OPS)
-        try:
-            out += OPS[name](bd, o if name != "find" else o["find"], ctx)
-        except (ValueError, KeyError, TypeError) as exc:
-            out.append(f"{name}: FAILED {exc}")
-            failed = True
-            break
+    try:
+        for o in ops:
+            name = next(k for k in o if k in OPS)
+            try:
+                out += OPS[name](bd, o if name != "find" else o["find"], ctx)
+            except (ValueError, KeyError, TypeError) as exc:
+                out.append(f"{name}: FAILED {exc}")
+                failed = True
+                break
+    finally:
+        if ctx.get("tmp_pro"):
+            shutil.rmtree(ctx["tmp_pro"].parent, ignore_errors=True)
     failed = failed or ctx.get("failed", False)
+    if failed and not read_only and not dry:
+        for k, data in saved.items():
+            if data is None:
+                if files[k].exists():
+                    files[k].unlink()
+            elif not files[k].exists() or files[k].read_bytes() != data:
+                files[k].write_bytes(data)
+        out.append("nothing was changed: one op failed, so the board and the project files are as they were")
+        print("\n".join(out)[:MAX_OUT])
+        return 1
     if read_only:
         text = "\n".join(out)
         print(text[:MAX_OUT] + ("\n... (cut: narrow the selector)" if len(text) > MAX_OUT else ""))

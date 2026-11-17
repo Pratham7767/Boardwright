@@ -61,17 +61,43 @@ COST_LABEL = "API-equivalent estimate; on a subscription plan you are not billed
 _COUNTS: Counter = Counter()
 
 
+def _git_config(key: str) -> str:
+    """One value of `git config <key>`; empty when git or the value is missing."""
+    try:
+        r = subprocess.run(["git", "config", key], capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=5)
+        return r.stdout.strip() if r.returncode == 0 else ""
+    except Exception:
+        return ""
+
+
 def _build_patterns():
     pats = [
         ("private-key", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?(?:-----END [A-Z ]*PRIVATE KEY-----|\Z)", re.S), None),
         ("anthropic-key", re.compile(r"sk-ant-[A-Za-z0-9_-]+"), None),
-        ("api-key", re.compile(r"sk-[A-Za-z0-9]{20,}"), None),
+        ("openai-key", re.compile(r"sk-[A-Za-z0-9_-]{20,}"), None),
+        ("firecrawl-key", re.compile(r"fc-[A-Za-z0-9]{20,}"), None),
+        ("google-key", re.compile(r"AIza[0-9A-Za-z_-]{30,}"), None),
+        ("slack-token", re.compile(r"xox[abposr]-[A-Za-z0-9-]{10,}"), None),
+        ("jwt", re.compile(r"eyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}"), None),
         ("github-token", re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}"), None),
         ("github-token", re.compile(r"github_pat_[A-Za-z0-9_]{20,}"), None),
         ("aws-key", re.compile(r"AKIA[0-9A-Z]{16}"), None),
         ("bearer", re.compile(r"Bearer\s+\S+", re.I), None),
-        ("password", re.compile(r"password\s*[=:]\s*\S+", re.I), None),
+        # key=value secrets: the key name stays, the value goes
+        ("secret", re.compile(r"\b(api[_-]?key|secret|token|passwd|password|pwd|auth)\b(\s*[:=]\s*)\S+", re.I),
+         r"\1\2[redacted:secret]"),
+        ("password", re.compile(r"\bpassword\s+\S+", re.I), None),
+    ]
+    # the git user's name and e-mail (read once); the e-mail goes before the generic e-mail pattern
+    g_mail, g_name = _git_config("user.email"), _git_config("user.name")
+    if len(g_mail) >= 3:
+        pats.append(("git-email", re.compile(re.escape(g_mail), re.I), None))
+    pats += [
         ("email", re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+"), None),
+        # written out to dodge spam filters: "name at gmail dot com", "name [at] mail [dot] org"
+        ("email", re.compile(r"(?i)\b[A-Za-z0-9._%+-]+\s*(?:\(at\)|\[at\]|\bat\b)\s*[A-Za-z0-9-]+"
+                             r"(?:\s*(?:\(dot\)|\[dot\]|\bdot\b)\s*[A-Za-z]{2,})+"), None),
     ]
     home = str(Path.home())
     toks = [t for t in re.split(r"[\\/]+", home) if t]
@@ -86,6 +112,8 @@ def _build_patterns():
         ("home", re.compile(r"/Users/" + hn, re.I), "~"),
         ("home", re.compile(r"[A-Za-z]:[\\/]+Users[\\/]+[^\\/\s\"'<>|:*?]+", re.I), "~"),
     ]
+    if len(g_name) >= 3:
+        pats.append(("git-name", re.compile(r"(?<![A-Za-z0-9])" + re.escape(g_name) + r"(?![A-Za-z0-9])", re.I), "<user>"))
     try:
         name = getpass.getuser()
     except Exception:
@@ -185,6 +213,12 @@ def _cost_bucket(p: dict, v: list) -> float:
     inp, out, c5, c1, cr = v
     return (inp * p["input"] + out * p["output"] + c5 * p["cache_write_5m"] + c1 * p["input"] * 2
             + cr * p["cache_read"]) / 1e6
+
+
+def nonstandard(r: dict) -> bool:
+    """Fast mode or a restricted inference region: billed at a different price than the standard table."""
+    geo = r.get("geo")
+    return r.get("speed") == "fast" or (isinstance(geo, str) and geo.strip().lower() not in ("", "global", "not_available"))
 
 
 def usage_cost(model: str, n: list, b: list):
@@ -469,10 +503,14 @@ def _sum5(a, b):
 
 def _agg_usage(recs) -> dict:
     """Group request records into {requests, tokens[5], cost}; cost None if any record's model is unpriced."""
-    tot = {"requests": 0, "tok": [0] * 5, "cost": 0.0, "unknown": False}
+    tot = {"requests": 0, "tok": [0] * 5, "cost": 0.0, "unknown": False, "nonstandard": 0}
     for r in recs:
         tot["requests"] += 1
         tot["tok"] = _sum5(tot["tok"], _sum5(r["n"], r["b"]))
+        if nonstandard(r):  # tokens counted, cost unknown: the price differs and is not guessed
+            tot["nonstandard"] += 1
+            tot["unknown"] = True
+            continue
         c = usage_cost(r["m"], r["n"], r["b"])
         if c is None:
             tot["unknown"] = True
@@ -592,6 +630,7 @@ def build_report(proj) -> dict:
         models[m] = {"requests": t["requests"], "input": t["tok"][0], "output": t["tok"][1],
                      "cache_write": t["tok"][2] + t["tok"][3], "cache_write_1h": t["tok"][3], "cache_read": t["tok"][4],
                      "cost_usd": _cost_val(t), "claude_code_usd": cc_models.get(m),
+                     "nonstandard_requests": t["nonstandard"],
                      "speed": dict(Counter(r["speed"] for r in rs if r.get("speed"))),
                      "inference_geo": dict(Counter(r["geo"] for r in rs if r.get("geo")))}
     agents: dict = {}
@@ -640,7 +679,7 @@ def build_report(proj) -> dict:
         "cost_label": COST_LABEL,
         "totals": {"sessions": len(sessions), "prompts": sum(s["prompts"] for s in per_session),
                    "turns": sum(s["turns"] for s in per_session), "requests": total["requests"],
-                   "tool_calls": sum(s["tool_calls"] for s in per_session), "errors": sum(s["errors"] for s in per_session),
+                   "nonstandard_requests": total["nonstandard"], "tool_calls": sum(s["tool_calls"] for s in per_session), "errors": sum(s["errors"] for s in per_session),
                    "input": total["tok"][0], "output": total["tok"][1], "cache_write": total["tok"][2] + total["tok"][3],
                    "cache_read": total["tok"][4], "cost_estimate_usd": _cost_val(total),
                    "cost_claude_code_usd": cc_total if cc_any else None, "unknown_models": unknown_models},
@@ -661,12 +700,40 @@ def build_report(proj) -> dict:
 KIND_NAMES = {"tool_error": "Tool error", "denial": "Hook / permission denial", "hook": "Hook error", "api": "API error"}
 
 
-def render_md(R: dict) -> list:
+SUMMARY_HEAD = "## Summary in plain words"
+PLACEHOLDER = "_Not written yet._"
+
+
+def kept_summary(md_path: Path):
+    """The text Claude wrote under 'Summary in plain words' in an existing report.md, or None when the
+    section is missing, empty or still the placeholder."""
+    try:
+        old = md_path.read_text("utf-8")
+    except OSError:
+        return None
+    i = old.find(SUMMARY_HEAD)
+    if i < 0:
+        return None
+    body = old[i + len(SUMMARY_HEAD):]
+    m = re.search(r"^Generated \S+\. Period covered:", body, re.M) or re.search(r"^## ", body, re.M)
+    if m:
+        body = body[:m.start()]
+    body = body.strip()
+    if not body or PLACEHOLDER in body or "<!-- CLAUDE:" in body:
+        return None
+    return body
+
+
+def render_md(R: dict, summary=None) -> list:
     t = R["totals"]
-    L = ["# Boardwright diagnostics", "", "## Summary in plain words", "",
-         "<!-- CLAUDE: write 5 to 8 plain sentences here for the person who reads this report: what the work",
-         "     was, what went wrong or was slow, what it cost, and what you would change. Then delete this comment. -->",
-         "", "_Not written yet._", "",
+    if summary:
+        summ = ["", redact(summary), ""]
+    else:
+        summ = ["",
+                "<!-- CLAUDE: write 5 to 8 plain sentences here for the person who reads this report: what the work",
+                "     was, what went wrong or was slow, what it cost, and what you would change. Then delete this comment. -->",
+                "", PLACEHOLDER, ""]
+    L = ["# Boardwright diagnostics", "", SUMMARY_HEAD] + summ + [
          f"Generated {R['generated']}. Period covered: {R['period']['from'] or 'nothing recorded'} to {R['period']['to'] or '-'}. "
          f"Project stage: {R['stage'] or 'unknown'}.", "",
          f"Prompts are {'included' if R['consent']['prompts'] else 'NOT included (only their count and length)'}. "
@@ -674,6 +741,8 @@ def render_md(R: dict) -> list:
     L += table(["Sessions", "Prompts", "Turns", "API requests", "Tool calls", "Errors", "Cost est. (USD)", "Claude Code's own figure"],
                [[t["sessions"], t["prompts"], t["turns"], t["requests"], t["tool_calls"], t["errors"],
                  fmt_cost(t["cost_estimate_usd"]), fmt_cost(t["cost_claude_code_usd"]) if t["cost_claude_code_usd"] is not None else "-"]])
+    if t.get("nonstandard_requests"):
+        L += ["", f"{t['nonstandard_requests']} requests in fast mode / US-only inference: cost not estimated (different price)"]
     if t["unknown_models"]:
         L += ["", "Models not in the price table (tokens counted, cost unknown): " + ", ".join(t["unknown_models"])]
     L += ["", "## Per session", ""]
@@ -724,7 +793,8 @@ def cmd_report(proj) -> Path:
     R = build_report(proj)
     d = diag_dir(proj, True)
     _write_json(d / "report.json", R)
-    (d / "report.md").write_text("\n".join(render_md(R)).rstrip() + "\n", "utf-8")
+    summary = kept_summary(d / "report.md")
+    (d / "report.md").write_text("\n".join(render_md(R, summary)).rstrip() + "\n", "utf-8")
     return d / "report.md"
 
 

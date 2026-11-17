@@ -89,6 +89,12 @@ class Router:
         self.lids = [board.GetLayerID(n) for n in layers]
         ds = board.GetDesignSettings()
         self.grid = Grid(board, self.lids, pitch_mm, ds.m_CopperEdgeClearance / MM)
+        # a through via also cuts every other copper layer (inner layers, a third routing layer)
+        self.all_lids = [l for l in board.GetEnabledLayers().Seq() if pcbnew.IsCopperLayer(l)]
+        for l in self.lids:
+            if l not in self.all_lids:
+                self.all_lids.append(l)
+        self.vgrid = Grid(board, self.all_lids, pitch_mm, ds.m_CopperEdgeClearance / MM)
         self.vias = vias and len(self.lids) > 1
         self.via_cost = via_cost
         self.added = []                                  # new items, so the caller can report and undo
@@ -102,9 +108,23 @@ class Router:
         for t in self.b.GetTracks():
             yield t, t.GetNetCode()
 
-    def _blocked(self, net, extra_mm):
-        """Grid of cells a track centre (extra = width/2) or via centre (extra = via_d/2) may not use."""
-        g = self.grid
+    def via_grid(self, net):
+        """Per routing layer: cells a via centre of this net may not use. A through via is free only where
+        it is free on EVERY copper layer of the board, so each entry is the union over all of them."""
+        r = self.rules(net.GetNetname())
+        full = self._blocked(net, r["via_d"] / 2, self.vgrid, self.all_lids)
+        merged = 0
+        for gg in full:
+            merged |= int.from_bytes(gg, "little")
+        size = len(full[0])
+        union = bytearray(merged.to_bytes(size, "little"))
+        return [union for _ in self.lids]
+
+    def _blocked(self, net, extra_mm, g=None, lids=None):
+        """Grid of cells a track centre (extra = width/2) or via centre (extra = via_d/2) may not use,
+        one grid per layer of lids (default: the routing layers)."""
+        g = g or self.grid
+        lids = lids if lids is not None else self.lids
         grid = g.blank()
         r = self.rules(net.GetNetname())
         code = net.GetNetCode()
@@ -113,19 +133,19 @@ class Router:
                 continue
             other = self.rules(item.GetNetname()) if ncode else r
             clr = max(r["clearance"], other["clearance"])
-            for li, lid in enumerate(self.lids):
+            for li, lid in enumerate(lids):
                 if item.IsOnLayer(lid):
                     g.mark(grid, li, _poly(item, lid, (clr + extra_mm) * MM))
             if item.Type() == pcbnew.PCB_PAD_T and item.GetDrillSize().x > 0:   # a hole cuts every layer
                 hole = item.GetEffectiveHoleShape()
-                for li in range(len(self.lids)):
+                for li in range(len(lids)):
                     ps = pcbnew.SHAPE_POLY_SET()
                     hole.TransformToPolygon(ps, MAX_ERR, pcbnew.ERROR_OUTSIDE)
                     ps.Inflate(int((clr + extra_mm) * MM), pcbnew.CORNER_STRATEGY_ROUND_ALL_CORNERS, MAX_ERR)
                     g.mark(grid, li, ps)
         for z in self.b.Zones():
             if z.GetIsRuleArea() and z.GetDoNotAllowTracks():
-                for li, lid in enumerate(self.lids):
+                for li, lid in enumerate(lids):
                     if z.IsOnLayer(lid):
                         ps = pcbnew.SHAPE_POLY_SET(z.Outline())
                         ps.Inflate(int(extra_mm * MM), pcbnew.CORNER_STRATEGY_ROUND_ALL_CORNERS, MAX_ERR)
@@ -134,8 +154,10 @@ class Router:
         region = self.allowed(net.GetNetname()) if self.allowed else None
         if region is not None:
             fan = [_poly(p, lid, 1.0 * MM) for p in (q for fp in self.b.GetFootprints() for q in fp.Pads()
-                                                      if q.GetNetCode() == code) for lid in self.lids if p.IsOnLayer(lid)]
-            for li, lid in enumerate(self.lids):
+                                                      if q.GetNetCode() == code) for lid in lids if p.IsOnLayer(lid)]
+            for li, lid in enumerate(lids):
+                if lid not in self.lids:                 # the corridor binds the routing layers only
+                    continue
                 ps = region.get(lid)
                 row = grid[li]
                 for iy in range(g.h):
@@ -257,7 +279,7 @@ class Router:
                     best[ns] = nc
                     came[ns] = s
                     heapq.heappush(openq, (nc + h(jx, jy), nc, ns))
-            if self.vias and d != 8 and not via[0][iy * W + ix] and not via[1][iy * W + ix]:
+            if self.vias and d != 8 and not any(via[lk][iy * W + ix] for lk in range(len(self.lids))):
                 for lj in range(len(self.lids)):
                     if lj == li:
                         continue
@@ -334,7 +356,7 @@ class Router:
         if len(groups) < 2:
             return {"net": name, "already_connected": True}
         trk = self._blocked(net, r["width"] / 2)
-        via = self._blocked(net, r["via_d"] / 2) if self.vias else None
+        via = self.via_grid(net) if self.vias else None
         done = [groups[0]]
         todo = groups[1:]
         tracks = vias = 0
