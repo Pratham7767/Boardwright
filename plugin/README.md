@@ -2,7 +2,7 @@
 
 This folder is the Claude Code plugin: the part that does the design work and runs the checks. To install it, see the main [README](../README.md).
 
-**Status: 0.6.0.** Tested on Windows 11 and Ubuntu 24.04 with KiCad 10.0.8, on a mains power-supply board and a USB sensor board. Not affiliated with the KiCad project or Anthropic.
+**Status: 0.6.1.** Tested on Windows 11 and Ubuntu 24.04 with KiCad 10.0.8, on a mains power-supply board and a USB sensor board. Not affiliated with the KiCad project or Anthropic.
 
 ## The idea
 

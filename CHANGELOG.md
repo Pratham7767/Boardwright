@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.1 (2026-11-17)
+No commands to remember, and the fixes from an independent review of 0.6.0.
+
+**Choices by buttons**
+- No commands to remember: when a choice is the user's (diagnostics, routing plan mode, which routes to approve, guided or express), Claude asks with buttons. For the protected choices the plugin records the click itself (a hook reads the answer) and refuses a question whose answer Claude fills in. The typed commands still work.
+- Routing plan mode and other user choices now live in `.boardwright/choices.json`, which tools cannot write. Before, the mode was a `boardwright.json` setting Claude could have switched off itself.
+
+**Fixed after an independent review (Opus)**
+- History: two projects in one git repository shared one history, so undoing in one could overwrite the other's files. Each project now has its own (`refs/boardwright/steps/<id>`; an older shared history is moved aside, not deleted). Saves from several sessions at once could store empty or lost steps: each save now uses its own index and a lock. Undo crashed on file names with non-English characters.
+- Guards: the hooks now also watch PowerShell, notebook edits, the questions Claude asks, and other KiCad tool servers. In routing plan mode, a plane needs the designer's approval like a corridor (a signal net listed as a plane was a way around it), and pasting raw KiCad text is refused. Writing the plan file with `tee` is refused; just reading a protected file is allowed.
+- Board edits: `--dry-run` really writes nothing now (it wrote the net classes and rules). A batch is all or nothing: if one step fails, nothing is saved. A failed `place` puts the part back. In routing plan mode, `add` keeps tracks inside the approved corridor. The router checks a via against every copper layer, not only the layers it routes on.
+- Diagnostics: more secrets are removed (OpenAI-style, Firecrawl, Google and Slack keys, JWTs, `api_key=`, `secret=`, `passwd=`, e-mails written as "name at mail dot com", and the git name and e-mail). The summary Claude writes is kept when the report is exported. Requests in fast mode or US-only inference are counted but not priced (they cost more; no guess).
+- Smaller: the lifecycle report's `pass` matches its exit code; factory profiles count inner layers of any type; KiCad's Python is found inside the macOS app; the tool server for other agents is truly read-only and only works in Boardwright projects.
+
 ## 0.6.0 (2026-11-17)
 Undo after every edit, cheaper board editing, an optional routing plan, more factory profiles, and a split between cheap models that do the work and the strongest model that checks it. Many ideas come from Backplane (see `THIRD_PARTY.md`); no code was copied.
 
@@ -31,17 +45,6 @@ Undo after every edit, cheaper board editing, an optional routing plan, more fac
 - Only the user turns it on or off: a prompt hook records it from what they typed, and Claude's attempts to change the setting are refused.
 - `report` (with a plain summary Claude writes from the numbers), `export` (a zip) and `delete`. Nothing is sent: the user sends the zip through the new GitHub issue form **Diagnostics report**, or by e-mail if an address is set in `plugin/scripts/diagnostics.json`. See `docs/PRIVACY.md`.
 - Fixed on the way: a project's `scripts/` folder now gets every data file the scripts read (the factory profiles and prices were missing, so `fab_rules.py` failed inside a project).
-
-**Choices by buttons**
-- No commands to remember: when a choice is the user's (diagnostics, routing plan mode, which routes to approve, guided or express), Claude asks with buttons. For the protected choices the plugin records the click itself (a hook reads the answer) and refuses a question whose answer Claude fills in. The typed commands still work.
-- Routing plan mode and other user choices now live in `.boardwright/choices.json`, which tools cannot write. Before, the mode was a `boardwright.json` setting Claude could have switched off itself.
-
-**Fixed after an independent review (Opus)**
-- History: two projects in one git repository shared one history, so undoing in one could overwrite the other's files. Each project now has its own (`refs/boardwright/steps/<id>`; an older shared history is moved aside, not deleted). Saves from several sessions at once could store empty or lost steps: each save now uses its own index and a lock. Undo crashed on file names with non-English characters.
-- Guards: the hooks now also watch PowerShell, notebook edits, the questions Claude asks, and other KiCad tool servers. In routing plan mode, a plane needs the designer's approval like a corridor (a signal net listed as a plane was a way around it), and pasting raw KiCad text is refused. Writing the plan file with `tee` is refused; just reading a protected file is allowed.
-- Board edits: `--dry-run` really writes nothing now (it wrote the net classes and rules). A batch is all or nothing: if one step fails, nothing is saved. A failed `place` puts the part back. In routing plan mode, `add` keeps tracks inside the approved corridor. The router checks a via against every copper layer, not only the layers it routes on.
-- Diagnostics: more secrets are removed (OpenAI-style, Firecrawl, Google and Slack keys, JWTs, `api_key=`, `secret=`, `passwd=`, e-mails written as "name at mail dot com", and the git name and e-mail). The summary Claude writes is kept when the report is exported. Requests in fast mode or US-only inference are counted but not priced (they cost more; no guess).
-- Smaller: the lifecycle report's `pass` matches its exit code; factory profiles count inner layers of any type; KiCad's Python is found inside the macOS app; the tool server for other agents is truly read-only and only works in Boardwright projects.
 
 **Other AI agents**
 - New projects get an `AGENTS.md` (rules and how to resume) for Codex, OpenCode, Grok and others.

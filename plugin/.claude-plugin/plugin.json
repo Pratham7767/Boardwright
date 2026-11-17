@@ -1,6 +1,6 @@
 {
   "name": "boardwright",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Idea-to-fab-files PCB design in KiCad 9/10. Eight gated stages, live edits you can watch in KiCad, design rules from manufacturer application notes, cheap helper agents for mechanical work. Never orders or publishes anything.",
   "author": {
     "name": "Prathware",
