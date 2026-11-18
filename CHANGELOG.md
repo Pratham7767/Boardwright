@@ -12,6 +12,8 @@ An MCP server for every feature, a deterministic routing engine that routes befo
 - Routes first, without Claude: KiCadRoutingTools in its strict mode (never lowers a clearance or size), then Freerouting for what is left. KiCad's DRC checks every result. A net whose new copper adds a DRC error is dropped and the rest is kept, so one bad net no longer throws away a whole stage. Claude only handles the leftovers.
 - Mains and hazardous nets are never routed by the engine; fast nets (USB and the like) only with `--allow-fast`; the routing plan's approvals are respected.
 - Open connections are counted with KiCad's connectivity, so big boards are counted completely (the DRC list stops at 499). Nets with a copper pour (planes, GND) are routed last with a shorter limit. Freerouting stops at the time limit and keeps what it routed.
+- Big boards are routed in batches of 80 nets, each checked and kept before the next. Freerouting runs without neck-down (it narrowed tracks below the board minimum) and with its strict checks.
+- Benchmark on seven KiCad demo boards (`docs/benchmark-engine.md`): pic_programmer 0 % -> 92 %, kit-dev-coldfire 0 % -> 76 %, stickhub 96 %, cm5_minima 88 %, no new DRC error anywhere. Still weak on very big boards (video 31 %, jetson 0 %) and Freerouting ignores the board-edge clearance; both are written up there.
 - One-step install of its tools (a Java runtime, Freerouting 2.5.0, KiCadRoutingTools 0.24.1), each checked against a fixed checksum: from the chat's Setup checks, the installers, or `setup_engine.ps1` / `setup_engine.sh`.
 
 **Chat window inside KiCad**

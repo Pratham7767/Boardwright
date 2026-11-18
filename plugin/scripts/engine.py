@@ -277,7 +277,10 @@ def freerouting_stage(tools: dict, kpy: str, base: Path, work: Path, minutes: fl
     secs = max(60, int(minutes * 60))
     limit = f"{secs // 3600:02d}:{secs % 3600 // 60:02d}:{secs % 60:02d}"
     cmd = [tools["java"], "-jar", tools["freerouting_jar"], "-de", dsn, "-do", ses, "--gui.enabled=false",
-           "--router.autorouter.max_passes=30", f"--router.job_timeout={limit}", "--router.optimizer.enabled=false"]
+           "--router.autorouter.max_passes=30", f"--router.job_timeout={limit}", "--router.optimizer.enabled=false",
+           # no narrowing of tracks near small pads (it went under the board's minimum width: video benchmark),
+           # and Freerouting's own clearance checks on
+           "--router.automatic_neckdown=false", "--router.strict_drc=true"]
     rc, out, timed_out, _s = sh(cmd, timeout=secs + 300, cwd=str(work))
     res["seconds"] = round(time.time() - t0, 1)
     if timed_out:
@@ -371,6 +374,8 @@ def evaluate(proj, kpy, work, name, st, base_open, orig_drc, nets, base_pcb) -> 
 
 
 # ------------------------------------------------------------------ report
+KRT_BATCH = 80                                  # nets per KiCadRoutingTools run on a big board
+BIG_POUR = 60                                   # open connections above which a pour net gets its own pass
 DRC_CAP = 499                                   # kicad-cli lists at most this many unconnected items
 
 
@@ -513,12 +518,24 @@ def cmd_run(proj: Path, args: list) -> int:
                 result_board = st["board"]
 
         if "krt" in engines:                                          # 5
-            # nets with a copper pour (planes, GND) last and briefly: the pour joins most of their pads, and
-            # routing them as tracks first can take the whole time limit on a big board
-            sig = [n for n in chosen if n not in zone_nets and n in cur_open]
-            if sig:
-                run_stage(krt_stage(tools, kpy, cur_pcb, work, sig, minutes, "krt"), "krt", sig)
-            pours = [n for n in chosen if n in zone_nets and n in cur_open]
+            # A net with a copper pour and very many open connections (the GND of a big board) can take the whole
+            # time limit as tracks, so it goes last in its own short pass. Smaller pour nets stay in the main
+            # pass, last in the list: routed alone, KiCadRoutingTools routed none of them (stickhub benchmark).
+            big = {n for n in chosen if n in zone_nets and cur_open.get(n, 0) > BIG_POUR}
+            main = [n for n in chosen if n not in zone_nets and n in cur_open] + \
+                [n for n in chosen if n in zone_nets and n not in big and n in cur_open]
+            # In batches: KiCadRoutingTools saves nothing when it runs out of time, so on a big board one long
+            # run lost everything (video, jetson benchmarks). Each batch is checked and kept before the next,
+            # which then routes around it. Small boards stay one batch (their pour nets need the others).
+            batches = [main[i:i + KRT_BATCH] for i in range(0, len(main), KRT_BATCH)]
+            for k, batch in enumerate(batches, 1):
+                batch = [n for n in batch if n in cur_open]
+                if not batch:
+                    continue
+                share = minutes if len(batches) == 1 else max(6.0, minutes * len(batch) / len(main))  # it spends its first minutes loading a big board
+                tag = "krt" if len(batches) == 1 else f"krt-{k}"
+                run_stage(krt_stage(tools, kpy, cur_pcb, work, batch, share, tag), tag, batch)
+            pours = [n for n in chosen if n in big and n in cur_open]
             if pours:
                 run_stage(krt_stage(tools, kpy, cur_pcb, work, pours, min(minutes / 2, 5), "krt-pours"),
                           "krt-pours", pours)

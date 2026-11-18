@@ -1,0 +1,430 @@
+{
+ "date": "2026-11-18",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 10.0,
+ "cap_min": 60.0,
+ "boards": [
+  {
+   "name": "pic_programmer",
+   "default": {
+    "connections_before": 86,
+    "drc_unconnected_before": 86,
+    "drc_list_capped": false,
+    "errors_before": 0,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 71.6,
+    "skipped": false,
+    "output_tail": "K-RB6, /DATA-RB7, /PC-CLOCK-OUT, /PC-DATA-IN, /PC-DATA-OUT, /VPP_ON, /VPP{slash}MCLR, /pic_sockets/VCC_PIC, Net-(C5-Pad1), Net-(D1-A), Net-(D1-K), Net-(D10-A), Net-(D11-A), Net-(D11-K), Net-(D12-A), Net-(D2-A), Net-(D4-A), Net-(D6-A), Net-(D8-A), Net-(D9-A), Net-(Q1-B), Net-(Q2-B), Net-(Q2-C), Net-(Q3-B), Net-(R12-Pad1), Net-(R13-Pad1), Net-(R15-Pad1), Net-(R16-Pad1), Net-(R8-Pad1), Net-(U4-FB+), Net-(U4-Vc), VCC, VPP\nkrt: ACCEPTED in 18.9 s; routed 29 net(s); kept 29 net(s); dropped 4 that caused DRC errors: /VPP{slash}MCLR, /CLOCK-RB6, /DATA-RB7, /pic_sockets/VCC_PIC\nfreerouting: ACCEPTED in 37.4 s; routed 3 net(s); kept 3 net(s); dropped 1 that caused DRC errors: /DATA-RB7\ndrc: 0 new error(s), 0 fixed, 0 unchanged; open connections 86 -> 7\ntime 71.5 s\nLeftovers for Claude: 7 connection(s) on 2 net(s)\n  /DATA-RB7: PTH pad 2 of R12 at 135.255,111.76 -> PTH pad 12 of U2 at 120.65,111.76\n  /DATA-RB7: PTH pad 28 of P2 at 215.265,50.8 -> PTH pad 40 of P3 at 190.5,50.8\n  /DATA-RB7: PTH pad 40 of P3 at 190.5,50.8 -> PTH pad 5 of U1 at 186.69,116.84\n  /DATA-RB7: PTH pad 5 of U1 at 186.69,116.84 -> PTH pad 2 of R12 at 135.255,111.76\n  /DATA-RB7: PTH pad 5 of U1 at 186.69,116.84 -> PTH pad 7 of U6 at 186.69,123.19\n  /DATA-RB7: PTH pad 7 of U6 at 186.69,123.19 -> PTH pad 13 of U5 at 215.519,120.65\n  GND: PTH pad 19 of P2 at 215.265,73.66 -> Zone [GND] at 223.52,138.43\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 7,
+    "copper_items_after": 294,
+    "connections_after": 7,
+    "completion": 0.9186,
+    "new_drc_errors": 0,
+    "errors_after": 0,
+    "nets_open_before": 33,
+    "chosen_nets": 33,
+    "connections_allowed": 82,
+    "connections_allowed_after": 6,
+    "completion_allowed": 0.9268,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "krt": {
+      "seconds": 18.9,
+      "accepted": true,
+      "unconnected_after_stage": 25,
+      "new_errors_in_stage": "0",
+      "nets_routed": 29,
+      "why": "kept 29 net(s); dropped 4 that caused DRC errors: /VPP{slash}MCLR, /CLOCK-RB6, /DATA-RB7, /pic_sockets/VCC_PIC"
+     },
+     "freerouting": {
+      "seconds": 37.4,
+      "accepted": true,
+      "unconnected_after_stage": 7,
+      "new_errors_in_stage": "0",
+      "nets_routed": 3,
+      "why": "kept 3 net(s); dropped 1 that caused DRC errors: /DATA-RB7"
+     }
+    },
+    "krt_nets": 29,
+    "freerouting_nets": 3,
+    "engine_seconds": 71.2,
+    "engine_result": "routed 32 of 33 chosen net(s) (krt 29, freerouting 3); open connections 86 -> 7"
+   },
+   "removed": 376,
+   "copper_layers": 2,
+   "footprints": 63,
+   "nets": 111,
+   "zones": 1
+  },
+  {
+   "name": "kit-dev-coldfire-xilinx_5213",
+   "default": {
+    "connections_before": 478,
+    "drc_unconnected_before": 478,
+    "drc_list_capped": false,
+    "errors_before": 0,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 1272.4,
+    "skipped": false,
+    "output_tail": "1, /DDAT0, /DDAT1, /DDAT2, /DDAT3, /DSCLK, /DSI, /DSO, /DSPI_DOUT, /DTIN0, /DTIN1, /DTIN2, /DTIN3, /GPT0, /GPT1, /GPT2, /GPT3, /IRQ-1, /IRQ-2, /IRQ-3, /IRQ-4, /IRQ-5, /IRQ-6, /IRQ-7, /JTAG_EN ... and 169 more\nkrt: ACCEPTED in 329.1 s; routed 199 net(s); kept 204 net(s); dropped 3 that caused DRC errors: /CLKMOD0, /RSTI-, /DSI\nkrt-pours: REJECTED in 300.0 s; routed 0 net(s); timed out after 5 minutes\nfreerouting: ACCEPTED in 618.6 s; routed 0 net(s); kept 5 net(s); dropped 5 that caused DRC errors: GND, /RSTI-, /DSI, /CLKIN{slash}EXTAL, /CLKMOD0\ndrc: 0 new error(s), 0 fixed, 0 unchanged; open connections 478 -> 113\ntime 1272.2 s\nLeftovers for Claude: 113 connection(s) on 10 net(s)\n  +3.3V: C101.2 -> U101.5\n  +3.3V: C101.2 -> Via [+3.3V] at 163.3923,99.4408\n  +3.3V: C113.1 -> U102.34\n  +3.3V: C113.1 -> Via [+3.3V] at 122.5581,99.8333\n  +3.3V: R124.2 -> Track [+3.3V] at 153.9475,93.853\n  +3.3V: Track [+3.3V] at 134.882,94.9079 -> C111.1\n  +3.3V: Track [+3.3V] at 141.382,93.798 -> Track [+3.3V] at 142.4598,90.9638\n  +3.3V: Track [+3.3V] at 161.65,128.55 -> Via [+3.3V] at 162.965,127.3689\n  +3.3V: Track [+3.3V] at 191.958,107.2272 -> Track [+3.3V] at 191.2675,109.51\n  +3.3V: Track [+3.3V] at 191.958,122.2726 -> U301.58\n  +3.3V: Track [+3.3V] at 208.3915,113.8549 -> U301.123\n  +3.3V: Track [+3.3V] at 209.0338,101.5258 -> U301.144\n  ... 101 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 113,
+    "copper_items_after": 2629,
+    "connections_after": 113,
+    "completion": 0.7636,
+    "new_drc_errors": 0,
+    "errors_after": 0,
+    "nets_open_before": 209,
+    "chosen_nets": 209,
+    "connections_allowed": 472,
+    "connections_allowed_after": 112,
+    "completion_allowed": 0.7627,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "krt": {
+      "seconds": 329.1,
+      "accepted": true,
+      "unconnected_after_stage": 178,
+      "new_errors_in_stage": "0",
+      "nets_routed": 199,
+      "why": "kept 204 net(s); dropped 3 that caused DRC errors: /CLKMOD0, /RSTI-, /DSI"
+     },
+     "krt-pours": {
+      "seconds": 300.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "timed out after 5 minutes"
+     },
+     "freerouting": {
+      "seconds": 618.6,
+      "accepted": true,
+      "unconnected_after_stage": 113,
+      "new_errors_in_stage": "0",
+      "nets_routed": 0,
+      "why": "kept 5 net(s); dropped 5 that caused DRC errors: GND, /RSTI-, /DSI, /CLKIN{slash}EXTAL, /CLKMOD0"
+     }
+    },
+    "krt_nets": 199,
+    "freerouting_nets": 0,
+    "engine_seconds": 1271.7,
+    "engine_result": "routed 199 of 209 chosen net(s) (krt 199, freerouting 0); open connections 478 -> 113"
+   },
+   "removed": 3187,
+   "copper_layers": 4,
+   "footprints": 160,
+   "nets": 278,
+   "zones": 3
+  },
+  {
+   "name": "stickhub",
+   "default": {
+    "connections_before": 128,
+    "drc_unconnected_before": 128,
+    "drc_list_capped": false,
+    "errors_before": 0,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 271.4,
+    "skipped": false,
+    "output_tail": "engine run: routed 42 of 45 chosen net(s) (krt 42, freerouting 0); open connections 128 -> 36\nchosen 45: +1V8, +3.3V, +5V, /D+, /D-, /LC, /LED1, /LED2, /LED3, /LED4, /LED5, /LED6, /LED7, /U1D+, /U1D-, /U2D+, /U2D-, /U3D+, /U3D-, /U4D+, /U4D-, /U5D+, /U5D-, /U6D+, /U6D-, /U7D+, /U7D-, /XI, /XO, GND, Net-(D15-1), Net-(D16-1), Net-(D17-1), Net-(D18-1), Net-(D19-1), Net-(D20-1), Net-(D21-1), Net-(J1-Pin_1), Net-(U1-EXT_RST#), Net-(U1-REXT) ... and 5 more\nkrt: ACCEPTED in 45.1 s; routed 42 net(s)\nkrt-pours: ACCEPTED in 88.3 s; routed 0 net(s)\nfreerouting: REJECTED in 122.7 s; routed 0 net(s); adds new DRC errors: new: Track width (board setup constraints min width 0.1500 mm; actual 0.1124 mm): Track [GND] on F.Cu, length 1.2141 mm; new: Tra\ndrc: 0 new error(s), 0 fixed, 0 unchanged; open connections 128 -> 36\ntime 271.2 s\nLeftovers for Claude: 36 connection(s) on 3 net(s)\n  +1V8: C11.1 -> U1.6\n  +1V8: U1.21 -> C12.1\n  +1V8: U1.25 -> U1.21\n  +1V8: U1.25 -> Zone [+1V8] at 147.55,103.2\n  +1V8: U1.28 -> Zone [+1V8] at 147.55,103.2\n  +1V8: U1.6 -> U1.21\n  +5V: C1.1 -> U1.8\n  +5V: C14.1 -> J2.1\n  +5V: C15.1 -> J6.1\n  +5V: C16.1 -> C15.1\n  +5V: C18.1 -> C17.1\n  +5V: C18.1 -> J4.1\n  ... 24 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 36,
+    "copper_items_after": 410,
+    "connections_after": 36,
+    "completion": 0.7188,
+    "new_drc_errors": 0,
+    "errors_after": 0,
+    "nets_open_before": 45,
+    "chosen_nets": 45,
+    "connections_allowed": 128,
+    "connections_allowed_after": 36,
+    "completion_allowed": 0.7188,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "krt": {
+      "seconds": 45.1,
+      "accepted": true,
+      "unconnected_after_stage": 36,
+      "new_errors_in_stage": "0",
+      "nets_routed": 42,
+      "why": ""
+     },
+     "krt-pours": {
+      "seconds": 88.3,
+      "accepted": true,
+      "unconnected_after_stage": 36,
+      "new_errors_in_stage": "0",
+      "nets_routed": 0,
+      "why": ""
+     },
+     "freerouting": {
+      "seconds": 122.7,
+      "accepted": false,
+      "unconnected_after_stage": 20,
+      "new_errors_in_stage": "14",
+      "nets_routed": 0,
+      "why": "adds new DRC errors: new: Track width (board setup constraints min width 0.1500 mm; actual 0.1124 mm): Track [GND] on F.Cu, length 1.2141 mm; new: Track width (board setup constraints min width 0.1500 mm; actual 0.1124 mm): Track [GND] on F"
+     }
+    },
+    "krt_nets": 42,
+    "freerouting_nets": 0,
+    "engine_seconds": 270.8,
+    "engine_result": "routed 42 of 45 chosen net(s) (krt 42, freerouting 0); open connections 128 -> 36"
+   },
+   "removed": 1380,
+   "copper_layers": 2,
+   "footprints": 94,
+   "nets": 47,
+   "zones": 5
+  },
+  {
+   "name": "royalblue54L_feather",
+   "default": {
+    "connections_before": 142,
+    "drc_unconnected_before": 142,
+    "drc_list_capped": false,
+    "errors_before": 50,
+    "copper_items_before": 15,
+    "exit": 1,
+    "wall_s": 779.6,
+    "skipped": false,
+    "output_tail": "s --allow-fast (net class USB_DIFF)\nleft out /Debugger/D-: fast net, route it by hand or pass --allow-fast (net class USB_DIFF)\nkrt: ACCEPTED in 37.3 s; routed 2 net(s)\nkrt-pours: REJECTED in 300.0 s; routed 0 net(s); timed out after 5 minutes\nfreerouting: ACCEPTED in 414.8 s; routed 14 net(s); kept 39 net(s); dropped 24 that caused DRC errors: +BATT, /Connectors/UART.RX, /Connectors/UART.TX, /Connectors/I2C.SDA, /Connectors/ANALOG.A4, /Conne\ndrc: 0 new error(s), 0 fixed, 51 unchanged; open connections 142 -> 94\ntime 779.5 s\nLeftovers for Claude: 94 connection(s) on 51 net(s)\n  +BATT: J4.1 -> PTH pad 1 of J2 at 143.23,94.82\n  +BATT: PTH pad 1 of J2 at 143.23,94.82 -> U2.19\n  +BATT: U2.19 -> Teardrop [+BATT] at 149.145,100.44\n  /Connectors/ANALOG.A0: U1.E9 -> PTH pad 5 of J1 at 143.23,116.41\n  /Connectors/ANALOG.A1: U1.F8 -> PTH pad 6 of J1 at 145.77,116.41\n  /Connectors/ANALOG.A2: U1.F9 -> PTH pad 7 of J1 at 148.31,116.41\n  /Connectors/ANALOG.A3: U1.G9 -> PTH pad 8 of J1 at 150.85,116.41\n  /Connectors/ANALOG.A4: U1.B4 -> PTH pad 9 of J1 at 153.39,116.41\n  /Connectors/ANALOG.A5: U1.B5 -> PTH pad 10 of J1 at 155.93,116.41\n  /Connectors/DIG.D10: PTH pad 7 of J2 at 158.47,94.82 -> U1.K6\n  /Connectors/DIG.D11: SW2.1 -> PTH pad 6 of J2 at 155.93,94.82\n  /Connectors/DIG.D11: SW2.1 -> Teardrop [/Connectors/DIG.D11] at 156.985,100.43\n  ... 82 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 94,
+    "copper_items_after": 317,
+    "connections_after": 94,
+    "completion": 0.338,
+    "new_drc_errors": 0,
+    "errors_after": 50,
+    "nets_open_before": 67,
+    "chosen_nets": 65,
+    "connections_allowed": 132,
+    "connections_allowed_after": 86,
+    "completion_allowed": 0.3485,
+    "left_out_by_reason": {
+     "fast net, route it by hand or pass --allow-fast": 2
+    },
+    "left_out_connections": 8,
+    "stages": {
+     "krt": {
+      "seconds": 37.3,
+      "accepted": true,
+      "unconnected_after_stage": 138,
+      "new_errors_in_stage": "0",
+      "nets_routed": 2,
+      "why": ""
+     },
+     "krt-pours": {
+      "seconds": 300.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "timed out after 5 minutes"
+     },
+     "freerouting": {
+      "seconds": 414.8,
+      "accepted": true,
+      "unconnected_after_stage": 94,
+      "new_errors_in_stage": "0",
+      "nets_routed": 14,
+      "why": "kept 39 net(s); dropped 24 that caused DRC errors: +BATT, /Connectors/UART.RX, /Connectors/UART.TX, /Connectors/I2C.SDA, /Connectors/ANALOG.A4, /Connectors/ANALOG.A5"
+     }
+    },
+    "krt_nets": 2,
+    "freerouting_nets": 14,
+    "engine_seconds": 779.1,
+    "engine_result": "routed 16 of 65 chosen net(s) (krt 2, freerouting 14); open connections 142 -> 94"
+   },
+   "removed": 1126,
+   "copper_layers": 8,
+   "footprints": 71,
+   "nets": 95,
+   "zones": 267
+  },
+  {
+   "name": "cm5_minima",
+   "default": {
+    "connections_before": 208,
+    "drc_unconnected_before": 208,
+    "drc_list_capped": false,
+    "errors_before": 4,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 938.8,
+    "skipped": false,
+    "output_tail": "GPIO18, /CM5/DC_GPI25, /CM5/DPHY0_P.C_N, /CM5/DPHY0_P.C_P, /CM5/DPHY0_P.D0_N, /CM5/DPHY0_P.D0_P, /CM5/DPHY0_P.D1_N, /CM5/DPHY0_P.D1_P, /CM5/DPHY0_P.D2_N, /CM5/DPHY0_P.D2_P, /CM5/DPHY0_P.D3_N, /CM5/DPHY0_P.D3_P, /CM5/EEPROM_nWP, /CM5/ETH_PI.TRD0_N, /CM5/ETH_PI.TRD0_P, /CM5/ETH_PI.TRD1_N, /CM5/ETH_PI.TRD1_P, /CM5/ETH_PI.TRD2_N, /CM5/ETH_PI.TRD2_P, /CM5/ETH_PI.TRD3_N, /CM5/ETH_PI.TRD3_P, /CM5/ETH_nLED_ACTIVITY, /CM5/GPIO_VREF, /CM5/HDMI_PI.CEC, /CM5/HDMI_PI.CK_N, /CM5/HDMI_PI.CK_P, /CM5/HDMI_PI.D0_N, /CM5/HDMI_PI.D0_P, /CM5/HDMI_PI.D1_N, /CM5/HDMI_PI.D1_P, /CM5/HDMI_PI.D2_N ... and 54 more\nkrt: ACCEPTED in 291.1 s; routed 88 net(s)\nfreerouting: ACCEPTED in 626.2 s; routed 1 net(s)\ndrc: 0 new error(s), 0 fixed, 4 unchanged; open connections 208 -> 25\ntime 938.7 s\nLeftovers for Claude: 25 connection(s) on 6 net(s)\n  /CM5/DPHY0_P.D0_P: Module302.117 -> J802.3\n  /CM5/ETH_PI.TRD0_P: Module301.12 -> Track [/CM5/ETH_PI.TRD0_P] at 101.9,39.2\n  /CM5/ETH_PI.TRD2_N: Module301.9 -> U402.9\n  /CM5/ETH_PI.TRD3_N: Track [/CM5/ETH_PI.TRD3_N] at 101.9225,33.123 -> Module301.5\n  /CM5/ETH_PI.TRD3_P: Module301.3 -> U402.7\n  GND: J501.8 -> J501.11\n  GND: J802.19 -> Module301.22\n  GND: Module301.14 -> J802.16\n  GND: Module301.2 -> J802.10\n  GND: Module301.7 -> Module301.1\n  GND: Module301.8 -> J802.13\n  GND: Module302.108 -> Zone [GND] at 74.99,20.22\n  ... 13 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 25,
+    "copper_items_after": 1629,
+    "connections_after": 25,
+    "completion": 0.8798,
+    "new_drc_errors": 0,
+    "errors_after": 4,
+    "nets_open_before": 94,
+    "chosen_nets": 94,
+    "connections_allowed": 207,
+    "connections_allowed_after": 5,
+    "completion_allowed": 0.9758,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "krt": {
+      "seconds": 291.1,
+      "accepted": true,
+      "unconnected_after_stage": 26,
+      "new_errors_in_stage": "0",
+      "nets_routed": 88,
+      "why": ""
+     },
+     "freerouting": {
+      "seconds": 626.2,
+      "accepted": true,
+      "unconnected_after_stage": 25,
+      "new_errors_in_stage": "0",
+      "nets_routed": 1,
+      "why": ""
+     }
+    },
+    "krt_nets": 88,
+    "freerouting_nets": 1,
+    "engine_seconds": 938.3,
+    "engine_result": "routed 89 of 94 chosen net(s) (krt 88, freerouting 1); open connections 208 -> 25"
+   },
+   "removed": 2528,
+   "copper_layers": 6,
+   "footprints": 112,
+   "nets": 220,
+   "zones": 14
+  },
+  {
+   "name": "video",
+   "default": {
+    "connections_before": 1345,
+    "drc_unconnected_before": 499,
+    "drc_list_capped": true,
+    "errors_before": 0,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 1481.5,
+    "skipped": false,
+    "output_tail": "engine run: routed 59 of 371 chosen net(s) (krt 2, freerouting 58); open connections 1345 -> 946\nchosen 371: +3.3V, +5F, +5V, /ACCES_RAM-, /ACQ_ON, /ADR2, /ADR3, /ADR4, /ADR5, /ADR6, /BE-0, /BE-1, /BE-2, /BE-3, /BLANK-, /BLUE_IN, /BLUE_OUT, /BPCLK, /BT812_RD-, /BT812_WR-, /CAS0-, /CAS1-, /CAS2-, /CAS3-, /CLAMP, /CLKCAD, /CLKCDA, /CSYNC-OUT, /CSYNCIN-, /C_OUT, /DQ0, /DQ1, /DQ10, /DQ11, /DQ12, /DQ13, /DQ14, /DQ15, /DQ16, /DQ17 ... and 331 more\nkrt: REJECTED in 600.0 s; routed 0 net(s); timed out after 10 minutes\nkrt-pours: ACCEPTED in 202.4 s; routed 2 net(s)\nfreerouting: ACCEPTED in 628.6 s; routed 58 net(s); kept 296 net(s); dropped 73 that caused DRC errors: /buspci.sch/P_INTA#, +3.3V, /buspci.sch/P_AD24, /buspci.sch/P_AD2, /buspci.sch/P_AD29, /buspci.sch\ndrc: 0 new error(s), 0 fixed, 0 unchanged; open connections 1345 -> 946\ntime 1481.3 s\nLeftovers for Claude: 946 connection(s) on 312 net(s)\n  +3.3V: 13 connection(s) open\n  /ACCES_RAM-: 5 connection(s) open\n  /ACQ_ON: 1 connection(s) open\n  /ADR2: 2 connection(s) open\n  /ADR3: 2 connection(s) open\n  /ADR4: 2 connection(s) open\n  /ADR5: 2 connection(s) open\n  /ADR6: 2 connection(s) open\n  /BE-0: 2 connection(s) open\n  /BE-1: 2 connection(s) open\n  /BE-2: 2 connection(s) open\n  /BE-3: 2 connection(s) open\n  ... 300 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 499,
+    "copper_items_after": 2810,
+    "connections_after": 946,
+    "completion": 0.2967,
+    "new_drc_errors": 0,
+    "errors_after": 0,
+    "nets_open_before": 121,
+    "chosen_nets": 371,
+    "connections_allowed": 495,
+    "connections_allowed_after": 489,
+    "completion_allowed": null,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "krt": {
+      "seconds": 600.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "timed out after 10 minutes"
+     },
+     "krt-pours": {
+      "seconds": 202.4,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 2,
+      "why": ""
+     },
+     "freerouting": {
+      "seconds": 628.6,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 58,
+      "why": "kept 296 net(s); dropped 73 that caused DRC errors: /buspci.sch/P_INTA#, +3.3V, /buspci.sch/P_AD24, /buspci.sch/P_AD2, /buspci.sch/P_AD29, /buspci.sch/P_AD25"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 58,
+    "engine_seconds": 1480.8,
+    "engine_result": "routed 59 of 371 chosen net(s) (krt 2, freerouting 58); open connections 1345 -> 946"
+   },
+   "removed": 8740,
+   "copper_layers": 4,
+   "footprints": 189,
+   "nets": 588,
+   "zones": 2
+  },
+  {
+   "name": "jetson-agx-thor-baseboard",
+   "default": {
+    "connections_before": 2946,
+    "drc_unconnected_before": 499,
+    "drc_list_capped": true,
+    "errors_before": 3,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 1629.0,
+    "skipped": false,
+    "output_tail": "y hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nleft out /USB Hub/USBSS_RX_N: fast net, route it by hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nleft out /USB Hub/USBSS_RX_P: fast net, route it by hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nleft out /USB Hub/USBSS_TX_N: fast net, route it by hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nleft out /USB Hub/USBSS_TX_P: fast net, route it by hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nleft out /USB Hub/VBUS_MON_UP: fast net, route it by hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nkrt: REJECTED in 600.1 s; routed 0 net(s); timed out after 10 minutes\nkrt-pours: REJECTED in 300.0 s; routed 0 net(s); timed out after 5 minutes\nfreerouting: ACCEPTED in 698.5 s; routed 0 net(s)\ndrc: 0 new error(s), 0 fixed, 3 unchanged; open connections 2946 -> 2944\ntime 1628.8 s\nLeftovers for Claude: 2944 connection(s) on 872 net(s)\n  +12V: 6 connection(s) open\n  +1V15: 22 connection(s) open\n  +1V8: 57 connection(s) open\n  +20V: 8 connection(s) open\n  +3V3: 157 connection(s) open\n  +3V3_AON: 30 connection(s) open\n  +5V: 46 connection(s) open\n  +5V_AON: 14 connection(s) open\n  +5V_SOM: 22 connection(s) open\n  /CSI/CAM0.CSI2_CLK+: 1 connection(s) open\n  /CSI/CAM0.CSI2_CLK-: 1 connection(s) open\n  /CSI/CAM0.CSI2_D0+: 1 connection(s) open\n  ... 860 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 499,
+    "copper_items_after": 2,
+    "connections_after": 2944,
+    "completion": 0.0007,
+    "new_drc_errors": 0,
+    "errors_after": 3,
+    "nets_open_before": 1,
+    "chosen_nets": 715,
+    "connections_allowed": 499,
+    "connections_allowed_after": 499,
+    "completion_allowed": null,
+    "left_out_by_reason": {
+     "fast net, route it by hand or pass --allow-fast": 157
+    },
+    "left_out_connections": 0,
+    "stages": {
+     "krt": {
+      "seconds": 600.1,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "timed out after 10 minutes"
+     },
+     "krt-pours": {
+      "seconds": 300.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "timed out after 5 minutes"
+     },
+     "freerouting": {
+      "seconds": 698.5,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 0,
+      "why": ""
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 1627.8,
+    "engine_result": "routed 0 of 715 chosen net(s) (krt 0, freerouting 0); open connections 2946 -> 2944"
+   },
+   "removed": 25386,
+   "copper_layers": 10,
+   "footprints": 1125,
+   "nets": 1387,
+   "zones": 125
+  }
+ ]
+}

@@ -8,7 +8,28 @@ Each demo folder is copied to a work directory (the KiCad install is never touch
 
 Completion is `1 - connections after / connections before`, over all connections. "Allowed" completion counts only the connections on nets the engine was permitted to route (it skips hazardous nets, and fast nets unless `--allow-fast`). "New errors" is the number of DRC errors not present on the stripped board.
 
-## Results
+## After the fixes (0.7.0, default runs)
+
+The first run (below) showed five weaknesses: a whole stage was thrown away when a few nets caused DRC errors; the DRC's unconnected list stops at 499, so big boards were miscounted; Freerouting's work was lost when it ran out of time; GND on a big board used the whole time limit; and the result could vary between runs. 0.7.0 fixes the first four: only the nets that add a DRC error are dropped, open connections are counted with KiCad's connectivity, Freerouting stops at its own time limit and keeps what it routed, pour nets with many open connections get their own short pass, and big boards are routed in batches of 80 nets that are kept one by one.
+
+| Board | Layers | Connections | Before the fixes | After | Time | New DRC errors |
+|---|---|---|---|---|---|---|
+| pic_programmer | 2 | 86 | 0% | **92%** (7 left) | 72 s | 0 |
+| kit-dev-coldfire-xilinx_5213 | 4 | 478 | 0% | **76%** (113 left) | 21 min | 0 |
+| stickhub | 2 | 128 | 96% | **96%** (5 left) | 4 min | 0 |
+| cm5_minima | 6 | 208 | 89% | **88%** (25 left) | 16 min | 0 |
+| royalblue54L_feather | 8 | 142 | 70% | 61% (55 left) | 16 min | 0 |
+| video | 4 | 1345 | 37% | 31% (930 left) | 31 min | 0 |
+| jetson-agx-thor-baseboard | 10 | 2946 | 0% | 0% | 49 min | 0 |
+
+Time limits: 10 minutes per stage for the first four rows, 15 for the last three (as in the first run). No run added a DRC error.
+
+What is still weak, honestly:
+- **Big boards (video, jetson).** KiCadRoutingTools spends its first minutes loading a board this size, so batches with a short time limit end before routing anything; on jetson every batch timed out. Batches now get at least 6 minutes (not yet re-measured). The first run's jetson `--allow-fast` row reached 37 % because its single long KiCadRoutingTools run happened to finish; the engine still needs a way to keep partial results from a run that times out.
+- **Freerouting and board edges.** On royalblue Freerouting routes closer to the board edge than the board allows (0.127 mm); KiCad's DRC drops those nets, correctly. Freerouting is now run without neck-down (it narrowed tracks below the board minimum on video) and with its strict checks on.
+- **Repeatability.** Runs on the same board can route slightly different nets.
+
+## First run (before the fixes)
 
 | Board | Layers | Footprints | Nets | Connections | Default: done / allowed | Default: new DRC errors | Default: time | Fast allowed: done / allowed | Fast allowed: new DRC errors | Fast allowed: time |
 |---|---|---|---|---|---|---|---|---|---|---|
