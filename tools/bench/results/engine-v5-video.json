@@ -1,0 +1,70 @@
+{
+ "date": "2026-11-18",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 60.0,
+ "boards": [
+  {
+   "name": "video",
+   "default": {
+    "connections_before": 1345,
+    "drc_unconnected_before": 499,
+    "drc_list_capped": true,
+    "errors_before": 0,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 1272.1,
+    "skipped": false,
+    "output_tail": " run: routed 77 of 371 chosen net(s) (krt 2, freerouting 77); open connections 1345 -> 890\nchosen 371: +3.3V, +5F, +5V, /ACCES_RAM-, /ACQ_ON, /ADR2, /ADR3, /ADR4, /ADR5, /ADR6, /BE-0, /BE-1, /BE-2, /BE-3, /BLANK-, /BLUE_IN, /BLUE_OUT, /BPCLK, /BT812_RD-, /BT812_WR-, /CAS0-, /CAS1-, /CAS2-, /CAS3-, /CLAMP, /CLKCAD, /CLKCDA, /CSYNC-OUT, /CSYNCIN-, /C_OUT, /DQ0, /DQ1, /DQ10, /DQ11, /DQ12, /DQ13, /DQ14, /DQ15, /DQ16, /DQ17 ... and 331 more\nkrt: REJECTED in 0.0 s; routed 0 net(s); skipped: 1345 open connections; on boards this big its setup took longer than 30 minutes (more than 1000)\nkrt-planes: ACCEPTED in 303.9 s; routed 2 net(s)\nfreerouting: ACCEPTED in 936.8 s; routed 77 net(s); kept 289 net(s); dropped 80 that caused DRC errors: /buspci.sch/P_INTA#, +3.3V, /buspci.sch/P_AD16, /buspci.sch/P_CLK, /buspci.sch/P_AD27, /buspci.sch\ndrc: 0 new error(s), 0 fixed, 0 unchanged; open connections 1345 -> 890\ntime 1272.0 s\nLeftovers for Claude: 890 connection(s) on 294 net(s)\n  +3.3V: 13 connection(s) open\n  +5V: 2 connection(s) open\n  /ACCES_RAM-: 5 connection(s) open\n  /ACQ_ON: 1 connection(s) open\n  /ADR2: 2 connection(s) open\n  /ADR3: 2 connection(s) open\n  /ADR4: 1 connection(s) open\n  /ADR5: 2 connection(s) open\n  /ADR6: 2 connection(s) open\n  /BE-0: 1 connection(s) open\n  /BE-1: 1 connection(s) open\n  /BE-2: 2 connection(s) open\n  ... 282 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 499,
+    "copper_items_after": 3997,
+    "connections_after": 890,
+    "completion": 0.3383,
+    "new_drc_errors": 0,
+    "errors_after": 0,
+    "nets_open_before": 121,
+    "chosen_nets": 371,
+    "connections_allowed": 495,
+    "connections_allowed_after": 489,
+    "completion_allowed": null,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "krt": {
+      "seconds": 0.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "skipped: 1345 open connections; on boards this big its setup took longer than 30 minutes (more than 1000)"
+     },
+     "krt-planes": {
+      "seconds": 303.9,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 2,
+      "why": ""
+     },
+     "freerouting": {
+      "seconds": 936.8,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 77,
+      "why": "kept 289 net(s); dropped 80 that caused DRC errors: /buspci.sch/P_INTA#, +3.3V, /buspci.sch/P_AD16, /buspci.sch/P_CLK, /buspci.sch/P_AD27, /buspci.sch/P_AD21"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 77,
+    "engine_seconds": 1271.6,
+    "engine_result": "routed 77 of 371 chosen net(s) (krt 2, freerouting 77); open connections 1345 -> 890"
+   },
+   "removed": 8740,
+   "copper_layers": 4,
+   "footprints": 189,
+   "nets": 588,
+   "zones": 2
+  }
+ ]
+}

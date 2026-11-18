@@ -236,17 +236,82 @@ def krt_pattern(net: str) -> str:
     return "[-]" + out[1:] if out.startswith("-") else out
 
 
-def krt_stage(tools: dict, kpy: str, base: Path, work: Path, nets: list, minutes: float, tag: str = "krt") -> dict:
-    raw = work / f"{tag}_raw.kicad_pcb"
-    summary = work / f"{tag}_summary.json"
+def stage_dir(proj: Path, work: Path, base: Path, tag: str) -> tuple:
+    """A fresh folder for one router run: the board as board.kicad_pcb with the project's own .kicad_pro beside
+    it (the router reads the board's rules from it) and an empty out/ folder with the same .kicad_pro, because
+    KiCadRoutingTools also reads back the .kicad_pro next to its output. A fresh folder every time keeps runs
+    repeatable (a reused output folder changed the next result)."""
+    d = work / f"run_{tag}"
+    shutil.rmtree(d, ignore_errors=True)
+    (d / "out").mkdir(parents=True)
+    pro = project_files(proj)["pcb"].with_suffix(".kicad_pro")
+    src = d / "board.kicad_pcb"
+    shutil.copyfile(base, src)
+    if pro.is_file():
+        shutil.copyfile(pro, d / "board.kicad_pro")
+        shutil.copyfile(pro, d / "out" / "board.kicad_pro")
+    return src, d / "out" / "board.kicad_pcb", d
+
+
+def run_until(cmd, minutes: float, cwd: str, stop_file: Path | None = None, grace: float = 180.0,
+              env: dict | None = None) -> tuple:
+    """Run cmd with a deadline. With stop_file: at the deadline the file is created (KiCadRoutingTools then
+    stops before its next net and writes what it has routed) and the process gets `grace` seconds to finish;
+    only then is it killed. -> (returncode, output, killed, seconds)."""
+    t0 = time.time()
+    e = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONHASHSEED="0", **(env or {}))
+    quiet_dir = str(Path(__file__).resolve().parent / "quiet_site")
+    e["PYTHONPATH"] = quiet_dir + (os.pathsep + e["PYTHONPATH"] if e.get("PYTHONPATH") else "")
+    if stop_file is not None:
+        e["KICAD_STOP_FILE"] = str(stop_file)
+    log = Path(tempfile.mkstemp(prefix="bwrun", suffix=".log")[1])
+    try:
+        with open(log, "w", encoding="utf-8", errors="replace") as fh:
+            try:
+                p = subprocess.Popen([str(c) for c in cmd], cwd=cwd, env=e, stdout=fh, stderr=subprocess.STDOUT)
+            except OSError as exc:
+                return -1, str(exc), False, 0.0
+            deadline = t0 + minutes * 60
+            killed = False
+            try:
+                p.wait(timeout=max(1.0, deadline - time.time()))
+            except subprocess.TimeoutExpired:
+                if stop_file is not None:
+                    stop_file.write_text("stop", "utf-8")
+                    try:
+                        p.wait(timeout=grace)
+                    except subprocess.TimeoutExpired:
+                        p.kill()
+                        p.wait()
+                        killed = True
+                else:
+                    p.kill()
+                    p.wait()
+                    killed = True
+        out = log.read_text("utf-8", errors="replace")
+        return p.returncode, out, killed, time.time() - t0
+    finally:
+        try:
+            log.unlink()
+        except OSError:
+            pass
+
+
+def krt_stage(tools: dict, kpy: str, base: Path, work: Path, nets: list, minutes: float, tag: str = "krt",
+              proj: Path | None = None) -> dict:
+    src, raw, d = stage_dir(proj, work, base, tag)
+    summary = d / "summary.json"
+    stop = d / "STOP"
     router = Path(tools["krt"]) / "py_router"
-    cmd = [tools["krt_python"], router / "route.py", base, "--output", raw, "--nets", *[krt_pattern(n) for n in nets],
+    cmd = [tools["krt_python"], router / "route.py", src, "--output", raw, "--nets", *[krt_pattern(n) for n in nets],
            "--escalation", "off", "--strict-sizes", "--no-fix-drc-settings", "--fab-tier", "standard",
            "--json-out", summary]
-    rc, out, timed_out, secs = sh(cmd, timeout=minutes * 60, cwd=str(router))
-    res = {"engine": tag, "seconds": round(secs, 1), "raw": None, "routed": [], "failed": []}
-    if timed_out:
-        res["error"] = f"timed out after {minutes:g} minutes"
+    # one run over all the nets, stopped by its own stop file at the time limit: it then keeps what it routed
+    rc, out, killed, secs = run_until(cmd, minutes, str(router), stop_file=stop)
+    res = {"engine": tag, "seconds": round(secs, 1), "raw": None, "routed": [], "failed": [],
+           "stopped_at_limit": stop.exists()}
+    if killed:
+        res["error"] = f"did not stop within {minutes:g} minutes plus its grace time"
         return res
     try:
         s = json.loads(summary.read_text("utf-8"))
@@ -254,9 +319,10 @@ def krt_stage(tools: dict, kpy: str, base: Path, work: Path, nets: list, minutes
         res["failed"] = list(s.get("failed_single", [])) + list(s.get("open_single", [])) + \
             list(s.get("failed_multipoint", []))
     except (OSError, ValueError):
-        res["error"] = f"no summary from KiCadRoutingTools (exit {rc}): " + " | ".join(
-            l for l in out.splitlines() if l.strip() and "swig" not in l)[-300:]
-        return res
+        if not raw.is_file():
+            res["error"] = f"no summary from KiCadRoutingTools (exit {rc}): " + " | ".join(
+                l for l in out.splitlines() if l.strip() and "swig" not in l)[-300:]
+            return res
     if not raw.is_file():
         res["error"] = f"KiCadRoutingTools wrote no board (exit {rc})"
         return res
@@ -264,7 +330,48 @@ def krt_stage(tools: dict, kpy: str, base: Path, work: Path, nets: list, minutes
     return res
 
 
-def freerouting_stage(tools: dict, kpy: str, base: Path, work: Path, minutes: float) -> dict:
+def planes_stage(tools: dict, kpy: str, base: Path, work: Path, nets: list, minutes: float, proj: Path) -> dict:
+    """Nets with a copper pour (GND, power planes): KiCadRoutingTools' plane repair joins their pads and split
+    areas to the existing pour with short taps and vias, instead of routing them as tracks across the board.
+    It does not rip up other nets (that needs --rip-blocker-nets, not passed)."""
+    src, raw, d = stage_dir(proj, work, base, "planes")
+    router = Path(tools["krt"]) / "py_router"
+    cmd = [tools["krt_python"], router / "repair_planes.py", src, raw, "--nets", *[krt_pattern(n) for n in nets],
+           # the same strict mode as the router: no smaller "last resort" vias or narrower tracks than the board
+           # allows, and the project's rules file left as it is
+           "--escalation", "off", "--fab-tier", "standard", "--no-fix-drc-settings"]
+    # the board's own sizes and clearances (its defaults made 0.15 mm drills on a board that allows 0.4 mm)
+    r = board_rules(kpy, base)
+    for flag, key in (("--via-size", "via_um"), ("--via-drill", "drill_um"), ("--clearance", "clearance_um"),
+                      ("--board-edge-clearance", "edge_um"), ("--hole-to-hole-clearance", "hole_to_hole_um"),
+                      ("--min-track-width", "width_um")):
+        if r.get(key):
+            cmd += [flag, f"{r[key] / 1000:.4f}"]
+    rc, out, killed, secs = run_until(cmd, minutes, str(router))
+    res = {"engine": "krt-planes", "seconds": round(secs, 1), "raw": None}
+    if killed:
+        res["error"] = f"timed out after {minutes:g} minutes"
+    elif not raw.is_file():
+        res["error"] = f"the plane repair wrote no board (exit {rc}): " + " | ".join(
+            l for l in out.splitlines() if l.strip())[-200:]
+    else:
+        res["raw"] = raw
+    return res
+
+
+def board_rules(kpy: str, pcb: Path) -> dict:
+    """The board's own limits from KiCad (µm): edge clearance, hole clearance, minimum track width."""
+    rc, out, _t, _s = sh([kpy, "-I", HERE / "engine_kicad.py", "rules", pcb], timeout=300)
+    for line in reversed(out.splitlines()):
+        if line.strip().startswith("{"):
+            try:
+                return json.loads(line)
+            except ValueError:
+                pass
+    return {}
+
+
+def freerouting_stage(tools: dict, kpy: str, base: Path, work: Path, minutes: float, rules: dict | None = None) -> dict:
     dsn, ses, raw = work / "fr.dsn", work / "fr.ses", work / "fr_raw.kicad_pcb"
     res = {"engine": "freerouting", "seconds": 0.0, "raw": None}
     t0 = time.time()
@@ -280,9 +387,21 @@ def freerouting_stage(tools: dict, kpy: str, base: Path, work: Path, minutes: fl
            "--router.autorouter.max_passes=30", f"--router.job_timeout={limit}", "--router.optimizer.enabled=false",
            # no narrowing of tracks near small pads (it went under the board's minimum width: video benchmark),
            # and Freerouting's own clearance checks on
-           "--router.automatic_neckdown=false", "--router.strict_drc=true"]
+           "--router.automatic_neckdown=false", "--router.strict_drc=true", "--router.clearance_tolerance_um=0"]
+    # KiCad's DSN export carries no copper-to-edge clearance; Freerouting then uses its own default (250 um),
+    # which it lowers to the smallest pad-to-edge gap on the board (down to 0). So the board's own values go
+    # in explicitly. 250 itself counts as "the default" there, so it is passed as 251 (stricter, never looser).
+    rules = rules or {}
+    if rules.get("edge_um"):
+        edge = max(1, int(-(-rules["edge_um"] // 1)))
+        cmd.append(f"--router.copper_to_edge_clearance_um={251 if edge == 250 else edge}")
+    if rules.get("hole_um"):
+        cmd.append(f"--router.hole_clearance_um={int(-(-rules['hole_um'] // 1))}")
+    if rules.get("min_width_um"):
+        cmd.append(f"--router.neck_width_um={int(-(-rules['min_width_um'] // 1))}")
     rc, out, timed_out, _s = sh(cmd, timeout=secs + 300, cwd=str(work))
     res["seconds"] = round(time.time() - t0, 1)
+    res["edge_rule_applied"] = "copper-to-edge clearance override" in out.lower() or None
     if timed_out:
         res["error"] = f"Freerouting did not stop at its {minutes:g} minute limit"
         return res
@@ -374,7 +493,7 @@ def evaluate(proj, kpy, work, name, st, base_open, orig_drc, nets, base_pcb) -> 
 
 
 # ------------------------------------------------------------------ report
-KRT_BATCH = 80                                  # nets per KiCadRoutingTools run on a big board
+KRT_MAX_OPEN = 1000                             # above this many open connections KiCadRoutingTools is skipped
 BIG_POUR = 60                                   # open connections above which a pour net gets its own pass
 DRC_CAP = 499                                   # kicad-cli lists at most this many unconnected items
 
@@ -518,31 +637,33 @@ def cmd_run(proj: Path, args: list) -> int:
                 result_board = st["board"]
 
         if "krt" in engines:                                          # 5
-            # A net with a copper pour and very many open connections (the GND of a big board) can take the whole
-            # time limit as tracks, so it goes last in its own short pass. Smaller pour nets stay in the main
-            # pass, last in the list: routed alone, KiCadRoutingTools routed none of them (stickhub benchmark).
+            # Signal nets and small pour nets in one KiCadRoutingTools run (small pour nets need the others:
+            # routed alone it routed none of them, stickhub). One run, stopped by its stop file at the limit,
+            # keeps everything routed so far; batches repeated the whole-board setup and timed out.
             big = {n for n in chosen if n in zone_nets and cur_open.get(n, 0) > BIG_POUR}
             main = [n for n in chosen if n not in zone_nets and n in cur_open] + \
                 [n for n in chosen if n in zone_nets and n not in big and n in cur_open]
-            # In batches: KiCadRoutingTools saves nothing when it runs out of time, so on a big board one long
-            # run lost everything (video, jetson benchmarks). Each batch is checked and kept before the next,
-            # which then routes around it. Small boards stay one batch (their pour nets need the others).
-            batches = [main[i:i + KRT_BATCH] for i in range(0, len(main), KRT_BATCH)]
-            for k, batch in enumerate(batches, 1):
-                batch = [n for n in batch if n in cur_open]
-                if not batch:
-                    continue
-                share = minutes if len(batches) == 1 else max(6.0, minutes * len(batch) / len(main))  # it spends its first minutes loading a big board
-                tag = "krt" if len(batches) == 1 else f"krt-{k}"
-                run_stage(krt_stage(tools, kpy, cur_pcb, work, batch, share, tag), tag, batch)
+            # On a very big board KiCadRoutingTools' setup (it builds an obstacle map for every net on the board)
+            # took more than 30 minutes before it routed its first net, so it never reached its stop check
+            # (video, 1345 connections; jetson, 2946). There the plane step and Freerouting do the work.
+            if sum(cur_open.values()) > KRT_MAX_OPEN:
+                stages.append({"engine": "krt", "seconds": 0.0, "accepted": False, "routed_nets": [],
+                               "why": f"skipped: {sum(cur_open.values())} open connections; on boards this big its "
+                                      f"setup took longer than 30 minutes (more than {KRT_MAX_OPEN})"})
+                main = []
+            if main:
+                run_stage(krt_stage(tools, kpy, cur_pcb, work, main, minutes, "krt", proj), "krt", main)
+            # Big pour nets (the GND of a big board): joined to their pour with short taps and vias by the
+            # plane repair, not routed as tracks (GND alone took 15 minutes as tracks on a 10-layer board).
             pours = [n for n in chosen if n in big and n in cur_open]
             if pours:
-                run_stage(krt_stage(tools, kpy, cur_pcb, work, pours, min(minutes / 2, 5), "krt-pours"),
-                          "krt-pours", pours)
+                run_stage(planes_stage(tools, kpy, cur_pcb, work, pours, min(minutes, 10), proj), "krt-planes",
+                          pours)
         todo = [n for n in chosen if n in cur_open]
         if todo and "freerouting" in engines:                         # 6
             # Freerouting may only touch the nets still open; the merge keeps every other net as it was
-            run_stage(freerouting_stage(tools, kpy, cur_pcb, work, minutes), "freerouting", todo)
+            run_stage(freerouting_stage(tools, kpy, cur_pcb, work, minutes, board_rules(kpy, base_pcb)),
+                      "freerouting", todo)
         for s in stages:                                              # tidy the stage dicts for the report
             s.pop("raw", None)
         final_drc = cur_drc

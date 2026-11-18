@@ -103,6 +103,7 @@ def main() -> int:
     run("edit tool: dry run, all-or-nothing batches, via clearance, corridors", [py, "plugin/tests/test_edit_fixes.py"])
     run("factory profiles: layer count and rows", [py, "plugin/tests/test_fab_rules.py"])
     run("planner: a gate passes only on its own gate line", [py, "plugin/tests/test_plan_evidence.py"])
+    run("engine parts: stop file, fresh run folders, net patterns", [py, "plugin/tests/test_engine_parts.py"])
     run("MCP server: tools, guards, history, refusals", [py, "plugin/tests/test_mcp_tools.py"])
     if not QUICK:
         run("routing engine: strict routing, protected nets, Freerouting path (skips without the engine tools)",

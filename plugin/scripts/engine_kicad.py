@@ -5,6 +5,7 @@
     python.exe -I engine_kicad.py merge  <base.kicad_pcb> <result.kicad_pcb> <out.kicad_pcb> <nets.json>
     python.exe -I engine_kicad.py copper <in.kicad_pcb>                              {net: [tracks, vias]} as JSON
     python.exe -I engine_kicad.py open   <in.kicad_pcb>                              open connections per net
+    python.exe -I engine_kicad.py rules  <in.kicad_pcb>                              the board's limits (um) as JSON
 
 open: by KiCad's own connectivity, not capped like the DRC's unconnected list (499 items). For each net,
 the pads fall into islands of copper joined to each other; a net with k islands needs k-1 connections.
@@ -93,6 +94,24 @@ def cmd_open(a):
     return 0
 
 
+def cmd_rules(a):
+    pcbnew, b = load(a[0])
+    ds = b.GetDesignSettings()
+
+    def um(v):
+        return round(pcbnew.ToMM(v) * 1000, 1)
+    nc = ds.m_NetSettings.GetDefaultNetclass()
+    print(json.dumps({"edge_um": um(ds.m_CopperEdgeClearance), "hole_um": um(ds.m_HoleClearance),
+                      "min_width_um": um(ds.m_TrackMinWidth), "min_clearance_um": um(ds.m_MinClearance),
+                      "hole_to_hole_um": um(ds.m_HoleToHoleMin),
+                      # the default net class's via, never smaller than the board's minimums
+                      "via_um": max(um(nc.GetViaDiameter()), um(ds.m_ViasMinSize)),
+                      "drill_um": max(um(nc.GetViaDrill()), um(ds.m_MinThroughDrill)),
+                      "clearance_um": max(um(nc.GetClearance()), um(ds.m_MinClearance)),
+                      "width_um": max(um(nc.GetTrackWidth()), um(ds.m_TrackMinWidth))}))
+    return 0
+
+
 def cmd_merge(a):
     pcbnew, base = load(a[0])
     _p, res = load(a[1])
@@ -119,7 +138,7 @@ def cmd_merge(a):
 
 
 def main(argv):
-    cmds = {"dsn": cmd_dsn, "ses": cmd_ses, "merge": cmd_merge, "copper": cmd_copper, "open": cmd_open}
+    cmds = {"dsn": cmd_dsn, "ses": cmd_ses, "merge": cmd_merge, "copper": cmd_copper, "open": cmd_open, "rules": cmd_rules}
     if not argv or argv[0] not in cmds:
         print(__doc__)
         return 2

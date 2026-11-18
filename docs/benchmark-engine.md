@@ -8,6 +8,29 @@ Each demo folder is copied to a work directory (the KiCad install is never touch
 
 Completion is `1 - connections after / connections before`, over all connections. "Allowed" completion counts only the connections on nets the engine was permitted to route (it skips hazardous nets, and fast nets unless `--allow-fast`). "New errors" is the number of DRC errors not present on the stripped board.
 
+## Round 2: the research plan (0.7.0, default runs)
+
+After a research round (`reports/Routing engine improvement plan.md` in the example project; summary in the changelog) the engine changed again:
+- **One KiCadRoutingTools run, stopped by its own stop file.** At the time limit the engine creates the file named by `KICAD_STOP_FILE`; the router stops before its next net and writes everything routed so far. Batches are gone (each batch repeated the whole-board setup).
+- **Big pour nets through the plane repair.** GND and power nets with many open connections are joined to their pour by KiCadRoutingTools' `repair_planes.py` with short taps and vias, in strict mode and with the board's own via size and clearances, instead of being routed as tracks.
+- **A fresh folder for every router run**, with the project's own rules file beside the board and beside the output, and `PYTHONHASHSEED=0`: repeatable input for every run.
+- **The board's real limits for Freerouting:** edge clearance, hole clearance, no clearance slack, no narrowing below the board's minimum width. Note: Freerouting 2.5.0 accepts the edge-clearance setting but nothing in it reads the value (the code that applies it is only in its nightly builds), so its board-edge errors remain; KiCad's DRC keeps dropping those nets.
+- **KiCadRoutingTools is skipped above 1000 open connections:** on video and jetson its setup took more than 30 minutes before it routed one net, so it never reached its stop check.
+
+| Board | Layers | Connections | First run | Round 1 | Round 2 | New DRC errors |
+|---|---|---|---|---|---|---|
+| pic_programmer | 2 | 86 | 0% | 92% | **92%** (7 left) | 0 |
+| stickhub | 2 | 128 | 96% | 96% | **96%** (5 left) | 0 |
+| kit-dev-coldfire-xilinx_5213 | 4 | 478 | 0% | 76% | **78%** (107 left) | 0 |
+| cm5_minima | 6 | 208 | 89% | 88% | **88%** (25 left) | 0 |
+| royalblue54L_feather | 8 | 142 | 70% | 61% | **62%** (54 left) | 0 |
+| video | 4 | 1345 | 37% | 31% | **34%** (890 left, in 21 min instead of 39-52) | 0 |
+| jetson-agx-thor-baseboard | 10 | 2946 | 0% | 0% | **43%** (1691 left) | 0 |
+
+The jetson gain comes from the plane repair: GND and the power rails joined to their pours. Freerouting 2.5.0 still varies from run to run on video (28-34% over three runs; no seed setting in that version).
+
+Still open: Freerouting's board-edge clearance and run-to-run variation (both fixed in its nightly builds, which need the user's approval to try); KiCadRoutingTools' setup time on very big boards (an upstream option, `minimal_obstacle_cache`, exists in its code but not on its command line); and completion on video.
+
 ## After the fixes (0.7.0, default runs)
 
 The first run (below) showed five weaknesses: a whole stage was thrown away when a few nets caused DRC errors; the DRC's unconnected list stops at 499, so big boards were miscounted; Freerouting's work was lost when it ran out of time; GND on a big board used the whole time limit; and the result could vary between runs. 0.7.0 fixes the first four: only the nets that add a DRC error are dropped, open connections are counted with KiCad's connectivity, Freerouting stops at its own time limit and keeps what it routed, pour nets with many open connections get their own short pass, and big boards are routed in batches of 80 nets that are kept one by one.
