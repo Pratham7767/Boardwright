@@ -10,7 +10,7 @@ Boardwright's own code is MIT-licensed (see `LICENSE`). It does **not** include 
 | uv (Astral) | installs and runs the two MCP servers | MIT or Apache-2.0 | https://github.com/astral-sh/uv |
 | Claude Code (Anthropic) | runs the pipeline; each user brings their own account | Anthropic's terms | https://code.claude.com |
 | KiCadRoutingTools 0.24.1 | the routing engine's first router, run in its strict mode (optional; installed by `setup_engine`) | MIT | https://github.com/drandyhaas/KiCadRoutingTools |
-| Freerouting 2.5.0 | the routing engine's second router, run as a separate program through Specctra DSN/SES files (optional; installed by `setup_engine`) | GPL-3.0 | https://github.com/freerouting/freerouting |
+| Freerouting 2.5.1 nightly (2026-11-16, commit 12f085e) | the routing engine's second router, run as a separate program through Specctra DSN/SES files (optional; installed by `setup_engine` from the project's official image on ghcr.io) | GPL-3.0 | https://github.com/freerouting/freerouting |
 | Eclipse Temurin 25 (Adoptium) | the Java runtime Freerouting needs (optional; installed by `setup_engine`) | GPL-2.0 with the Classpath Exception | https://adoptium.net |
 
 The routing engine's downloads are pinned to exact versions and checked against fixed SHA-256 checksums before use (`plugin/scripts/setup_engine.ps1` and `setup_engine.sh`). Nothing from them is copied into this repository.

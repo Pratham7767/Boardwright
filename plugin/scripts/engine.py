@@ -67,6 +67,8 @@ def find_tools() -> dict:
         t = json.loads(cfg.read_text("utf-8-sig"))
     except ValueError:
         raise Setup(NOT_INSTALLED + " (engine.json is unreadable)")
+    if os.environ.get("BOARDWRIGHT_FREEROUTING_JAR"):     # another Freerouting build, e.g. to compare versions
+        t["freerouting_jar"] = os.environ["BOARDWRIGHT_FREEROUTING_JAR"]
     for k in ("java", "freerouting_jar", "krt", "krt_python"):
         if not t.get(k) or not Path(t[k]).exists():
             raise Setup(NOT_INSTALLED + f" ('{k}' in engine.json points to nothing)")

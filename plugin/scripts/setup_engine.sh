@@ -42,8 +42,27 @@ get() {  # name url sha file
 }
 
 get jre "$JRE" "$JSHA" jre.tar.gz
-get freerouting https://github.com/freerouting/freerouting/releases/download/v2.5.0/freerouting-2.5.0.jar \
-    f6f51bb02245e8e717f9359bd260cc9c5c0b1bc0acc8b7cb2cd5b8ffeb5de3c7 freerouting-2.5.0.jar
+# Freerouting 2.5.1 nightly of 2026-11-16 (commit 12f085e): the jar from the one layer of its official image
+# on ghcr.io that holds it, checked against the layer's SHA-256 and the jar's own. It applies the board-edge and
+# hole clearances that 2.5.0 ignored.
+FRJAR="$ROOT/freerouting-2.5.1-nightly-12f085e.jar"
+if [ -f "$FRJAR" ] && [ "$(sha "$FRJAR")" = "72a62bb5964f542fc946801e68fe450e8c3c80d98fb3e9b70bab2ecc80ae5dd4" ]; then
+  echo "ok        freerouting (already here)"
+else
+  echo "download  freerouting"
+  TOK=$(curl -fsSL "https://ghcr.io/token?scope=repository:freerouting/freerouting:pull" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+  curl -fsSL -H "Authorization: Bearer $TOK" -o "$ROOT/freerouting-layer.tar.gz" \
+    "https://ghcr.io/v2/freerouting/freerouting/blobs/sha256:81c14637909e1e18f70d7808393ab1074e602df7583173f6aec761773e7b1c25"
+  [ "$(sha "$ROOT/freerouting-layer.tar.gz")" = "81c14637909e1e18f70d7808393ab1074e602df7583173f6aec761773e7b1c25" ] || {
+    rm -f "$ROOT/freerouting-layer.tar.gz"; echo "freerouting: the image layer's checksum does not match"; exit 1; }
+  rm -rf "$ROOT/freerouting-unpack"; mkdir -p "$ROOT/freerouting-unpack"
+  tar -xzf "$ROOT/freerouting-layer.tar.gz" -C "$ROOT/freerouting-unpack" app/freerouting-executable.jar
+  [ "$(sha "$ROOT/freerouting-unpack/app/freerouting-executable.jar")" = "72a62bb5964f542fc946801e68fe450e8c3c80d98fb3e9b70bab2ecc80ae5dd4" ] || {
+    rm -rf "$ROOT/freerouting-unpack" "$ROOT/freerouting-layer.tar.gz"; echo "freerouting: the jar's checksum does not match"; exit 1; }
+  mv "$ROOT/freerouting-unpack/app/freerouting-executable.jar" "$FRJAR"
+  rm -rf "$ROOT/freerouting-unpack" "$ROOT/freerouting-layer.tar.gz"
+  echo "ok        freerouting (checksums match)"
+fi
 get krt "$K/KiCadRoutingTools-0.24.1.zip" 95fe2610a591b2b5702d41e8e85b89dc5318a48d75f528e2b866c3b3ced5fdb2 krt.zip
 if [ -n "$RTR" ]; then get krt-router "$RTR" "$RSHA" grid_router.so; fi
 
@@ -67,8 +86,8 @@ command -v uv >/dev/null || { echo "uv is needed (the main Boardwright installer
 [ -x "$ROOT/venv/bin/python" ] || uv venv -q --python 3.12 "$ROOT/venv"
 uv pip install -q --python "$ROOT/venv/bin/python" "numpy>=1.22" "scipy>=1.7" "shapely>=2.0" "Pillow>=9.2" "ortools>=9.15"
 cat > "$ROOT/engine.json" <<JSON
-{"version": 1, "java": "$JAVA", "freerouting_jar": "$ROOT/freerouting-2.5.0.jar", "krt": "$ROOT/krt",
+{"version": 1, "java": "$JAVA", "freerouting_jar": "$FRJAR", "krt": "$ROOT/krt",
  "krt_python": "$ROOT/venv/bin/python", "installed": "$(date -u +%Y-%m-%dT%H:%M:%S)"}
 JSON
-"$JAVA" -jar "$ROOT/freerouting-2.5.0.jar" -h 2>&1 | head -1 || true
+echo "freerouting: $(du -m "$FRJAR" | cut -f1) MB jar in place"
 echo "Done. The Boardwright engine tools are in $ROOT"

@@ -8,6 +8,19 @@ Each demo folder is copied to a work directory (the KiCad install is never touch
 
 Completion is `1 - connections after / connections before`, over all connections. "Allowed" completion counts only the connections on nets the engine was permitted to route (it skips hazardous nets, and fast nets unless `--allow-fast`). "New errors" is the number of DRC errors not present on the stripped board.
 
+## Round 3: Freerouting's nightly build (0.7.0)
+
+Freerouting 2.5.0 accepts a board-edge clearance setting but never reads it, so it routed too close to the board edge, and KiCad's DRC dropped those nets. Its 2.5.1 nightly of 2026-11-16 (commit 12f085e) applies the board-edge and hole clearances. The engine now installs that build, pinned by checksum, from the project's official image on ghcr.io.
+
+| Board | Layers | Connections | With 2.5.0 (round 2) | With the nightly | New DRC errors |
+|---|---|---|---|---|---|
+| video | 4 | 1345 | 34% | **77%** (315 left; Freerouting kept all 169 nets it routed) | 0 |
+| royalblue54L_feather | 8 | 142 | 62% | **69%** (44 left; no net dropped for edge errors, 24-25 before) | 0 |
+| kit-dev-coldfire-xilinx_5213 | 4 | 478 | 78% | **80%** (97 left) | 0 |
+| cm5_minima | 6 | 208 | 88% | 88% (25 left) | 0 |
+
+Time limits: 15 minutes per stage here; round 2 used 10 for royalblue, kit-dev and cm5, so part of their gain may be the extra time. Video ran at 15 minutes both times. Jetson and the two small boards were not rerun with the nightly.
+
 ## Round 2: the research plan (0.7.0, default runs)
 
 After a research round (`reports/Routing engine improvement plan.md` in the example project; summary in the changelog) the engine changed again:

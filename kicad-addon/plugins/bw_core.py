@@ -305,7 +305,7 @@ def check_engine() -> dict:
 
 
 def engine_downloads_text() -> str:
-    return ("This downloads a Java runtime (Eclipse Temurin 25, about 50 MB), Freerouting 2.5.0 (about 20 MB) "
+    return ("This downloads a Java runtime (Eclipse Temurin 25, about 50 MB), Freerouting 2.5.1 (a nightly build, about 60 MB) "
             "and KiCadRoutingTools 0.24.1 with its Python packages (about 150 MB). Each download is checked "
             "against a fixed checksum. Everything goes into " + str(engine_dir()) + " and nothing else on "
             "your computer is changed.")
