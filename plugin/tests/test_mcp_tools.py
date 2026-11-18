@@ -137,7 +137,10 @@ def main():
         else:
             skip("check sch", "KiCad not found")
         r, t = srv.tool("engine", action="status")
-        check("engine answers", not r["isError"], t)
+        if "not installed" in t:
+            skip("engine answers", "engine tools not installed (status says so)")
+        else:
+            check("engine answers", not r["isError"], t)
         r, t = srv.tool("setup", action="doctor")
         check("setup doctor answers one summary line", not r["isError"] and t.startswith("doctor:"), t)
         r, t = srv.tool("setup", action="bogus")

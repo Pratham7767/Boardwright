@@ -120,10 +120,17 @@ class Store:
         env = dict(os.environ, GIT_DIR=str(self.gitdir), GIT_WORK_TREE=str(self.top), **IDENT)
         if index:
             env["GIT_INDEX_FILE"] = str(index)
-        r = subprocess.run(["git", "-c", "core.autocrlf=false", "-c", "core.safecrlf=false",
-                            "-c", "core.quotepath=false", *args],
-                           cwd=str(self.top), env=env, capture_output=True, input=stdin,
-                           **({} if binary else {"text": True, "encoding": "utf-8", "errors": "replace"}))
+        for attempt in range(6):
+            r = subprocess.run(["git", "-c", "core.autocrlf=false", "-c", "core.safecrlf=false",
+                                "-c", "core.quotepath=false", *args],
+                               cwd=str(self.top), env=env, capture_output=True, input=stdin,
+                               **({} if binary else {"text": True, "encoding": "utf-8", "errors": "replace"}))
+            err = r.stderr if isinstance(r.stderr, str) else (r.stderr or b"").decode("utf-8", "replace")
+            # On Windows, two saves writing the same object at the same moment can make git's rename fail
+            # with "Permission denied"; the object is there a moment later, so try again.
+            if r.returncode == 0 or not ("Permission denied" in err or "unable to write" in err) or attempt == 5:
+                break
+            time.sleep(0.05 * (attempt + 1))
         if check and r.returncode != 0:
             raise RuntimeError(f"git {' '.join(args)}: {(r.stderr or b'')[-300:]}")
         return r.stdout if binary else r.stdout.strip()

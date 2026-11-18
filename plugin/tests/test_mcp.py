@@ -138,7 +138,7 @@ def main():
         names = [t["name"] for t in send("tools/list")["result"]["tools"]]
         print("  tools:", ", ".join(names))
         want = {"status", "check", "find", "edit", "place", "route", "history", "plan", "fab", "lifecycle",
-                "diagnostics", "engine"}
+                "diagnostics", "engine", "setup", "digest", "export"}
         check("tools/list", set(names) == want)
         check("unknown method error", "error" in send("nope/none"))
         res, text = tool("status")

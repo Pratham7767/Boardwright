@@ -124,7 +124,7 @@ def test_concurrent(tmp):
     for t in ts:
         t.join()
     bad = [r for r in results if r is None or r[0] != 0 or r[1]]
-    check("concurrent: no error output", not bad, str(bad)[:300])
+    check("concurrent: no error output", not bad, str(bad)[:3000])
     ref = git(p, "for-each-ref", "--format=%(refname)", "refs/boardwright/").splitlines()[0]
     commits = git(p, "rev-list", ref).split()
     empty = [c for c in commits if not git(p, "ls-tree", "-r", "--name-only", c)]
