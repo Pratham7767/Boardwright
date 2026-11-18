@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 import math
 import os
-import re
 import time
 from pathlib import Path
 from typing import Callable, Optional
@@ -645,45 +644,6 @@ class Card(wx.Panel):
         gc.DrawRoundedRectangle(s, s - 2, w - 2 * s, h - 2 * s, 16)
 
 
-# ---------------------------------------------------------------- stages (read from reports/)
-STAGES = (("1", "Spec", "01-spec.md"), ("2", "Parts", "02-parts.md"), ("3", "Power", "03-power.md"),
-          ("4", "Schematic", "04-schematic.md"), ("5", "Layout", "05-layout.md"), ("6", "EMC", "06-emc.md"),
-          ("7", "BOM", "07-bom.md"), ("8", "Release", "08-release.md"))
-_FAIL = re.compile(r"NOT PASSED|Gate[^\n]{0,40}\bFAIL(?:ED)?\b", re.I)
-
-
-def stage_states(project: str) -> list:
-    """[(number, name, state, note)] where state is done, failed, current or pending.
-
-    From the stage reports only: a report that says its gate is NOT PASSED is 'failed', a report that
-    exists is 'done', the first stage without a report is 'current'. A rough picture for the strip;
-    the pipeline's own status (pcb-run / status.py) is the real one."""
-    rep = Path(project) / "reports"
-    out = []
-    current_set = False
-    for num, name, fname in STAGES:
-        f = rep / fname
-        if f.is_file():
-            try:
-                text = f.read_text("utf-8", errors="replace")
-            except OSError:
-                text = ""
-            m = _FAIL.search(text)
-            if m:
-                line = text[max(0, text.rfind("\n", 0, m.start()) + 1):text.find("\n", m.end())]
-                out.append((num, name, "failed", re.sub(r"[*#`]", "", line).strip()[:160]))
-            else:
-                out.append((num, name, "done", "report written: reports/" + fname))
-        elif not current_set:
-            current_set = True
-            out.append((num, name, "current", "next stage"))
-        else:
-            out.append((num, name, "pending", "not started"))
-    return out
-
-
-def has_started(project: str) -> bool:
-    return (Path(project) / "reports" / STAGES[0][2]).is_file() or (Path(project) / "PROJECT.md").is_file()
 
 
 def apply_colours(win: wx.Window, bg_key: str = "bg") -> None:

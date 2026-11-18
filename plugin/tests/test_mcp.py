@@ -142,11 +142,13 @@ def main():
         check("tools/list", set(names) == want)
         check("unknown method error", "error" in send("nope/none"))
         res, text = tool("status")
-        check("status", not res["isError"] and res["structuredContent"]["exit_code"] == 0 and "READY NOW" in text)
+        check("status", not res["isError"] and "READY NOW" in text)
+        check("replies are text only (Claude Code would show structuredContent instead of the text)",
+              "structuredContent" not in res)
         res, text = tool("find", {"selector": {"kind": "pad", "ref": "C3"}})
         check("find", not res["isError"] and "C3" in text)
         res, text = tool("check", {"kind": "gates"})
-        check("check gates", "structuredContent" in res and text.startswith("gates:"))
+        check("check gates", text.startswith("gates:"))
         res, text = tool("nope")
         check("unknown tool is an error", res["isError"])
     except Exception as e:  # noqa: BLE001

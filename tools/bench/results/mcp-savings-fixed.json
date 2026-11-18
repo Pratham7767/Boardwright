@@ -1,0 +1,112 @@
+{
+  "model": "sonnet",
+  "runs": {
+    "all MCP": [
+      {
+        "cost": 0.1836682,
+        "tokens_in": 140433,
+        "tokens_out": 1548,
+        "tool_calls": 3,
+        "seconds": 15.6,
+        "error": false,
+        "question": "Where does this board stand? One plain line per stage, then the single next step."
+      },
+      {
+        "cost": 0.185884,
+        "tokens_in": 243135,
+        "tokens_out": 783,
+        "tool_calls": 4,
+        "seconds": 25.5,
+        "error": false,
+        "question": "Which nets on this board are still unrouted, and does DRC show any error? Short answer."
+      },
+      {
+        "cost": 0.1659096,
+        "tokens_in": 88199,
+        "tokens_out": 1003,
+        "tool_calls": 2,
+        "seconds": 11.0,
+        "error": false,
+        "question": "Which parts on this board have stock or lifecycle problems? One line each."
+      }
+    ],
+    "only bw MCP": [
+      {
+        "cost": 0.15474880000000002,
+        "tokens_in": 157348,
+        "tokens_out": 2809,
+        "tool_calls": 6,
+        "seconds": 29.2,
+        "error": false,
+        "question": "Where does this board stand? One plain line per stage, then the single next step."
+      },
+      {
+        "cost": 0.076909,
+        "tokens_in": 98729,
+        "tokens_out": 575,
+        "tool_calls": 2,
+        "seconds": 14.2,
+        "error": false,
+        "question": "Which nets on this board are still unrouted, and does DRC show any error? Short answer."
+      },
+      {
+        "cost": 0.10635359999999999,
+        "tokens_in": 74433,
+        "tokens_out": 740,
+        "tool_calls": 2,
+        "seconds": 9.2,
+        "error": false,
+        "question": "Which parts on this board have stock or lifecycle problems? One line each."
+      }
+    ],
+    "without MCP": [
+      {
+        "cost": 0.062039,
+        "tokens_in": 31780,
+        "tokens_out": 1117,
+        "tool_calls": 0,
+        "seconds": 10.9,
+        "error": false,
+        "question": "Where does this board stand? One plain line per stage, then the single next step."
+      },
+      {
+        "cost": 0.0710842,
+        "tokens_in": 65407,
+        "tokens_out": 608,
+        "tool_calls": 2,
+        "seconds": 7.3,
+        "error": false,
+        "question": "Which nets on this board are still unrouted, and does DRC show any error? Short answer."
+      },
+      {
+        "cost": 0.10599839999999999,
+        "tokens_in": 73332,
+        "tokens_out": 926,
+        "tool_calls": 2,
+        "seconds": 10.8,
+        "error": false,
+        "question": "Which parts on this board have stock or lifecycle problems? One line each."
+      }
+    ]
+  },
+  "totals": {
+    "all MCP": {
+      "tokens_in": 471767,
+      "tokens_out": 3334,
+      "cost": 0.5355,
+      "tool_calls": 9
+    },
+    "only bw MCP": {
+      "tokens_in": 330510,
+      "tokens_out": 4124,
+      "cost": 0.338,
+      "tool_calls": 10
+    },
+    "without MCP": {
+      "tokens_in": 170519,
+      "tokens_out": 2651,
+      "cost": 0.2391,
+      "tool_calls": 4
+    }
+  }
+}

@@ -116,7 +116,9 @@ def main():
         r, t = srv.tool("status", project=str(tmp))
         check("non-project folder refused", r["isError"] and "not a Boardwright project" in t, t)
         r, t = srv.tool("status")
-        check("status", not r["isError"] and "READY NOW" in t and r["structuredContent"]["exit_code"] == 0, t[:200])
+        check("status", not r["isError"] and "READY NOW" in t, t[:200])
+        check("replies are text only (Claude Code would show structuredContent instead of the text)",
+              "structuredContent" not in r)
         r, t = srv.tool("history", action="list")
         check("history list (no history yet or a list)", not r["isError"], t)
         r, t = srv.tool("history", action="restore")
@@ -188,7 +190,7 @@ def main():
             r, t = srv.tool("find", selector={"kind": "pad", "ref": "C3"})
             check("find pads of C3", not r["isError"] and "C3.1" in t and "C3.2" in t, t)
             r, t = srv.tool("check", kind="gates")
-            check("check gates", t.startswith("gates:") and "structuredContent" in r, t)
+            check("check gates", t.startswith("gates:"), t)
             print("     " + t.splitlines()[0])
 
             r, t = srv.tool("digest")
@@ -213,7 +215,7 @@ def main():
 
             n0 = len(history.Store(proj).steps())
             r, t = srv.tool("edit", ops=[{"move": "H1", "rot": 45}])
-            check("edit move H1 rot 45", not r["isError"] and r["structuredContent"]["exit_code"] == 0, t)
+            check("edit move H1 rot 45", not r["isError"], t)
             check("edit changed the board", pcb.read_bytes() != before)
             n1 = len(history.Store(proj).steps())
             check("edit added exactly one history step", n1 == n0 + 1, f"{n0} -> {n1}")

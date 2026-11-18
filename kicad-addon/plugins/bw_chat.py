@@ -90,6 +90,9 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             saved_model = core.settings_get("model")
             self.model_key = saved_model if saved_model in core.MODELS else core.DEFAULT_MODEL
             self.cost_seen = 0.0                       # Claude Code reports a running total per process
+            saved_tools = core.settings_get("kicad_tools")
+            self.kicad_tools = saved_tools if saved_tools in core.KICAD_TOOLS else "auto"
+            self.session_kicad = None                  # whether the running session has the KiCad tools
             self.checks: Optional[dict] = None
             self.session: Optional[core.ClaudeSession] = None
             self.resume_id: Optional[str] = None       # session to pick up after a restart
@@ -155,7 +158,7 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             # --- the eight stages; click one to ask about it ---
             strip = wx.WrapSizer(wx.HORIZONTAL, 0)
             self.stage_btns = []
-            for num, name, _f in theme.STAGES:
+            for num, name, _f in core.STAGES:
                 b = P(p, f"{num} {name}", "chip", tip=name)
                 b.Bind(wx.EVT_BUTTON, lambda e, n=num, nm=name: self.ask_stage(n, nm))
                 strip.Add(b, 0, wx.RIGHT | wx.BOTTOM, 4)
@@ -292,7 +295,7 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
         # ---------------- home, suggestions, stages, theme, menu ----------------
         def build_welcome(self) -> None:
             """Home view until the first message: the ring, a welcome line, suggestions under it."""
-            started = theme.has_started(self.project)
+            started = core.has_started(self.project)
             name = Path(self.project).name
             self.home_title.SetLabel("Welcome back" if started else "What are we building?")
             self.home_sub.SetLabel(
@@ -331,6 +334,25 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
                 self._chat_suggestions = False
             self.panel.Layout()
 
+        def check_tool_set(self) -> None:
+            """In Automatic, a new stage may need the KiCad editing tools (or no longer need them): the next
+            message then restarts Claude Code with the right set, in the same chat."""
+            if self.session is None or self.session_kicad is None or self.busy:
+                return
+            want = core.kicad_tools_wanted(self.project, self.kicad_tools)
+            if want != self.session_kicad and core.bundle_dir() is not None:
+                self.drop_session(keep_chat=True)
+                self.line("KiCad editing tools " + ("loaded for the schematic and layout stages."
+                          if want else "unloaded to save tokens; Boardwright's own tools stay.") , "dim")
+                self.update_controls()
+
+        def pick_kicad_tools(self, i: int) -> None:
+            self.kicad_tools = list(core.KICAD_TOOLS)[i]
+            core.settings_set("kicad_tools", self.kicad_tools)
+            self.drop_session(keep_chat=True)       # applies from the next message, same chat
+            self.line("KiCad editing tools: " + core.KICAD_TOOLS[self.kicad_tools], "dim")
+            self.update_controls()
+
         def remember_chat(self) -> None:
             sid = (self.session.session_id if self.session else None) or self.resume_id
             if sid:
@@ -362,7 +384,7 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
 
         def refresh_stages(self) -> None:
             labels = {"done": "done", "failed": "needs attention", "current": "next", "pending": "not started"}
-            for b, (num, name, state, note) in zip(self.stage_btns, theme.stage_states(self.project)):
+            for b, (num, name, state, note) in zip(self.stage_btns, core.stage_states(self.project)):
                 b.set_status(state, f"Stage {num}, {name}: {labels[state]}\n{note}\nClick to ask Claude about it.")
 
         def toggle_theme(self) -> None:
@@ -413,6 +435,10 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             it = m.Append(wx.ID_ANY, "New chat")
             it.Enable(not self.busy)
             self.Bind(wx.EVT_MENU, lambda e: self.new_chat(), it)
+            kt = wx.Menu()
+            radio(kt, list(core.KICAD_TOOLS.values()), list(core.KICAD_TOOLS).index(self.kicad_tools),
+                  self.pick_kicad_tools)
+            m.AppendSubMenu(kt, "KiCad editing tools")
             it = m.Append(wx.ID_ANY, "Setup checks")
             self.Bind(wx.EVT_MENU, lambda e: self.toggle_setup(), it)
             m.AppendSeparator()
@@ -729,6 +755,8 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             for b in self.quick_btns:
                 b.Enable(ready and not self.busy)
             bits = [core.MODES[self.mode][0]]
+            if self.session_kicad is not None:
+                bits.append("KiCad tools " + ("on" if self.session_kicad else "off"))
             if self.model_key != "default":
                 bits.append(core.MODELS[self.model_key][0])
             elif self.model:
@@ -747,9 +775,16 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             ch = self.checks
             pl = ch["plugin"]
             use_bundle = ch["bundle"] and not (pl and pl["installed"] and not pl.get("older"))
+            # the KiCad editing tools only when they are needed (they double the tokens of every question)
+            self.session_kicad = core.kicad_tools_wanted(self.project, self.kicad_tools)
+            lean = None
+            if not self.session_kicad:
+                root = core.bundle_dir() / "plugin" if ch["bundle"] else None
+                lean = core.lean_mcp_config(root)
+                self.session_kicad = lean is None          # no plugin copy to point at: load everything
             argv = core.build_argv(ch["claude"]["path"], self.mode, resume=self.resume_id,
                                    plugin_dir=str(core.bundle_dir() / "plugin") if use_bundle else None,
-                                   model=self.model_key)
+                                   model=self.model_key, lean_mcp=lean)
             sess = core.ClaudeSession(argv, self.project,
                                       lambda k, p, s=None: wx.CallAfter(self.on_event, sess, k, p))
             try:
@@ -898,6 +933,7 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
                 self.last_turn = "last answer " + ", ".join(bits)
                 self.remember_chat()
                 self.refresh_stages()
+                self.check_tool_set()
                 self.fresh_line()
                 self.add("\n")
             elif kind == "exit":

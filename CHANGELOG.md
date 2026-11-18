@@ -6,7 +6,9 @@ An MCP server for every feature, a deterministic routing engine that routes befo
 **MCP server (`plugin/scripts/bw_mcp.py`)**
 - 15 compact tools: status, check, find, edit, place, route, plan, history, fab, lifecycle, diagnostics, engine, setup (new project, update scripts, doctor), digest (board summary, parts, nets, unrouted, near, net, area) and export (release files, simulation, pre-compliance pack, parts register, datasheet index). One-line answers, failures only.
 - The same guards as the hooks: write tools take the one-editor lock and save an undo step; the user's own decisions (routing-plan approval, diagnostics consent, undo, the choices file) have no tool.
-- Measured on the example board (three questions, Sonnet, plan mode): Boardwright's MCP alone used 21 % fewer input tokens and 40 % fewer tool calls than running the scripts. With the two other KiCad servers loaded as well, the same questions cost twice as much; see `docs/benchmark-engine.md`.
+- Fixed: every MCP reply also carried a small structured summary, and Claude Code showed Claude only that ({"ok": true, "exit_code": 0}) instead of the text. Replies are text only now.
+- The chat loads the two KiCad tool servers (kicad-live, kicad-schematic) only when they are needed: in the schematic and layout stages, or when switched on (⋯ → KiCad editing tools: Automatic, Always on, Off). Their hundred-odd tool descriptions are sent with every step; on the example board the same three questions cost about 35-40 % less without them (`tools/bench/mcp_savings.py`). When they are off and Claude needs them, it says so instead of working around it.
+- Claude reuses the status the session starts with instead of asking for it again.
 
 **Routing engine (`plugin/scripts/engine.py`)**
 - Routes first, without Claude: KiCadRoutingTools in its strict mode (never lowers a clearance or size), then Freerouting for what is left. KiCad's DRC checks every result. A net whose new copper adds a DRC error is dropped and the rest is kept, so one bad net no longer throws away a whole stage. Claude only handles the leftovers.

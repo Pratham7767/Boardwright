@@ -24,7 +24,7 @@ Guards that live in the server, so clients without Claude Code hooks are protect
   - the mains/hazardous/fast-net and routing-plan refusals stay in bw_edit.py and routing_plan.py; their
     answers are passed through unchanged.
 Scripts run from this folder, one child process per call, 600 s at most. Answers are short plain text, cut
-at 12,000 characters; the reply also carries structuredContent {ok, exit_code}.
+at 12,000 characters; the reply is text only (with structuredContent, Claude Code shows Claude that instead).
 """
 import json
 import os
@@ -619,8 +619,9 @@ def handle(msg):
     if method == "tools/call":
         p = msg.get("params") or {}
         text, err, rc = call_tool(p.get("name"), p.get("arguments"))
-        return {"content": [{"type": "text", "text": text}], "isError": err,
-                "structuredContent": {"ok": rc == 0 and not err, "exit_code": rc}}
+        # text only: when a reply also carries structuredContent, Claude Code shows the model that instead of
+        # the text (measured: Claude saw only {"ok": true, "exit_code": 0}), so it is left out
+        return {"content": [{"type": "text", "text": text}], "isError": err}
     if mid is None:  # notification (notifications/initialized etc.): no reply
         return None
     raise LookupError(method)

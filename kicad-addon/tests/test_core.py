@@ -5,6 +5,7 @@
     python tests/test_core.py --real     also start the real `claude` once and
                                          print what comes back (may use your plan)
 """
+import json
 import os
 import queue
 import sys
@@ -232,12 +233,38 @@ def test_settings_and_usage_log():
     print("ok  chat settings, usage log on/off, feedback report, engine check")
 
 
+def test_lean_tools():
+    """The KiCad editing tool servers load only when needed: schematic and layout stages, or switched on."""
+    tmp = Path(tempfile.mkdtemp(prefix="bw_lean_"))
+    rep = tmp / "reports"
+    rep.mkdir()
+    assert core.current_stage(str(tmp)) == "1" and not core.kicad_tools_wanted(str(tmp), "auto")
+    for f in ("01-spec.md", "02-parts.md", "03-power.md"):
+        (rep / f).write_text("Gate status: **PASSED**\n", "utf-8")
+    assert core.current_stage(str(tmp)) == "4" and core.kicad_tools_wanted(str(tmp), "auto")
+    assert not core.kicad_tools_wanted(str(tmp), "off") and core.kicad_tools_wanted(str(tmp), "on")
+    for f in ("04-schematic.md", "05-layout.md"):
+        (rep / f).write_text("ok\n", "utf-8")
+    assert core.current_stage(str(tmp)) == "6" and not core.kicad_tools_wanted(str(tmp), "auto")
+    cfg = core.lean_mcp_config(ROOT.parent / "plugin")
+    servers = json.loads(cfg)["mcpServers"]
+    assert list(servers) == ["plugin_boardwright_boardwright"] and "${CLAUDE_PLUGIN_ROOT}" not in cfg and "bw_mcp.py" in cfg, cfg
+    assert core.lean_mcp_config(tmp) is None and core.lean_mcp_config(None) is None
+    argv = core.build_argv("claude", lean_mcp=cfg)
+    assert "--strict-mcp-config" in argv and argv[argv.index("--mcp-config") + 1] == cfg
+    assert "not loaded in this chat" in argv[argv.index("--append-system-prompt") + 1]
+    full = core.build_argv("claude")
+    assert "--strict-mcp-config" not in full and "not loaded" not in full[full.index("--append-system-prompt") + 1]
+    print("ok  KiCad editing tools only when needed (stage rule, switch, lean command line)")
+
+
 if __name__ == "__main__":
     test_parser()
     fake = make_fake()
     test_checks(fake)
     test_session(fake)
     test_settings_and_usage_log()
+    test_lean_tools()
     if "--real" in sys.argv:
         real_smoke()
     print("all passed")

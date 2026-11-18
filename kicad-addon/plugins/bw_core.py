@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -424,6 +425,97 @@ def feedback_issue_url() -> str:
     return REPO_URL + "/issues/new?title=" + quote("Feedback from the Boardwright chat") + "&labels=feedback"
 
 
+# --------------------------------------------------------------------------
+# The eight stages, from the stage reports (the row of chips, and which tools to load)
+# --------------------------------------------------------------------------
+STAGES = (("1", "Spec", "01-spec.md"), ("2", "Parts", "02-parts.md"), ("3", "Power", "03-power.md"),
+          ("4", "Schematic", "04-schematic.md"), ("5", "Layout", "05-layout.md"), ("6", "EMC", "06-emc.md"),
+          ("7", "BOM", "07-bom.md"), ("8", "Release", "08-release.md"))
+_FAIL = re.compile(r"NOT PASSED|Gate[^\n]{0,40}\bFAIL(?:ED)?\b", re.I)
+
+
+def stage_states(project: str) -> list:
+    """[(number, name, state, note)] where state is done, failed, current or pending.
+
+    From the stage reports only: a report that says its gate is NOT PASSED is 'failed', a report that
+    exists is 'done', the first stage without a report is 'current'. A rough picture for the strip;
+    the pipeline's own status (pcb-run / status.py) is the real one."""
+    rep = Path(project) / "reports"
+    out = []
+    current_set = False
+    for num, name, fname in STAGES:
+        f = rep / fname
+        if f.is_file():
+            try:
+                text = f.read_text("utf-8", errors="replace")
+            except OSError:
+                text = ""
+            m = _FAIL.search(text)
+            if m:
+                line = text[max(0, text.rfind("\n", 0, m.start()) + 1):text.find("\n", m.end())]
+                out.append((num, name, "failed", re.sub(r"[*#`]", "", line).strip()[:160]))
+            else:
+                out.append((num, name, "done", "report written: reports/" + fname))
+        elif not current_set:
+            current_set = True
+            out.append((num, name, "current", "next stage"))
+        else:
+            out.append((num, name, "pending", "not started"))
+    return out
+
+
+def has_started(project: str) -> bool:
+    return (Path(project) / "reports" / STAGES[0][2]).is_file() or (Path(project) / "PROJECT.md").is_file()
+
+
+
+# The KiCad tool servers (kicad-live for the open board, kicad-schematic for schematic files) add about a
+# hundred tool descriptions that Claude Code sends again with every step: measured on the example board, the
+# same three questions cost about twice as much with them loaded (tools/bench/mcp_savings.py). So the chat
+# loads only Boardwright's own server unless they are needed: in the schematic and layout stages, or when the
+# user switches them on.
+EDIT_STAGES = ("4", "5")
+KICAD_TOOLS = {"auto": "Automatic (schematic and layout stages)", "on": "Always on", "off": "Off"}
+
+LEAN_NOTE = (
+    " The KiCad editing tools (kicad-live for the open board, kicad-schematic) are not loaded in this chat, to "
+    "save tokens; Boardwright's own tools are. If you need to change the board while it is open in KiCad, or "
+    "edit the schematic, do not work around it: tell the user to switch on \u22ef \u2192 KiCad editing tools \u2192 "
+    "Always on (or to close the board so Boardwright's edit tool can change the file), then stop."
+)
+
+
+def current_stage(project: str) -> Optional[str]:
+    """The number of the first stage without a report, or None when every report exists."""
+    for num, _name, state, _note in stage_states(project):
+        if state == "current":
+            return num
+    return None
+
+
+def kicad_tools_wanted(project: str, setting: str) -> bool:
+    if setting == "on":
+        return True
+    if setting == "off":
+        return False
+    return current_stage(project) in EDIT_STAGES
+
+
+def lean_mcp_config(plugin_root: Optional[Path]) -> Optional[str]:
+    """--mcp-config text with only Boardwright's own server, from the plugin's .mcp.json; None if not found."""
+    if not plugin_root:
+        return None
+    try:
+        servers = json.loads((Path(plugin_root) / ".mcp.json").read_text("utf-8"))["mcpServers"]
+        own = json.loads(json.dumps(servers["boardwright"]).replace("${CLAUDE_PLUGIN_ROOT}",
+                                                                     str(plugin_root).replace("\\", "/")))
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    # named as Claude Code names the plugin's own server, so the tools keep their usual names
+    # (mcp__plugin_boardwright_boardwright__status ...), which the hooks and the skills' permissions use
+    return json.dumps({"mcpServers": {"plugin_boardwright_boardwright": own}})
+
+
 def console_python() -> str:
     """A python that shows a console (KiCad starts us with pythonw.exe, which has none)."""
     exe = Path(sys.executable)
@@ -511,15 +603,19 @@ def looks_like_limit(text: str) -> bool:
 
 
 def build_argv(claude: str, mode: str = DEFAULT_MODE, resume: Optional[str] = None,
-               plugin_dir: Optional[str] = None, model: str = DEFAULT_MODEL) -> list:
-    """Command line of the chat process (flags checked against `claude --help` 2.1.289)."""
+               plugin_dir: Optional[str] = None, model: str = DEFAULT_MODEL,
+               lean_mcp: Optional[str] = None) -> list:
+    """Command line of the chat process (flags checked against `claude --help` 2.1.289). lean_mcp: an
+    --mcp-config text; when given, only those tool servers are loaded (see lean_mcp_config)."""
     argv = [claude, "-p",
             "--input-format", "stream-json",
             "--output-format", "stream-json",
             "--verbose",
             "--include-partial-messages",
             "--permission-prompt-tool", "stdio",     # permission requests come to us
-            "--append-system-prompt", SYSTEM_NOTE]
+            "--append-system-prompt", SYSTEM_NOTE + (LEAN_NOTE if lean_mcp else "")]
+    if lean_mcp:
+        argv += ["--strict-mcp-config", "--mcp-config", lean_mcp]
     pm = MODES[mode][1]
     if pm:
         argv += ["--permission-mode", pm]

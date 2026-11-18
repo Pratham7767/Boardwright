@@ -73,7 +73,10 @@ def main() -> int:
     variants = {
         "all MCP": base,
         "all MCP + tool search": base,
-        "only bw MCP": base + ["--strict-mcp-config", "--mcp-config", json.dumps({"mcpServers": own})],
+        "only bw MCP": base + ["--strict-mcp-config", "--mcp-config",
+                               json.dumps({"mcpServers": {"plugin_boardwright_boardwright": own["boardwright"]}})],
+        "bw MCP up front": base + ["--strict-mcp-config", "--mcp-config",
+                                          json.dumps({"mcpServers": {"plugin_boardwright_boardwright": own["boardwright"]}})],
         "without MCP": base + ["--strict-mcp-config", "--mcp-config", json.dumps({"mcpServers": {}})],
     }
     if a.only:
@@ -83,6 +86,8 @@ def main() -> int:
         for name, argv in variants.items():
             if "tool search" in name:
                 os.environ["ENABLE_TOOL_SEARCH"] = "true"        # tool definitions load only when needed
+            if "up front" in name:
+                os.environ["ENABLE_TOOL_SEARCH"] = "false"       # the few tool definitions sent with the prompt
             try:
                 r = ask(argv, proj, question)
             finally:
