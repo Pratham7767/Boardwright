@@ -1,0 +1,42 @@
+{
+  "model": "sonnet",
+  "runs": {
+    "all MCP + tool search": [
+      {
+        "cost": 0.178193,
+        "tokens_in": 139597,
+        "tokens_out": 1192,
+        "tool_calls": 3,
+        "seconds": 12.0,
+        "error": false,
+        "question": "Where does this board stand? One plain line per stage, then the single next step."
+      },
+      {
+        "cost": 0.1622312,
+        "tokens_in": 137600,
+        "tokens_out": 794,
+        "tool_calls": 3,
+        "seconds": 16.8,
+        "error": false,
+        "question": "Which nets on this board are still unrouted, and does DRC show any error? Short answer."
+      },
+      {
+        "cost": 0.1876654,
+        "tokens_in": 93914,
+        "tokens_out": 896,
+        "tool_calls": 2,
+        "seconds": 8.5,
+        "error": false,
+        "question": "Which parts on this board have stock or lifecycle problems? One line each."
+      }
+    ]
+  },
+  "totals": {
+    "all MCP + tool search": {
+      "tokens_in": 371111,
+      "tokens_out": 2882,
+      "cost": 0.5281,
+      "tool_calls": 8
+    }
+  }
+}

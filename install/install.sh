@@ -129,9 +129,19 @@ fi
 if [ -n "$PY" ] && [ -n "$SETUP" ] && [ -f "$SETUP" ]; then
   SARGS=(); [ "$YES" = 1 ] && SARGS=(--yes); [ "$CHECK" = 1 ] && SARGS=(--check)
   # answers come from the terminal when there is one we can really open (not with curl | bash in CI)
-  if [ "$YES" = 0 ] && ( : </dev/tty ) 2>/dev/null; then $PY "$SETUP" "${SARGS[@]}" </dev/tty; else $PY "$SETUP" "${SARGS[@]}" </dev/null; fi \
+  if [ "$YES" = 0 ] && ( : </dev/tty ) 2>/dev/null; then $PY "$SETUP" ${SARGS[@]+"${SARGS[@]}"} </dev/tty; else $PY "$SETUP" ${SARGS[@]+"${SARGS[@]}"} </dev/null; fi \
     || warn "helper setup left items open (see its summary above)"
 else warn "helper setup skipped; later run: python3 <plugin>/scripts/setup.py"; fi
+
+step 5b "Routing engine (Freerouting, a Java runtime for it, KiCadRoutingTools; about 150 MB, each file checked)"
+ENG=""; [ -n "$SETUP" ] && ENG="$(dirname "$SETUP")/setup_engine.sh"
+if [ "$CHECK" = 1 ]; then
+  if [ -f "${BOARDWRIGHT_ENGINE_DIR:-$HOME/.local/share/boardwright/engine}/engine.json" ]; then ok "routing engine tools installed"; else warn "routing engine not installed"; fi
+elif [ -n "$ENG" ] && [ -f "$ENG" ]; then
+  if ask "Install the routing engine tools into ~/.local/share/boardwright/engine?"; then
+    bash "$ENG" || warn "routing engine setup did not finish; run it again with: bash $ENG"
+  else warn "routing engine not installed; later run: bash $ENG"; fi
+else warn "routing engine setup skipped (needs the plugin)"; fi
 
 step 6 "The KiCad add-on (chat button in the PCB Editor)"
 if [ "$OS" = Darwin ]; then
@@ -141,7 +151,8 @@ else
   if [ "$CHECK" = 1 ]; then
     echo "   (check only: the add-on zip is not built or downloaded)"
   elif [ "$LOCAL" = 1 ] && [ -n "$PY" ]; then
-    $PY "$HERE/kicad-addon/build.py" >/dev/null && ZIP="$HERE/kicad-addon/dist/boardwright-kicad.zip"
+    if $PY "$HERE/kicad-addon/build.py" >/dev/null; then ZIP="$HERE/kicad-addon/dist/boardwright-kicad.zip"
+    else warn "the add-on build failed, so no add-on package was made (an older zip is not used). Run: $PY kicad-addon/build.py"; fi
   elif ask "Download the add-on zip from $ADDON_URL ?"; then
     ZIP="${TMPDIR:-/tmp}/boardwright-kicad.zip"
     curl -fsSL -o "$ZIP" "$ADDON_URL" || { ZIP=""; warn "download failed"; }

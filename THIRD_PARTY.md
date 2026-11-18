@@ -9,6 +9,11 @@ Boardwright's own code is MIT-licensed (see `LICENSE`). It does **not** include 
 | mcp-server-kicad 0.21.1 | MCP server for schematic editing | GPL-3.0-or-later | https://github.com/ProductOfAmerica/mcp-server-kicad |
 | uv (Astral) | installs and runs the two MCP servers | MIT or Apache-2.0 | https://github.com/astral-sh/uv |
 | Claude Code (Anthropic) | runs the pipeline; each user brings their own account | Anthropic's terms | https://code.claude.com |
+| KiCadRoutingTools 0.24.1 | the routing engine's first router, run in its strict mode (optional; installed by `setup_engine`) | MIT | https://github.com/drandyhaas/KiCadRoutingTools |
+| Freerouting 2.5.0 | the routing engine's second router, run as a separate program through Specctra DSN/SES files (optional; installed by `setup_engine`) | GPL-3.0 | https://github.com/freerouting/freerouting |
+| Eclipse Temurin 25 (Adoptium) | the Java runtime Freerouting needs (optional; installed by `setup_engine`) | GPL-2.0 with the Classpath Exception | https://adoptium.net |
+
+The routing engine's downloads are pinned to exact versions and checked against fixed SHA-256 checksums before use (`plugin/scripts/setup_engine.ps1` and `setup_engine.sh`). Nothing from them is copied into this repository.
 
 The design rules in `plugin/skills/boardwright/references/` are short paraphrases with citations of public application notes and articles (TI, ST, Raspberry Pi, Espressif, Nordic, ROHM, Vishay, Phil's Lab, Altium, KiCad docs). Each file lists its sources. Read the originals for the full text.
 

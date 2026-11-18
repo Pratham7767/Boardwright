@@ -23,6 +23,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -30,6 +31,7 @@ APP_NAME = "Boardwright"
 HERE = Path(__file__).resolve().parent
 
 INSTALL_DOCS_URL = "https://code.claude.com/docs/en/setup"
+REPO_URL = "https://github.com/Pratham7767/Boardwright"
 # Official install commands, from the page above (read 2026-11-15).
 INSTALL_COMMANDS = {
     "win32": "irm https://claude.ai/install.ps1 | iex",
@@ -203,6 +205,34 @@ def bundle_available() -> bool:
     return d is not None and (d / "plugin" / ".claude-plugin" / "plugin.json").is_file()
 
 
+def _version_tuple(v) -> Optional[tuple]:
+    try:
+        return tuple(int(x) for x in str(v).strip().lstrip("v").split("-")[0].split("+")[0].split("."))
+    except ValueError:
+        return None
+
+
+def bundle_version() -> Optional[str]:
+    """Version of the plugin that came with this add-on (from its plugin.json), or None."""
+    try:
+        d = bundle_dir()
+        if d is None:
+            return None
+        data = json.loads((d / "plugin" / ".claude-plugin" / "plugin.json").read_text("utf-8"))
+        return str(data.get("version")) if data.get("version") else None
+    except (OSError, ValueError):
+        return None
+
+
+def is_older(installed, bundled) -> bool:
+    """True when the installed plugin version is strictly older than the bundled one (unknown -> False)."""
+    a, b = _version_tuple(installed), _version_tuple(bundled)
+    return bool(a and b and a < b)
+
+
+PLUGIN_UPDATE_COMMAND = "claude plugin update " + PLUGIN_ID
+
+
 def plugin_install_commands(claude: str = "claude") -> list:
     """The two commands that install the bundled boardwright plugin for this user."""
     return [[claude, "plugin", "marketplace", "add", str(bundle_dir())],
@@ -238,12 +268,160 @@ def run_all_checks(override: Optional[str] = None) -> dict:
     """Everything the Setup panel shows. Slow part is two CLI calls (about 2 s)."""
     c = check_claude(override)
     res = {"claude": c, "auth": None, "plugin": None, "helpers": check_helpers(),
-           "bundle": bundle_available()}
+           "bundle": bundle_available(), "engine": check_engine()}
     if c["ok"]:
         res["auth"] = check_auth(c["path"])
         res["plugin"] = check_plugin(c["path"])
+        bv = bundle_version() if res["bundle"] else None
+        res["plugin"]["bundle_version"] = bv
+        res["plugin"]["older"] = bool(res["plugin"].get("installed") and is_older(res["plugin"].get("version"), bv))
     res["ready"] = bool(c["ok"] and res["auth"] and res["auth"]["ok"])
     return res
+
+
+def engine_dir() -> Path:
+    """Where the routing engine (Java, Freerouting, KiCadRoutingTools) is installed; the same rule as the
+    plugin's scripts/engine.py."""
+    if os.environ.get("BOARDWRIGHT_ENGINE_DIR"):
+        return Path(os.environ["BOARDWRIGHT_ENGINE_DIR"])
+    if os.name == "nt":
+        return Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / "Boardwright" / "engine"
+    return Path.home() / ".local" / "share" / "boardwright" / "engine"
+
+
+def check_engine() -> dict:
+    """{'ok': bool, 'detail': str}: ok when engine.json is there and every path it names exists."""
+    f = engine_dir() / "engine.json"
+    try:
+        data = json.loads(f.read_text("utf-8-sig"))     # PowerShell writes a byte-order mark
+    except (OSError, ValueError):
+        return {"ok": False, "detail": "not installed"}
+    if not isinstance(data, dict):
+        return {"ok": False, "detail": "engine.json is not readable"}
+    missing = [k for k in ("java", "freerouting_jar", "krt", "krt_python")
+               if not data.get(k) or not Path(str(data[k])).exists()]
+    return {"ok": not missing, "detail": ("missing: " + ", ".join(missing)) if missing else str(engine_dir())}
+
+
+def engine_downloads_text() -> str:
+    return ("This downloads a Java runtime (Eclipse Temurin 25, about 50 MB), Freerouting 2.5.0 (about 20 MB) "
+            "and KiCadRoutingTools 0.24.1 with its Python packages (about 150 MB). Each download is checked "
+            "against a fixed checksum. Everything goes into " + str(engine_dir()) + " and nothing else on "
+            "your computer is changed.")
+
+
+def start_engine_setup() -> Optional[str]:
+    """Run the plugin's setup_engine script in its own console window. -> error text, or None."""
+    if not bundle_available():
+        return "this copy of the add-on has no bundled plugin; run the plugin's scripts/setup_engine script by hand"
+    scripts = bundle_dir() / "plugin" / "scripts"
+    if os.name == "nt":
+        return open_in_terminal(["powershell", "-NoProfile", "-NoExit", "-ExecutionPolicy", "Bypass", "-File",
+                                 str(scripts / "setup_engine.ps1")])
+    return open_in_terminal(["bash", str(scripts / "setup_engine.sh")])
+
+
+# --------------------------------------------------------------------------
+# The chat's own settings (one small file per user): colours, mode, model, the last chat per project, and
+# the user's answer about the usage log. Never a password, key or token.
+# --------------------------------------------------------------------------
+def _settings_path() -> Path:
+    base = os.environ.get("LOCALAPPDATA") or os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
+    return Path(base) / "Boardwright" / "chat-settings.json"
+
+
+def settings_get(key: str, default=None):
+    try:
+        d = json.loads(_settings_path().read_text("utf-8"))
+        return d.get(key, default) if isinstance(d, dict) else default
+    except (OSError, ValueError):
+        return default
+
+
+def settings_set(key: str, value) -> None:
+    f = _settings_path()
+    try:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            d = json.loads(f.read_text("utf-8"))
+            d = d if isinstance(d, dict) else {}
+        except (OSError, ValueError):
+            d = {}
+        d[key] = value
+        tmp = f.with_suffix(".tmp")
+        tmp.write_text(json.dumps(d, indent=2), "utf-8")
+        os.replace(tmp, f)
+    except OSError:
+        pass
+
+
+def plugin_scripts() -> Optional[Path]:
+    """The bundled plugin's scripts folder (diagnostics.py and the rest), or None."""
+    try:
+        d = bundle_dir()
+    except Exception:
+        return None
+    return d / "plugin" / "scripts" if d and (d / "plugin" / "scripts").is_dir() else None
+
+
+def diagnostics_module():
+    """The plugin's diagnostics.py as a module, or None."""
+    sc = plugin_scripts()
+    if not sc or not (sc / "diagnostics.py").is_file():
+        return None
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("bw_diagnostics", sc / "diagnostics.py")
+    mod = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(mod)
+    except Exception:
+        return None
+    return mod
+
+
+def usage_log_decided(project: str) -> bool:
+    return (Path(project) / ".boardwright" / "diagnostics" / "consent.json").is_file()
+
+
+def set_usage_log(project: str, on: bool, prompts: bool, how: str) -> bool:
+    """The user's own click in the chat window: the usage log on or off for this project."""
+    mod = diagnostics_module()
+    if mod is None:
+        return False
+    try:
+        mod.set_consent(Path(project), on, prompts, typed=how)
+        return True
+    except Exception:
+        return False
+
+
+def usage_log_on(project: str) -> bool:
+    mod = diagnostics_module()
+    try:
+        return bool(mod and mod.consent(Path(project))["on"])
+    except Exception:
+        return False
+
+
+def build_report(project: str) -> tuple:
+    """(report text or '', note). The plugin's own redacted report of this project's usage log."""
+    sc = plugin_scripts()
+    if not sc:
+        return "", "the plugin copy that came with the add-on was not found"
+    code, out, err = run_quiet([console_python(), str(sc / "diagnostics.py"), project, "report"], timeout=120)
+    path = None
+    for line in out.splitlines():
+        if line.startswith("Report: "):
+            path = line[len("Report: "):].rsplit(" (", 1)[0].strip()
+    if code != 0 or not path or not Path(path).is_file():
+        return "", (err or out).strip()[-200:] or "no report was made"
+    return Path(path).read_text("utf-8", errors="replace"), path
+
+
+def feedback_issue_url() -> str:
+    """The new-issue page; only a fixed title goes in the address, the text goes on the clipboard."""
+    from urllib.parse import quote
+    return REPO_URL + "/issues/new?title=" + quote("Feedback from the Boardwright chat") + "&labels=feedback"
 
 
 def console_python() -> str:
@@ -679,29 +857,113 @@ def pid_alive(pid: int) -> bool:
         return False
 
 
-def read_lock_pid(project: str) -> Optional[int]:
+def process_start_time(pid: int) -> Optional[float]:
+    """Start time of a process in seconds since the epoch, or None when it cannot be read. Used so a lock
+    left by a dead process is not mistaken for a live one that reuses the same PID."""
     try:
-        pid = int(json.loads(lock_path(project).read_text("utf-8"))["pid"])
+        if os.name == "nt":
+            import ctypes
+            from ctypes import wintypes
+            k32 = ctypes.windll.kernel32
+            k32.OpenProcess.restype = wintypes.HANDLE
+            h = k32.OpenProcess(0x1000, False, pid)
+            if not h:
+                return None
+            try:
+                c, e, k, u = (wintypes.FILETIME() for _ in range(4))
+                if not k32.GetProcessTimes(h, ctypes.byref(c), ctypes.byref(e), ctypes.byref(k), ctypes.byref(u)):
+                    return None
+                return ((c.dwHighDateTime << 32) + c.dwLowDateTime) / 1e7 - 11644473600
+            finally:
+                k32.CloseHandle(h)
+        if Path("/proc/self/stat").is_file():
+            fields = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()
+            ticks = int(fields[19])                      # field 22: start time in clock ticks since boot
+            boot = float(next(l for l in Path("/proc/stat").read_text().splitlines() if l.startswith("btime")).split()[1])
+            return boot + ticks / os.sysconf("SC_CLK_TCK")
+        code, out, _err = run_quiet(["ps", "-o", "lstart=", "-p", str(pid)], timeout=5)
+        if code == 0 and out.strip():
+            import time as _t
+            return _t.mktime(_t.strptime(out.strip(), "%a %b %d %H:%M:%S %Y"))
     except Exception:
         return None
-    return pid if pid_alive(pid) else None
+    return None
+
+
+def _read_lock(project: str) -> Optional[dict]:
+    try:
+        d = json.loads(lock_path(project).read_text("utf-8"))
+        return d if isinstance(d, dict) and int(d["pid"]) > 0 else None
+    except Exception:
+        return None
+
+
+def _lock_live(d: Optional[dict]) -> bool:
+    """Does this lock record belong to a process that is still running (and is the same process)?"""
+    if not d:
+        return False
+    pid = int(d["pid"])
+    if not pid_alive(pid):
+        return False
+    started = d.get("started")
+    now = process_start_time(pid)
+    if isinstance(started, (int, float)) and now is not None and abs(now - started) > 2:
+        return False                         # the PID now belongs to another process
+    return True
+
+
+def read_lock_pid(project: str) -> Optional[int]:
+    d = _read_lock(project)
+    return int(d["pid"]) if _lock_live(d) else None
+
+
+def _lock_text() -> str:
+    return json.dumps({"pid": os.getpid(), "started": process_start_time(os.getpid()), "token": _LOCK_TOKEN})
+
+
+_LOCK_TOKEN = os.urandom(8).hex()
 
 
 def acquire_lock(project: str) -> bool:
-    live = read_lock_pid(project)
-    if live is not None and live != os.getpid():
-        return False
-    try:
-        lock_path(project).write_text(json.dumps({"pid": os.getpid()}), "utf-8")
-    except OSError:
-        pass
-    return True
+    """Take the one-window-per-project lock. The create is atomic (O_EXCL), so two quick clicks cannot
+    both win. Calling it again from the owner refreshes the file."""
+    path = lock_path(project)
+    for _ in range(3):
+        try:
+            fd = os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            d = _read_lock(project)
+            if d and int(d["pid"]) == os.getpid() and d.get("token") == _LOCK_TOKEN:
+                return True                  # ours already (heartbeat)
+            if _lock_live(d):
+                return False
+            if d is None:
+                # unreadable: the other window may have created it a moment ago and not written it yet
+                try:
+                    if time.time() - path.stat().st_mtime < 5:
+                        return False
+                except OSError:
+                    pass
+            try:                             # stale or unreadable: remove it and try the atomic create again
+                path.unlink()
+            except OSError:
+                pass
+            continue
+        except OSError:
+            return True                      # cannot write the lock (read-only temp dir): do not block the user
+        try:
+            os.write(fd, _lock_text().encode("utf-8"))
+        finally:
+            os.close(fd)
+        return True
+    return False
 
 
 def release_lock(project: str) -> None:
     try:
         p = lock_path(project)
-        if int(json.loads(p.read_text("utf-8")).get("pid", -1)) == os.getpid():
+        d = json.loads(p.read_text("utf-8"))
+        if int(d.get("pid", -1)) == os.getpid() and d.get("token", _LOCK_TOKEN) == _LOCK_TOKEN:
             p.unlink()
     except Exception:
         pass

@@ -62,11 +62,43 @@ def test_helpers():
     check("pattern: /TYPO_X does not match /X", not pattern_matches("/TYPO_X", "/X"))
 
 
+def test_domain_without_voltage():
+    import json
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        d = Path(td)
+        (d / "t.kicad_pro").write_text(json.dumps({"net_settings": {"classes": [{"name": "Default"}]}}), "utf-8")
+        (d / "t.kicad_pcb").write_text('(kicad_pcb (net 1 "A") (net 2 "B"))', "utf-8")
+
+        def run(domains):
+            (d / "boardwright.json").write_text(json.dumps({"safety": {"domains": domains}}), "utf-8")
+            return safety_class.analyse(d)[1]
+        bad = run([{"name": "SELV", "nets": ["A"]}, {"name": "rest", "rest": True}])
+        check("planted fault: domain with no voltage is a problem", any("no voltage" in x for x in bad), str(bad))
+        good = run([{"name": "SELV", "nets": ["A"], "vdc": 5}, {"name": "rest", "rest": True}])
+        check("domain with vdc and a rest domain without voltage pass", not good, str(good))
+        # the routing engine and the router must never get a mains or hazardous net, whatever else is allowed
+        import bw_edit
+        from bw_project import project_files
+        (d / "boardwright.json").write_text(json.dumps({"safety": {"domains": [
+            {"name": "MAINS", "nets": ["A"], "vrms": 230}, {"name": "rest", "rest": True, "vdc": 5}]}}), "utf-8")
+        hz = bw_edit.hazardous_nets(d, bw_edit.Rules(d, project_files(d)), ["A", "B"])
+        check("hazardous nets: the 230 V net is never routed, the 5 V one may be", "A" in hz and "B" not in hz, str(hz))
+        (d / "boardwright.json").write_text(json.dumps({"safety": {"domains": [
+            {"name": "BUS", "nets": ["A"]}, {"name": "rest", "rest": True, "vdc": 5}]}}), "utf-8")
+        hz = bw_edit.hazardous_nets(d, bw_edit.Rules(d, project_files(d)), ["A", "B"])
+        check("hazardous nets: a domain with no voltage is treated as hazardous", "A" in hz, str(hz))
+
+
 def test_energy_classes():
     check("ES1: 12 Vdc", safety_class.es_class({"vdc": 12}) == "ES1")
     check("ES2: 100 Vdc", safety_class.es_class({"vdc": 100}) == "ES2")
     check("ES3: 250 Vrms", safety_class.es_class({"vrms": 250}) == "ES3")
     check("ES3: 20 V but mains-referenced", safety_class.es_class({"vdc": 20, "mains_referenced": True}) == "ES3")
+    check("no voltage given: not ES1 (unverified)", safety_class.es_class({"name": "X"}) == "unverified")
+    check("rest domain without voltage stays ES1", safety_class.es_class({"name": "r", "rest": True}) == "ES1")
+    check("mains domain without voltage is ES3", safety_class.es_class({"name": "m", "kind": "mains"}) == "ES3")
+    test_domain_without_voltage()
     check("PS1: 2.5 W", safety_class.ps_class(2.5) == "PS1")
     check("PS3: 150 W", safety_class.ps_class(150) == "PS3")
     check("PS unverified without a power figure", safety_class.ps_class(None) == "unverified")
@@ -164,6 +196,10 @@ def test_harmonics():
     check("harmonics: 8 MHz has 122 harmonics from 32 MHz to 1 GHz, each counted once", total == 122, str(total))
     p = emc_harmonics.plan([{"name": "A", "f_hz": 8e6}, {"name": "B", "f_hz": 12e6}])
     check("harmonics: 8 and 12 MHz coincide at 48 MHz", any("48.000 MHz" in c for c in p["coincidences"]))
+    p = emc_harmonics.plan([{"name": "SW5", "f_hz": 5e3, "kind": "switcher"}])
+    n = sum(r["count"] for r in p["radiated"])
+    check("harmonics: a 5 kHz switcher reports every radiated-band harmonic (200000 - 5999 = 194001)", n == 194001, str(n))
+    check("harmonics: the unlisted ones are named", any("not listed" in x for x in p["notes"]), str(p["notes"]))
     p = emc_harmonics.plan([{"name": "SW", "f_hz": 100e3, "kind": "switcher"}])
     check("harmonics: a 100 kHz switcher fills the conducted band", p["conducted"] and p["conducted"][0]["count"] == 299,
           str(p["conducted"]))
@@ -180,6 +216,9 @@ def test_impedance():
           impedance_check.microstrip(0.2, 1.6, 0.035, 4.5)[0] > impedance_check.microstrip(1.0, 1.6, 0.035, 4.5)[0])
     zs = impedance_check.stripline(0.15, 0.5, 0.018, 4.2)
     check("impedance: stripline estimate in a plausible range", 40 < zs < 70, f"{zs:.1f}")
+    zds = impedance_check.diff_stripline(0.127, 0.127, 0.4, 0.018, 4.2)
+    check("impedance: edge-coupled stripline w=s=0.127, b=0.4, er 4.2 is about 93.3 ohm (factor 0.347)",
+          abs(zds - 93.3) < 0.3, f"{zds:.2f}")
 
 
 def test_pdn():
@@ -192,6 +231,18 @@ def test_pdn():
     c = {"value": "100n", "footprint": "Capacitor_SMD:C_0402_1005Metric", "fields": {}}
     C, L, R, note = pdn_check.cap_model(c)
     check("pdn: 0402 ceramic model uses the typical 0.4 nH and is labelled as typical", abs(L - 0.4e-9) < 1e-12 and "typical" in note)
+
+
+def test_pdn_setup_error():
+    import json
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        d = Path(td)
+        (d / "t.kicad_pro").write_text("{}", "utf-8")
+        (d / "boardwright.json").write_text(json.dumps({"pdn": [{"rail": "3V3", "v": 3.3, "ripple_pct": 5, "i_step_a": 0.5,
+                                                               "f_max_mhz": 0.05}]}), "utf-8")
+        rc = pdn_check.main([str(d)])
+        check("pdn: f_max_mhz below 0.1 is a setup error (exit 2), not a crash", rc == 2, str(rc))
 
 
 if __name__ == "__main__":

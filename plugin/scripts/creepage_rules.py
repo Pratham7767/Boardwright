@@ -202,7 +202,7 @@ def check(project: Path, f: dict, plans: list) -> tuple:
                 problems.append(f"barrier_check.py measured classes {sorted(bclasses)}, none of which is on the hazardous "
                                 f"side of '{p['name']}' ({', '.join(p['hot_classes'])}): the cross-check did not cover it")
                 continue
-            if not bmin:
+            if bmin is None:          # 0.0 mm (copper touching) is the worst case and must be checked
                 continue
             rn_c, rn_k = f"bw_{p['slug']}_clearance", f"bw_{p['slug']}_creepage"
             if bmin + 1e-6 < p["clearance_rule_mm"] and not (hits.get(rn_c) or hits.get(rn_k)):

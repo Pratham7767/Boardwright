@@ -64,6 +64,14 @@ def main(argv: list) -> int:
             write_report(project, "pdn", {"pass": True, "errors": 0, "rows": []},
                          ["# PDN estimate (pdn_check.py)", "", "No rails declared.", "", "Result: PASS"])
             return 0
+        for r in rails:
+            try:
+                fm = float(r.get("f_max_mhz", 20))
+            except (TypeError, ValueError):
+                raise SetupError(f"rail {r.get('rail')}: f_max_mhz must be a number of MHz")
+            if not fm >= 0.1:
+                raise SetupError(f"rail {r.get('rail')}: f_max_mhz is {r.get('f_max_mhz')}; the estimate starts at "
+                                 "0.1 MHz, so give a value of 0.1 or more")
         gnd = set((cfg.get("emc_rules") or {}).get("ground_nets") or ["/GND", "GND"])
         from run_gates import find_kicad_cli
         from sch_check import export_netlist, parse_netlist

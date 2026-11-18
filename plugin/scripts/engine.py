@@ -1,0 +1,613 @@
+"""The deterministic routing engine: KiCadRoutingTools first, Freerouting for what is left, then checks.
+
+    python scripts/engine.py <project> run [--nets PATTERN ...] [--allow-fast] [--dry-run]
+                                           [--engines krt,freerouting] [--minutes N]
+    python scripts/engine.py <project> status        are the tools installed, and their versions
+    python scripts/engine.py <project> leftovers     the last run's leftover list
+
+Runs under the system Python (standard library only); KiCad's Python is used only through subprocesses
+(engine_kicad.py). The tools are installed by plugin/scripts/setup_engine.ps1 (Windows) or setup_engine.sh
+(Linux, macOS), or from the chat's Setup checks, into the folder named by
+BOARDWRIGHT_ENGINE_DIR, else %LOCALAPPDATA%\\Boardwright\\engine (Windows) or ~/.local/share/boardwright/engine,
+described by engine.json there.
+
+What `run` does: counts the open connections per net with KiCad's connectivity (complete, unlike the DRC's
+unconnected list, which stops at 499); picks the nets with open connections (minus protected nets, nets the
+routing plan blocks, and nets with nothing to join); takes the edit lock and saves a history step; routes with
+KiCadRoutingTools in its strict mode (never lowers a clearance or size) on a temporary copy of the project,
+signal nets first and nets with a copper pour (planes, GND) after them with a shorter limit; routes what is left
+with Freerouting, which stops at the time limit and keeps what it routed; checks each stage with KiCad's DRC
+against the project as it was: a net whose new copper adds a DRC error is dropped and the rest is checked again
+(so one bad net does not throw away a stage); copies the result .kicad_pcb (only that file) over the project's;
+writes reports/engine.json and reports/engine.md. Mains and hazardous nets are never routed by the engine; fast nets
+(USB and the like) only with --allow-fast. Exit 0 all connections routed and no new errors, 1 leftovers
+remain, 2 setup problem.
+"""
+from __future__ import annotations
+
+import fnmatch
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+from bw_project import SetupError, board_nets, md_table, project_files, write_report  # noqa: E402
+
+NOT_INSTALLED = ("the engine tools are not installed: run scripts/setup_engine.ps1 (Windows) or scripts/setup_engine.sh (Linux, macOS) from the plugin, the installer, or Install engine in the chat's Setup")
+COPY_IGNORE = shutil.ignore_patterns("fab", ".boardwright", ".git", "reports", "*.lck", "*-backups", "__pycache__",
+                                     "datasheets")
+
+
+class Setup(Exception):
+    """A setup problem: exit code 2."""
+
+
+# ------------------------------------------------------------------ tools
+def engine_dir() -> Path:
+    env = os.environ.get("BOARDWRIGHT_ENGINE_DIR")
+    if env:
+        return Path(env)
+    if os.name == "nt":
+        return Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / "Boardwright" / "engine"
+    return Path.home() / ".local" / "share" / "boardwright" / "engine"
+
+
+def find_tools() -> dict:
+    cfg = engine_dir() / "engine.json"
+    if not cfg.is_file():
+        raise Setup(NOT_INSTALLED)
+    try:
+        t = json.loads(cfg.read_text("utf-8-sig"))
+    except ValueError:
+        raise Setup(NOT_INSTALLED + " (engine.json is unreadable)")
+    for k in ("java", "freerouting_jar", "krt", "krt_python"):
+        if not t.get(k) or not Path(t[k]).exists():
+            raise Setup(NOT_INSTALLED + f" ('{k}' in engine.json points to nothing)")
+    if not (Path(t["krt"]) / "py_router" / "route.py").is_file():
+        raise Setup(NOT_INSTALLED + " (KiCadRoutingTools router not found)")
+    return t
+
+
+def kicad_python() -> str:
+    import kicad_python
+    kpy = kicad_python.find()
+    if not kpy:
+        raise Setup("KiCad 9 or 10 was not found (its Python and kicad-cli are needed). "
+                    "Install KiCad, or set KICAD_CLI to the full path of kicad-cli.")
+    return kpy
+
+
+def sh(cmd, timeout=None, cwd=None, env=None) -> tuple:
+    """(returncode, output, timed_out, seconds); output is stdout and stderr together."""
+    t0 = time.time()
+    e = dict(os.environ, PYTHONIOENCODING="utf-8", **(env or {}))
+    # Every Python started under the engine (KiCadRoutingTools starts KiCad's Python itself, e.g. to refill zones)
+    # loads quiet_site/sitecustomize.py first: it sends KiCad's messages to stderr instead of a message box that
+    # would wait for a click.
+    quiet_dir = str(Path(__file__).resolve().parent / "quiet_site")
+    e["PYTHONPATH"] = quiet_dir + (os.pathsep + e["PYTHONPATH"] if e.get("PYTHONPATH") else "")
+    try:
+        r = subprocess.run([str(c) for c in cmd], capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=timeout, cwd=cwd, env=e)
+        return r.returncode, (r.stdout or "") + (r.stderr or ""), False, time.time() - t0
+    except subprocess.TimeoutExpired as exc:
+        out = exc.stdout.decode("utf-8", "replace") if isinstance(exc.stdout, bytes) else (exc.stdout or "")
+        return -1, out, True, time.time() - t0
+    except OSError as exc:
+        return -1, str(exc), False, time.time() - t0
+
+
+# ------------------------------------------------------------------ DRC and board copies
+def make_copy(proj: Path, dest: Path, board: Path | None = None) -> Path:
+    """A copy of the project without history, fab files and datasheets; BOARD (if given) replaces its .kicad_pcb."""
+    shutil.copytree(proj, dest, ignore=COPY_IGNORE)
+    pcb = project_files(dest)["pcb"]
+    if board is not None:
+        shutil.copyfile(board, pcb)
+    return pcb
+
+
+UNC = re.compile(r"^Pad (\S+) \[(.*?)\] of (\S+) on ")
+
+
+def drc_full(pcb: Path) -> dict | None:
+    """Like bw_edit.drc (same error keys, so bw_edit.drc_diff compares them) plus the unconnected list
+    as [(net, 'REF.pad' or a description)] pairs of items."""
+    import bw_edit
+    cli = bw_edit.find_cli()
+    if not cli:
+        return None
+    out = Path(tempfile.mkdtemp(prefix="bwengdrc")) / "drc.json"
+    subprocess.run([cli, "pcb", "drc", "--format", "json", "--severity-all", "-o", str(out), str(pcb)],
+                   capture_output=True)
+    try:
+        d = json.loads(out.read_text("utf-8-sig"))
+    except (OSError, ValueError):
+        return None
+    finally:
+        shutil.rmtree(out.parent, ignore_errors=True)
+    errs = {}
+    for v in d.get("violations", []):
+        if v.get("severity") != "error":
+            continue
+        base = (v.get("type"), tuple(sorted(re.sub(r"[\d.]+ mm", "", i.get("description", ""))
+                                            for i in v.get("items", []))))
+        # identical errors are numbered, so a new one that repeats an old one still counts as new
+        n = 0
+        while base + (n,) in errs:
+            n += 1
+        key = base + (n,)
+        errs[key] = v.get("description", "") + ": " + "; ".join(i.get("description", "") for i in v.get("items", []))
+    unc = []
+    for u in d.get("unconnected_items", []):
+        items = []
+        net = ""
+        for i in u.get("items", []):
+            desc = i.get("description", "")
+            m = UNC.match(desc)
+            if m:
+                items.append(f"{m.group(3)}.{m.group(1)}")
+                net = net or m.group(2)
+            else:
+                n = re.search(r"\[(.*?)\]", desc)
+                net = net or (n.group(1) if n else "")
+                items.append(desc.split(" on ")[0].replace(f"[{net}] ", "") + f" at {i.get('pos', {}).get('x')},{i.get('pos', {}).get('y')}")
+        unc.append((net, items))
+    return {"errors": errs, "unconnected": len(unc), "unconnected_list": unc}
+
+
+def open_counts(kpy: str, pcb: Path) -> dict:
+    """{'open': {net: connections}, 'total': n, 'zone_nets': [...]} from KiCad's connectivity. Unlike the
+    DRC's unconnected list (capped at 499 items) this is complete on big boards."""
+    rc, out, _t, _s = sh([kpy, "-I", HERE / "engine_kicad.py", "open", pcb], timeout=600)
+    for line in reversed(out.splitlines()):
+        line = line.strip()
+        if line.startswith("{"):
+            try:
+                d = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(d, dict) and "open" in d:
+                return d
+    raise Setup("KiCad could not count the open connections: " + out.strip()[-200:])
+
+
+# ------------------------------------------------------------------ choosing nets
+def choose(proj: Path, files: dict, open_map: dict, patterns: list, allow_fast: bool) -> tuple:
+    """(chosen, left_out {net: why}). open_map: {net: open connections}."""
+    import bw_edit
+    import routing_plan
+    left: dict = {}
+    if patterns:
+        names = board_nets(files["pcb"])
+        cand = []
+        for p in patterns:
+            hits = [n for n in names if fnmatch.fnmatchcase(n, p)]
+            if not hits:
+                left[p] = "matches no net on the board"
+            cand += [h for h in hits if h not in cand]
+        for n in cand:
+            if n not in open_map:
+                left[n] = "nothing to join (already connected)"
+        cand = [n for n in cand if n in open_map]
+    else:
+        cand = sorted(open_map)
+    cand = [n for n in cand if n]
+    rules = bw_edit.Rules(proj, files)
+    prot = bw_edit.protected_nets(proj, rules, cand)
+    hazards = bw_edit.hazardous_nets(proj, rules, cand)
+    chosen = []
+    plan_block = routing_plan.gate(proj, cand)
+    for n in cand:
+        if n in hazards:
+            left[n] = f"hazardous or mains: never routed by the engine ({hazards[n]})"
+            continue
+        if n in prot:
+            why = prot[n]
+            if not allow_fast:
+                left[n] = f"fast net, route it by hand or pass --allow-fast ({why})"
+                continue
+        if n in plan_block:
+            left[n] = plan_block[n]
+            continue
+        chosen.append(n)
+    return chosen, left
+
+
+# ------------------------------------------------------------------ stages
+def merge(kpy, base: Path, result: Path, out: Path, nets: list, work: Path) -> tuple:
+    nj = work / "nets.json"
+    nj.write_text(json.dumps(nets), "utf-8")
+    rc, text, _t, _s = sh([kpy, "-I", HERE / "engine_kicad.py", "merge", base, result, out, nj], timeout=300)
+    return rc == 0 and out.is_file(), text.strip()[-300:]
+
+
+def krt_pattern(net: str) -> str:
+    """A net name as a KiCadRoutingTools --nets value that matches exactly that net: its patterns are fnmatch
+    patterns, so [ ] * ? are put in brackets, and a leading '-' (as in -12V) would be read as an option."""
+    out = "".join(f"[{c}]" if c in "[]*?" else c for c in net)
+    return "[-]" + out[1:] if out.startswith("-") else out
+
+
+def krt_stage(tools: dict, kpy: str, base: Path, work: Path, nets: list, minutes: float, tag: str = "krt") -> dict:
+    raw = work / f"{tag}_raw.kicad_pcb"
+    summary = work / f"{tag}_summary.json"
+    router = Path(tools["krt"]) / "py_router"
+    cmd = [tools["krt_python"], router / "route.py", base, "--output", raw, "--nets", *[krt_pattern(n) for n in nets],
+           "--escalation", "off", "--strict-sizes", "--no-fix-drc-settings", "--fab-tier", "standard",
+           "--json-out", summary]
+    rc, out, timed_out, secs = sh(cmd, timeout=minutes * 60, cwd=str(router))
+    res = {"engine": tag, "seconds": round(secs, 1), "raw": None, "routed": [], "failed": []}
+    if timed_out:
+        res["error"] = f"timed out after {minutes:g} minutes"
+        return res
+    try:
+        s = json.loads(summary.read_text("utf-8"))
+        res["routed"] = list(s.get("routed_single", []))
+        res["failed"] = list(s.get("failed_single", [])) + list(s.get("open_single", [])) + \
+            list(s.get("failed_multipoint", []))
+    except (OSError, ValueError):
+        res["error"] = f"no summary from KiCadRoutingTools (exit {rc}): " + " | ".join(
+            l for l in out.splitlines() if l.strip() and "swig" not in l)[-300:]
+        return res
+    if not raw.is_file():
+        res["error"] = f"KiCadRoutingTools wrote no board (exit {rc})"
+        return res
+    res["raw"] = raw
+    return res
+
+
+def freerouting_stage(tools: dict, kpy: str, base: Path, work: Path, minutes: float) -> dict:
+    dsn, ses, raw = work / "fr.dsn", work / "fr.ses", work / "fr_raw.kicad_pcb"
+    res = {"engine": "freerouting", "seconds": 0.0, "raw": None}
+    t0 = time.time()
+    rc, out, _t, _s = sh([kpy, "-I", HERE / "engine_kicad.py", "dsn", base, dsn], timeout=300)
+    if rc != 0 or not dsn.is_file():
+        res["error"] = "KiCad could not export the Specctra DSN: " + out.strip()[-200:]
+        return res
+    # Freerouting's own time limit: when it is reached Freerouting stops and still saves what it routed
+    # (tested with 2.5.0). The outer limit only catches a hang.
+    secs = max(60, int(minutes * 60))
+    limit = f"{secs // 3600:02d}:{secs % 3600 // 60:02d}:{secs % 60:02d}"
+    cmd = [tools["java"], "-jar", tools["freerouting_jar"], "-de", dsn, "-do", ses, "--gui.enabled=false",
+           "--router.autorouter.max_passes=30", f"--router.job_timeout={limit}", "--router.optimizer.enabled=false"]
+    rc, out, timed_out, _s = sh(cmd, timeout=secs + 300, cwd=str(work))
+    res["seconds"] = round(time.time() - t0, 1)
+    if timed_out:
+        res["error"] = f"Freerouting did not stop at its {minutes:g} minute limit"
+        return res
+    if not ses.is_file():
+        res["error"] = f"Freerouting wrote no session (exit {rc}): " + " | ".join(
+            l for l in out.splitlines() if l.strip())[-200:]
+        return res
+    rc, out, _t, _s = sh([kpy, "-I", HERE / "engine_kicad.py", "ses", base, ses, raw], timeout=300)
+    res["seconds"] = round(time.time() - t0, 1)
+    if rc != 0 or not raw.is_file():
+        res["error"] = "KiCad could not import the Freerouting session: " + out.strip()[-200:]
+        return res
+    res["raw"] = raw
+    return res
+
+
+NET_IN = re.compile(r"\[([^\]]+)\]")
+
+
+def evaluate(proj, kpy, work, name, st, base_open, orig_drc, nets, base_pcb) -> dict:
+    """Merge a stage's copper (listed nets only) into the base and check it with KiCad's DRC. A net whose
+    new copper causes a new DRC error is dropped (it stays open for the next stage or for Claude) and the
+    rest is checked again, so one bad net no longer throws away a whole stage. Fills st."""
+    if st.get("raw") is None:
+        st["accepted"] = False
+        st["why"] = st.get("error", "no result")
+        return st
+    import bw_edit
+    keep = list(nets)
+    dropped: dict = {}
+    merged, d, lines, new = None, None, [], []
+    for attempt in range(6):
+        merged = work / f"{name}_merged{attempt}.kicad_pcb"
+        ok, text = merge(kpy, base_pcb, st["raw"], merged, keep, work)
+        if not ok:
+            st["accepted"] = False
+            st["why"] = "could not merge the result into the board: " + text
+            return st
+        d = drc_full(make_copy(proj, work / f"chk_{name}{attempt}", merged))
+        if d is None:
+            raise Setup("KiCad's DRC could not be run (kicad-cli not found or failed)")
+        lines, _new = bw_edit.drc_diff(orig_drc, d)
+        new = [d["errors"][k] for k in d["errors"] if k not in orig_drc["errors"]]
+        if not new:
+            # copper merged for a net replaces all of its old copper: if a router dropped existing segments,
+            # the net is now more open than before; keep its old copper instead
+            op = open_counts(kpy, merged)
+            worse = {n: f"left it more open ({base_open.get(n, 0)} -> {op['open'].get(n, 0)} connections)"
+                     for n in keep if op["open"].get(n, 0) > base_open.get(n, 0)}
+            if not worse:
+                break
+            dropped.update(worse)
+            keep = [n for n in keep if n not in worse]
+            if not keep:
+                break
+            continue
+        bad = {}
+        # DRC texts show KiCad's escaped net names unescaped ("/VPP{slash}MCLR" reads "/VPP/MCLR")
+        alias = {n.replace("{slash}", "/").replace("{backslash}", "\\"): n for n in keep}
+        alias.update({n: n for n in keep})
+        for txt in new:
+            for shown in NET_IN.findall(txt):
+                n = alias.get(shown)
+                if n and n not in bad:
+                    bad[n] = txt[:200]
+        if not bad:
+            break                               # an error no net can be blamed for: reject the stage
+        dropped.update(bad)
+        keep = [n for n in keep if n not in bad]
+        if not keep:
+            break
+    op = open_counts(kpy, merged) if keep else open_counts(kpy, base_pcb)
+    st["board"] = merged
+    st["drc"] = d
+    st["open"] = op
+    st["drc_lines"] = lines
+    st["dropped"] = dropped
+    st["routed_nets"] = sorted(n for n in keep if n in base_open and n not in op["open"])
+    st["still_open"] = sorted(n for n in nets if n in op["open"])
+    st["accepted"] = not new and bool(keep)
+    if new:
+        st["why"] = "adds new DRC errors: " + "; ".join(l.strip()[:160] for l in lines[1:4])
+    elif not keep:
+        st["why"] = "every net it routed caused a new DRC error"
+    elif dropped:
+        st["why"] = f"kept {len(keep)} net(s); dropped {len(dropped)} that caused DRC errors: " + \
+            ", ".join(list(dropped)[:6])
+    return st
+
+
+# ------------------------------------------------------------------ report
+DRC_CAP = 499                                   # kicad-cli lists at most this many unconnected items
+
+
+def leftover_rows(drc: dict, open_map: dict) -> list:
+    """Connection by connection from the DRC when its list is complete; else per net from the connectivity."""
+    if drc and drc["unconnected"] < DRC_CAP:
+        rows = [f"{net or '(no net)'}: " + " -> ".join(items) for net, items in drc["unconnected_list"]]
+    else:
+        rows = [f"{net}: {k} connection(s) open" for net, k in open_map.items()]
+    return sorted(rows)
+
+
+def write_reports(proj: Path, data: dict) -> None:
+    md = ["# Engine run", "",
+          f"Result: {data['result']}.", "",
+          f"Nets chosen ({len(data['chosen'])}): {', '.join(data['chosen']) or 'none'}", ""]
+    md += ["## Stages", ""]
+    md += md_table(["stage", "seconds", "routed nets", "accepted", "note"],
+                   [[s["engine"], s["seconds"], ", ".join(s.get("routed_nets", [])) or "-",
+                     "yes" if s.get("accepted") else "no", s.get("why", "")] for s in data["stages"]]) or [""]
+    md += ["", "## Nets left out", ""]
+    md += [f"- `{n}`: {w}" for n, w in data["left_out"].items()] or ["- none"]
+    md += ["", f"## Leftovers: {len(data['leftovers'])} connection(s)", ""]
+    md += [f"- {r}" for r in data["leftovers"]] or ["- none"]
+    md += ["", "## Check", ""] + [f"- {l}" for l in data.get("drc_lines", [])]
+    md += ["", f"Total time {data['seconds']} s. Dry run: {'yes' if data['dry_run'] else 'no'}."]
+    write_report(proj, "engine", data, md)
+
+
+# ------------------------------------------------------------------ commands
+def cmd_status(proj: Path) -> int:
+    try:
+        t = find_tools()
+    except Setup as exc:
+        print(f"ERROR: {exc}")
+        return 2
+    rc, out, _x, _s = sh([t["java"], "-version"], timeout=30)
+    jv = out.strip().splitlines()[0] if out.strip() else "unknown"
+    krt_v = Path(t["krt"]) / "VERSION"
+    print(f"engine folder: {engine_dir()}")
+    print(f"java: {jv}")
+    print(f"freerouting: {Path(t['freerouting_jar']).name}")
+    print(f"KiCadRoutingTools: {krt_v.read_text('utf-8').strip() if krt_v.is_file() else 'unverified version'}")
+    rc, out, _x, _s = sh([t["krt_python"], "--version"], timeout=30)
+    print(f"krt python: {out.strip()}")
+    try:
+        print(f"KiCad python: {kicad_python()}")
+    except Setup as exc:
+        print(f"KiCad python: missing ({exc})")
+    return 0
+
+
+def cmd_leftovers(proj: Path) -> int:
+    p = proj / "reports" / "engine.json"
+    if not p.is_file():
+        print("no engine run yet (reports/engine.json is missing)")
+        return 0
+    d = json.loads(p.read_text("utf-8"))
+    print(f"last engine run: {d.get('result')}; leftovers: {len(d.get('leftovers', []))}")
+    for r in d.get("leftovers", []):
+        print("  " + r)
+    for n, w in d.get("left_out", {}).items():
+        print(f"  left out {n}: {w}")
+    return 0
+
+
+def cmd_run(proj: Path, args: list) -> int:
+    t_start = time.time()
+    allow_fast = "--allow-fast" in args
+    dry = "--dry-run" in args
+    patterns, engines, minutes = [], ["krt", "freerouting"], 10.0
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--nets":
+            i += 1
+            while i < len(args) and not args[i].startswith("--"):
+                patterns.append(args[i])
+                i += 1
+            continue
+        if a == "--engines":
+            if i + 1 >= len(args):
+                raise Setup("--engines needs a value, e.g. --engines krt,freerouting")
+            engines = [e.strip() for e in args[i + 1].split(",") if e.strip()]
+            i += 1
+        elif a == "--minutes":
+            try:
+                minutes = float(args[i + 1])
+            except (IndexError, ValueError):
+                raise Setup("--minutes needs a number, e.g. --minutes 10")
+            if minutes <= 0:
+                raise Setup("--minutes must be more than 0")
+            i += 1
+        elif a not in ("--allow-fast", "--dry-run"):
+            raise Setup(f"unknown option {a}")
+        i += 1
+    bad = [e for e in engines if e not in ("krt", "freerouting")]
+    if bad:
+        raise Setup(f"unknown engine {bad[0]} (krt, freerouting)")
+
+    # the editor that runs the engine (the MCP server, or a session through the hooks) passes its lock name,
+    # so the engine works under that lock instead of finding it "taken by someone else"
+    who = os.environ.get("BOARDWRIGHT_LOCK_WHO") or "engine"
+    tools = find_tools()                                              # 1
+    kpy = kicad_python()
+    files = project_files(proj)
+    pcb = files["pcb"]
+    lck = pcb.parent / f"~{pcb.name}.lck"
+    if lck.exists():                                                  # 2
+        raise Setup(f"close the board in KiCad first (found {lck.name}); nothing was changed")
+    import bw_edit
+    import history
+    work = Path(tempfile.mkdtemp(prefix="bwengine"))
+    holder = False
+    try:
+        base_pcb = make_copy(proj, work / "base")
+        orig = drc_full(base_pcb)
+        if orig is None:
+            raise Setup("KiCad's DRC could not be run (kicad-cli not found or failed)")
+        op0 = open_counts(kpy, base_pcb)
+        chosen, left = choose(proj, files, op0["open"], patterns, allow_fast)   # 3
+        zone_nets = set(op0.get("zone_nets", []))
+        stages = []
+        result_board = None
+        if not dry:                                                   # 4
+            other = history.lock_take(proj, who, "engine run")
+            if other:
+                raise Setup("someone else is editing this project: " + history.describe(other))
+            holder = True
+            history.Store(proj).snap("before engine run")
+        cur_pcb, cur_open, cur_drc = base_pcb, dict(op0["open"]), orig
+
+        def run_stage(st, name, nets):
+            nonlocal cur_pcb, cur_open, cur_drc, result_board
+            evaluate(proj, kpy, work, name, st, cur_open, orig, nets, cur_pcb)
+            stages.append(st)
+            if st.get("accepted") and st.get("board"):
+                cur_pcb, cur_drc = st["board"], st["drc"]
+                cur_open = dict(st["open"]["open"])
+                result_board = st["board"]
+
+        if "krt" in engines:                                          # 5
+            # nets with a copper pour (planes, GND) last and briefly: the pour joins most of their pads, and
+            # routing them as tracks first can take the whole time limit on a big board
+            sig = [n for n in chosen if n not in zone_nets and n in cur_open]
+            if sig:
+                run_stage(krt_stage(tools, kpy, cur_pcb, work, sig, minutes, "krt"), "krt", sig)
+            pours = [n for n in chosen if n in zone_nets and n in cur_open]
+            if pours:
+                run_stage(krt_stage(tools, kpy, cur_pcb, work, pours, min(minutes / 2, 5), "krt-pours"),
+                          "krt-pours", pours)
+        todo = [n for n in chosen if n in cur_open]
+        if todo and "freerouting" in engines:                         # 6
+            # Freerouting may only touch the nets still open; the merge keeps every other net as it was
+            run_stage(freerouting_stage(tools, kpy, cur_pcb, work, minutes), "freerouting", todo)
+        for s in stages:                                              # tidy the stage dicts for the report
+            s.pop("raw", None)
+        final_drc = cur_drc
+
+        def routed_by(prefix):
+            return sum(len(s.get("routed_nets", [])) for s in stages
+                       if s["engine"].startswith(prefix) and s.get("accepted"))
+        nk, nf = routed_by("krt"), routed_by("freerouting")
+        routed_total = len([n for n in chosen if n not in cur_open])
+        drc_lines, new_err = bw_edit.drc_diff(orig, final_drc)
+        before_total = op0["total"]
+        after_total = sum(cur_open.values())
+        drc_lines[0] = re.sub(r"unconnected \d+ -> \d+", f"open connections {before_total} -> {after_total}",
+                              drc_lines[0])
+        left_rows = leftover_rows(final_drc, cur_open)
+        left_now = {n: w for n, w in left.items()}
+        result = (f"routed {routed_total} of {len(chosen)} chosen net(s) (krt {nk}, freerouting {nf}); "
+                  f"open connections {before_total} -> {after_total}" if chosen else "no net to route")
+        data = {"result": result, "dry_run": dry, "chosen": chosen, "left_out": left_now, "leftovers": left_rows,
+                "open_before": before_total, "open_after": after_total,
+                "drc_lines": drc_lines, "seconds": round(time.time() - t_start, 1),
+                "stages": [{k: v for k, v in s.items() if k in
+                            ("engine", "seconds", "routed_nets", "still_open", "accepted", "why", "error",
+                             "failed", "drc_lines", "dropped")} for s in stages]}
+        if result_board is not None and not dry:                      # 7
+            if lck.exists():
+                raise Setup(f"KiCad opened the board while the engine ran ({lck.name}); nothing was written")
+            shutil.copyfile(result_board, pcb)
+            history.Store(proj).snap(f"engine: routed {routed_total} nets (krt {nk}, freerouting {nf})")
+        if not dry:                                                   # 8
+            write_reports(proj, data)
+        # summary
+        out = [f"engine run{' (dry run, nothing written)' if dry else ''}: {result}"]
+        out.append(f"chosen {len(chosen)}: {', '.join(chosen[:40]) or 'none'}"
+                   + (f" ... and {len(chosen) - 40} more" if len(chosen) > 40 else ""))
+        for n, w in left.items():
+            out.append(f"left out {n}: {w[:110]}")
+        for s in stages:
+            out.append(f"{s['engine']}: {'ACCEPTED' if s.get('accepted') else 'REJECTED'} in {s['seconds']} s; "
+                       f"routed {len(s.get('routed_nets', []))} net(s)"
+                       + (f"; {s['why'][:150]}" if s.get("why") else ""))
+        out += [l[:200] for l in drc_lines[:4]]
+        if result_board is None and chosen:
+            out.append("no stage was accepted: the project board is unchanged")
+        out.append(f"time {round(time.time() - t_start, 1)} s")
+        out.append(f"Leftovers for Claude: {after_total} connection(s) on {len(cur_open)} net(s)")
+        for r in left_rows[:12]:
+            out.append("  " + r[:160])
+        if len(left_rows) > 12:
+            out.append(f"  ... {len(left_rows) - 12} more in reports/engine.md")
+        if left_rows:
+            out.append("Handle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets "
+                       "(hazardous, fast) by hand, then check.")
+        print("\n".join(out))
+        return 1 if after_total or new_err else 0
+    finally:
+        if holder:
+            history.lock_release(proj, who)
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def main(argv: list) -> int:
+    if len(argv) < 2 or argv[1] not in ("run", "status", "leftovers"):
+        print(__doc__)
+        return 2
+    proj = Path(argv[0]).resolve()
+    try:
+        project_files(proj)
+        if argv[1] == "status":
+            return cmd_status(proj)
+        if argv[1] == "leftovers":
+            return cmd_leftovers(proj)
+        return cmd_run(proj, argv[2:])
+    except (Setup, SetupError) as exc:
+        print(f"ERROR: {exc}")
+        return 2
+
+
+if __name__ == "__main__":
+    for _s in (sys.stdout, sys.stderr):
+        try:
+            _s.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+    sys.exit(main(sys.argv[1:]))

@@ -1,6 +1,6 @@
 # The KiCad chat button
 
-This folder is the KiCad add-on. It puts a speech-bubble button on the toolbar of KiCad's PCB Editor. The button opens a chat window, next to KiCad, that talks to **your own** Claude Code in the folder of the board you have open.
+This folder is the KiCad add-on. It puts a green speech-bubble button at the right end of the PCB Editor's top toolbar. The button opens a chat window, docked to the right side of the PCB Editor, that talks to **your own** Claude Code in the folder of the board you have open.
 
 Works on Windows and Linux with KiCad 10. Most people get it through the main installer: see the [install guide](../docs/INSTALL.md).
 
@@ -8,9 +8,19 @@ Works on Windows and Linux with KiCad 10. Most people get it through the main in
 
 1. Get `boardwright-kicad.zip`: the installer makes it, or download it from the repository's **Releases** page.
 2. In KiCad: **Plugin and Content Manager → Install from File...**, pick the zip and close the window.
-3. Restart KiCad and open a board. The speech-bubble button appears on the toolbar.
+3. Restart KiCad and open a board. The green speech-bubble button appears at the right end of the top toolbar (after the scripting-console button).
 
 KiCad must have **Preferences → Plugins → Enable KiCad API server** ticked. The installer does this for you.
+
+## Using the chat
+
+- **Start from a suggestion.** An empty chat shows a short welcome and suggestions above the message box: *Start a new board* in a new folder (it puts "I want to design a board that..." in the box for you to finish), or *Where am I?*, *Next step*, *Fix what's failing* and *Run checks* on a board in progress. Or just type what you want and press Enter.
+- **The stage row** at the top shows the eight stages: green is done, red needs attention, black (white at night) is next, grey is not started. Click a stage to ask Claude about it. The colours are read from the stage reports in `reports/`.
+- **While Claude works** the round send button turns into a stop button (Esc does the same), and the ring on the welcome screen turns.
+- **When Claude wants to change something**, an amber card shows what it wants to do, with **Allow**, **Always allow** and **Deny**. Deny is always safe.
+- **The moon/sun button** switches night and day colours; the choice is remembered.
+- **The ⋯ menu** holds the rest: how much Claude may do (ask before edits, auto-accept file edits, plan only), the model, colours (follow my computer, day, night), docking to the PCB Editor, a new chat, and the setup checks.
+- **Setup checks** cover Claude Code, sign-in, the Boardwright plugin, the KiCad helper tools and the routing engine. Anything missing has a button; the routing engine button says what it downloads and asks first.
 
 ## The first time you open it
 

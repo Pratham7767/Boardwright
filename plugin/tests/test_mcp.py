@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Drive bw_mcp.py over stdio: initialize, tools/list, then status, plan, board_find and run_gates.
+"""Drive bw_mcp.py over stdio: initialize, tools/list, then status, find and check gates.
 
 Usage:  python plugin/tests/test_mcp.py [project folder]
 
-Offline checks (no KiCad needed) always run: project refusal, run_gates never exports, history_list never
-creates a history. With a project folder (a COPY: run_gates writes reports/) the live server is driven too.
+Offline checks (no KiCad needed) always run: project refusal, the gates check never exports, history list never
+creates a history. With a project folder (a COPY: the gates check writes reports/) the live server is driven too.
+The write tools and their guards are in test_mcp_tools.py.
 Exit 0 = pass or live part skipped (KiCad not installed), 1 = a check failed, 2 = bad usage.
 """
 import json
@@ -45,18 +46,15 @@ def offline():
     (proj / "PROJECT.md").write_text("# test\n", "utf-8")
     names = {t[0] for t in bw_mcp.TOOLS}
     for n in sorted(names):
-        text, err = bw_mcp.call_tool(n, {"project": str(empty), "selector": {"kind": "net"}})
+        text, err, _rc = bw_mcp.call_tool(n, {"project": str(empty), "selector": {"kind": "net"}})
         check(f"{n} refuses a folder that is not a Boardwright project", err and "not a Boardwright project" in text, text)
     check("refusal created nothing", not list(empty.iterdir()))
-    cmd = bw_mcp._command("run_gates", {"no_export": False}, str(proj))
-    check("run_gates always has --no-export", "--no-export" in cmd, str(cmd))
-    props = [t[2]["properties"] for t in bw_mcp.TOOLS if t[0] == "run_gates"][0]
-    check("run_gates has no no_export option", "no_export" not in props)
-    check("run_gates description says it never exports",
-          "--no-export" in [t[1] for t in bw_mcp.TOOLS if t[0] == "run_gates"][0])
-    text, err = bw_mcp.call_tool("history_list", {"project": str(proj)})
-    check("history_list: no history yet", not err and "no history yet" in text, text)
-    check("history_list created no history and no git repository",
+    check("gates check always has --no-export", "--no-export" in bw_mcp.CHECKS["gates"][0][2], str(bw_mcp.CHECKS["gates"]))
+    props = [t[2]["properties"] for t in bw_mcp.TOOLS if t[0] == "check"][0]
+    check("check has no no_export option", "no_export" not in props and "export" not in props)
+    text, err, _rc = bw_mcp.call_tool("history", {"project": str(proj), "action": "list"})
+    check("history: no history yet", not err and "no history yet" in text, text)
+    check("history created no history and no git repository",
           not (proj / ".boardwright").exists() and not (proj / ".git").exists(), str(list(proj.iterdir())))
     (tmp / "cfg").mkdir()
     (tmp / "cfg" / "boardwright.json").write_text("{}", "utf-8")
@@ -139,18 +137,16 @@ def main():
         check("ping", send("ping")["result"] == {})
         names = [t["name"] for t in send("tools/list")["result"]["tools"]]
         print("  tools:", ", ".join(names))
-        want = {"status", "plan", "run_gates", "sch_check", "history_list", "fab_check",
-                "routing_plan_show", "board_find"}
+        want = {"status", "check", "find", "edit", "place", "route", "history", "plan", "fab", "lifecycle",
+                "diagnostics", "engine"}
         check("tools/list", set(names) == want)
         check("unknown method error", "error" in send("nope/none"))
         res, text = tool("status")
-        check("status", not res["isError"] and "[exit code 0]" in text)
-        res, text = tool("plan")
-        check("plan", not res["isError"] and "[exit code 0]" in text)
-        res, text = tool("board_find", {"selector": {"kind": "pad", "ref": "C3"}})
-        check("board_find", not res["isError"] and "C3" in text)
-        res, text = tool("run_gates")
-        check("run_gates", not res["isError"] and "[exit code" in text)
+        check("status", not res["isError"] and res["structuredContent"]["exit_code"] == 0 and "READY NOW" in text)
+        res, text = tool("find", {"selector": {"kind": "pad", "ref": "C3"}})
+        check("find", not res["isError"] and "C3" in text)
+        res, text = tool("check", {"kind": "gates"})
+        check("check gates", "structuredContent" in res and text.startswith("gates:"))
         res, text = tool("nope")
         check("unknown tool is an error", res["isError"])
     except Exception as e:  # noqa: BLE001

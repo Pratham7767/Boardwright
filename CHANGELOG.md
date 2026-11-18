@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.7.0 (2026-11-18)
+An MCP server for every feature, a deterministic routing engine that routes before Claude does, and a new chat window inside KiCad. One download (the KiCad add-on) gives all of it.
+
+**MCP server (`plugin/scripts/bw_mcp.py`)**
+- 15 compact tools: status, check, find, edit, place, route, plan, history, fab, lifecycle, diagnostics, engine, setup (new project, update scripts, doctor), digest (board summary, parts, nets, unrouted, near, net, area) and export (release files, simulation, pre-compliance pack, parts register, datasheet index). One-line answers, failures only.
+- The same guards as the hooks: write tools take the one-editor lock and save an undo step; the user's own decisions (routing-plan approval, diagnostics consent, undo, the choices file) have no tool.
+- Measured on the example board (three questions, Sonnet, plan mode): Boardwright's MCP alone used 21 % fewer input tokens and 40 % fewer tool calls than running the scripts. With the two other KiCad servers loaded as well, the same questions cost twice as much; see `docs/benchmark-engine.md`.
+
+**Routing engine (`plugin/scripts/engine.py`)**
+- Routes first, without Claude: KiCadRoutingTools in its strict mode (never lowers a clearance or size), then Freerouting for what is left. KiCad's DRC checks every result. A net whose new copper adds a DRC error is dropped and the rest is kept, so one bad net no longer throws away a whole stage. Claude only handles the leftovers.
+- Mains and hazardous nets are never routed by the engine; fast nets (USB and the like) only with `--allow-fast`; the routing plan's approvals are respected.
+- Open connections are counted with KiCad's connectivity, so big boards are counted completely (the DRC list stops at 499). Nets with a copper pour (planes, GND) are routed last with a shorter limit. Freerouting stops at the time limit and keeps what it routed.
+- One-step install of its tools (a Java runtime, Freerouting 2.5.0, KiCadRoutingTools 0.24.1), each checked against a fixed checksum: from the chat's Setup checks, the installers, or `setup_engine.ps1` / `setup_engine.sh`.
+
+**Chat window inside KiCad**
+- A new look: day and night colours, a calm welcome screen with a living ring (it follows the mouse; drag it, click it), suggestions above a large message box, a round send button that becomes a stop button.
+- Docked to the right side of the PCB Editor by default; it follows the editor.
+- A row with the eight stages: green done, red needs attention; click one to ask about it.
+- Remembers the colours, the mode, the model and the last conversation per board ("Continue last chat").
+- The cost after each answer is now the cost of that answer (Claude Code reports a running total; the chat showed the total as if it were the last answer).
+- After sign-in, one question: keep a private usage log? Nothing is sent by itself. "Send feedback" puts the feedback and the redacted report on the clipboard and opens a new GitHub issue for the user to post.
+- The routing engine is one of the Setup checks, with an Install button that says what it downloads and asks first.
+
+**Fixed**
+- Mains nets were not protected through their safety domains since 0.6 (the safety report gave a count where a list was expected). Hazardous nets are now always left to the designer, and a mains board whose safety setup cannot be read treats every net as hazardous.
+- KiCad's Python could show "Font ... not found" message boxes that waited for a click and froze unattended runs.
+
+**Docs**
+- A user guide with screenshots and baby steps: `docs/Boardwright-User-Guide.pdf`.
+
 ## 0.6.1 (2026-11-17)
 No commands to remember, and the fixes from an independent review of 0.6.0.
 

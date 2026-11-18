@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Boardwright user guide</title>
+<style>
+@page { size: A4; margin: 18mm 17mm 18mm 17mm; }
+:root { --ink:#1f2933; --soft:#52606d; --teal:#0f766e; --tealbg:#e6f4f1; --amber:#b45309; --amberbg:#fef3e2; --line:#d5dde3; }
+* { box-sizing:border-box; }
+body { font-family:"Segoe UI",Calibri,Arial,sans-serif; font-size:11pt; line-height:1.5; color:var(--ink); margin:0; }
+h1,h2,h3 { color:var(--teal); line-height:1.2; break-after:avoid; }
+h2 { font-size:19pt; margin:0 0 .5em; padding-bottom:.2em; border-bottom:2px solid var(--tealbg); }
+h3 { font-size:13pt; margin:1.2em 0 .3em; color:var(--ink); }
+section { break-before:page; }
+p { margin:.5em 0; } ul,ol { margin:.4em 0 .6em 1.3em; padding:0; } li { margin:.2em 0; }
+code { font-family:Consolas,monospace; font-size:10pt; background:#eef2f5; padding:0 .25em; border-radius:3px; }
+.cover { height:250mm; display:flex; flex-direction:column; justify-content:center; break-after:page; }
+.cover .bar { width:70px; height:6px; background:var(--teal); margin-bottom:24px; border-radius:3px; }
+.cover h1 { font-size:42pt; margin:0 0 .2em; }
+.cover .sub { font-size:15pt; color:var(--soft); max-width:140mm; }
+.cover .meta { margin-top:40px; color:var(--soft); }
+.box { background:var(--tealbg); border-left:4px solid var(--teal); padding:.6em 1em; border-radius:4px; margin:.8em 0; break-inside:avoid; }
+.warn { background:var(--amberbg); border-left-color:var(--amber); }
+figure { margin:.8em 0; break-inside:avoid; text-align:center; }
+figure img { border:1px solid var(--line); border-radius:6px; max-width:100%; }
+figcaption { font-size:9.5pt; color:var(--soft); margin-top:.3em; }
+.step { break-inside:avoid; margin:1em 0; padding:.7em 1em; border:1px solid var(--line); border-radius:6px; }
+.step h3 { margin-top:0; }
+.row { display:flex; gap:16px; align-items:flex-start; break-inside:avoid; }
+.row > div { flex:1; } .row figure { flex:0 0 52mm; margin:0; } .row figure img { width:52mm; }
+.num { display:inline-block; background:var(--teal); color:#fff; border-radius:50%; width:1.6em; height:1.6em; text-align:center; line-height:1.6em; font-size:10pt; margin-right:.4em; }
+table { border-collapse:collapse; width:100%; margin:.6em 0; break-inside:avoid; } td,th { border:1px solid var(--line); padding:.35em .6em; text-align:left; vertical-align:top; } th { background:var(--tealbg); }
+.chips span { display:inline-block; padding:0 .6em; border-radius:10px; font-size:10pt; margin:1px; background:#dff3e6; color:#1b6b3a; }
+</style></head><body>
+
+<div class="cover">
+ <div class="bar"></div>
+ <h1>Boardwright user guide</h1>
+ <div class="sub">Take a circuit board from an idea to factory files in KiCad 10, one checked step at a time.</div>
+ <div class="meta">Version 0.7.0 &middot; 2026-11-18</div>
+</div>
+
+<section style="break-before:auto">
+<h2>A 30-second overview</h2>
+<p>Boardwright is a helper that lives inside KiCad. You talk to it in a chat window beside the PCB Editor. It takes a board from an idea to factory files in <b>eight stages</b>:</p>
+<p class="chips"><span>1 Spec</span> <span>2 Parts</span> <span>3 Power</span> <span>4 Schematic</span> <span>5 Layout</span> <span>6 EMC</span> <span>7 BOM</span> <span>8 Release</span></p>
+<p>Each stage ends with a check, called a <b>gate</b>. If a gate fails, Boardwright stops and shows you why. It does not carry on and hope.</p>
+<div class="box"><b>Good to know.</b>
+<ul><li>It runs <b>your own Claude Code</b>. You need a paid Claude plan or API billing. Each message counts against it.</li>
+<li>It <b>never orders, uploads or publishes</b> anything. You send the files to the factory yourself.</li>
+<li>It never asks for, reads or stores your password, key or token.</li>
+<li>By default it asks before it changes anything.</li></ul></div>
+
+<h2 style="margin-top:1.2em">Before you start</h2>
+<p>Tick each box before you go on.</p>
+<ul style="list-style:none;margin-left:0">
+<li>&#9744; A computer with <b>Windows 10 or 11</b>, or <b>Linux</b> (tested on Windows 11 and Ubuntu 24.04).</li>
+<li>&#9744; <b>KiCad 10</b> installed.</li>
+<li>&#9744; <b>Claude Code</b> installed (Step 6 helps you with this).</li>
+<li>&#9744; A <b>paid Claude plan</b> or API billing.</li>
+<li>&#9744; An internet connection.</li>
+<li>&#9744; The download <code>boardwright-kicad.zip</code> from the GitHub Releases page: <code>https://github.com/Pratham7767/Boardwright/releases</code></li>
+</ul>
+<p>You do not have to unzip the file. KiCad opens it for you.</p>
+</section>
+
+<section>
+<h2>Install and first run</h2>
+<p>Do these baby steps in order.</p>
+
+<div class="step"><h3><span class="num">1</span>Open KiCad and look at the project manager</h3>
+<p>Start KiCad 10 and open a project. You see the project manager: your project files on the left and the editors on the right.</p>
+<figure><img src="img/kicad-project.png" style="width:110mm"><figcaption>KiCad's project manager. The "Plugin and Content Manager" is the last item in the list on the right.</figcaption></figure></div>
+
+<div class="step"><h3><span class="num">2</span>Install the add-on</h3>
+<ol><li>In the project manager, click <b>Plugin and Content Manager</b>.</li>
+<li>Click <b>Install from File...</b></li>
+<li>Pick <code>boardwright-kicad.zip</code>.</li>
+<li>Close the Plugin and Content Manager window.</li>
+<li><b>Restart KiCad.</b></li></ol></div>
+
+<div class="step"><h3><span class="num">3</span>Turn on KiCad's API server</h3>
+<p>Boardwright talks to KiCad through this switch.</p>
+<ol><li>In KiCad choose <b>Preferences &rarr; Preferences &rarr; Plugins</b>.</li>
+<li>Tick <b>Enable KiCad API server</b>.</li></ol>
+<p>If you used one of the one-command installers below, it does this for you.</p>
+<div class="box">Prefer a command line? <code>install/install.ps1</code> (Windows) and <code>install/install.sh</code> (Linux) do the install in one command. <code>docs/INSTALL.md</code> has the details.</div></div>
+</section>
+
+<section style="break-before:auto">
+<div class="step"><h3><span class="num">4</span>Open a board in the PCB Editor</h3>
+<p>In the project manager, double-click <b>PCB Editor</b>. Your board opens.</p>
+<figure><img src="img/pcb-editor.png" style="width:110mm"><figcaption>The PCB Editor with a board open.</figcaption></figure></div>
+
+<div class="step"><h3><span class="num">5</span>Click the green speech-bubble button</h3>
+<p>Look at the right end of the top toolbar. The green speech-bubble icon at the far right is the <b>Boardwright button</b>. The icon to its left is KiCad's scripting console. Click the green one.</p>
+<figure><img src="img/toolbar-button.png" style="width:60mm"><figcaption>The right end of the PCB Editor's toolbar. The Boardwright button is the green speech bubble at the far right.</figcaption></figure>
+<p>The chat opens <b>docked to the right side</b> of the PCB Editor and follows it.</p></div>
+</section>
+
+<section style="break-before:auto">
+<div class="step"><h3><span class="num">6</span>Go through the Setup checks</h3>
+<p>The first time, the chat shows a <b>Setup</b> list. Each line has a tick (fine) or a cross (needs you).</p>
+<div class="row"><div>
+<table><tr><th>Check</th><th>If it has a cross</th></tr>
+<tr><td>Claude Code installed</td><td>Click the button. It opens the official install page and copies the command.</td></tr>
+<tr><td>Signed in</td><td>Click <b>Sign in</b>. Claude Code's own sign-in starts in your browser. Log in there.</td></tr>
+<tr><td>The Boardwright plugin</td><td>Click <b>Install</b>, or let the chat use the copy that came with the add-on.</td></tr>
+<tr><td>KiCad helper tools</td><td>Click <b>Install helpers</b>. A console opens and asks before each install.</td></tr>
+<tr><td>Routing engine (optional)</td><td>Click <b>Install engine</b>. It shows what it downloads and asks first. See "The routing engine".</td></tr></table>
+<p>Anything that is missing shows a red or amber line with a button. Click the button and follow it. When everything is green you are done.</p>
+<p>Click <b>Check again</b> to re-run the checks. Reopen Setup later from the <b>&#8943;</b> menu.</p>
+<p>Signing in is Claude Code's own browser login. Boardwright never sees your password. The sign-in stays after you close and reopen KiCad.</p></div>
+<figure><img src="img/chat-day-setup.png"><figcaption>The Setup checks, all green.</figcaption></figure></div></div>
+</section>
+
+<section style="break-before:auto">
+<div class="step"><h3><span class="num">7</span>Answer one question: "Help make Boardwright better?"</h3>
+<div class="row"><div>
+<p>After sign-in the chat asks if you want a private usage log.</p>
+<ul><li><b>Yes, keep a usage log</b> keeps a private log on your computer: steps run, errors, token counts and cost. You can also tick "Also keep my messages". Passwords, keys and paths are removed from them.</li>
+<li><b>No thanks</b> keeps nothing.</li></ul>
+<p><b>Nothing is sent by itself.</b> You can change your mind any time in the <b>&#8943;</b> menu (see "Feedback").</p></div>
+<figure><img src="img/chat-day-consent.png"><figcaption>The one-time usage-log question.</figcaption></figure></div></div>
+
+<div class="step"><h3><span class="num">8</span>You are ready</h3>
+<p>You now see the welcome screen. Move on to the tour.</p></div>
+</section>
+
+<section>
+<h2>A tour of the chat window</h2>
+<div class="row"><div>
+<h3 style="margin-top:0">The welcome screen</h3>
+<p>This is what you see for a board that is already in progress.</p>
+<ul><li><b>Top bar.</b> The board name, a moon/sun button for night or day colours (it remembers your choice) and the <b>&#8943;</b> menu.</li>
+<li><b>Stage row.</b> Eight chips, one per stage. Green means done. Red means needs attention. Black (white at night) means next. Grey means not started. Click a chip to ask Claude about that stage. That does not change anything.</li>
+<li><b>The ring.</b> An animated ring. Hover over it, drag to spin it, click it, or double-click for a little "routing" burst. It turns faster while Claude works.</li>
+<li><b>A welcome line</b> and <b>suggestion pills</b> above the message box.</li></ul></div>
+<figure><img src="img/chat-day-home.png"><figcaption>The welcome screen: stage row, ring, pills and message box.</figcaption></figure></div>
+
+<h3>The suggestion pills</h3>
+<table><tr><th>When</th><th>Pills</th></tr>
+<tr><td>New folder</td><td><b>Start a new board</b> (puts "I want to design a board that " in the box for you to finish), <b>Use my schematic</b>, <b>Check my setup</b></td></tr>
+<tr><td>Board in progress</td><td><b>Where am I?</b>, <b>Next step</b>, <b>Fix what's failing</b>, <b>Run checks</b>. If you chatted about this board before, <b>Continue last chat</b> also appears.</td></tr>
+<tr><td>During a conversation</td><td><b>Next step</b>, <b>Run checks</b>, <b>Review</b> (the strongest model checks the work against the evidence), <b>Doctor</b> (are the tools installed and working?)</td></tr></table>
+</section>
+
+<section>
+<h2>A tour of the chat window (continued)</h2>
+<div class="row"><div>
+<h3 style="margin-top:0">A conversation</h3>
+<ul><li>Type in the box at the bottom. <b>Enter</b> sends. <b>Shift+Enter</b> makes a new line.</li>
+<li>The round send button turns into a <b>stop button</b> while Claude works. <b>Esc</b> also stops it.</li>
+<li>When Claude wants to change something, an amber <b>permission card</b> appears. It shows what Claude wants to do. You choose:
+<ul><li><b>Allow</b>: this one time.</li><li><b>Always allow</b>: this kind of action from now on.</li><li><b>Deny</b>: always safe. Claude is told, and carries on.</li></ul></li>
+<li>After each answer the status line shows the mode, the model and "last answer about $X, N in / M out". The numbers are tokens. On a Claude subscription the dollar figure is an estimate of usage, not a bill.</li></ul></div>
+<figure><img src="img/chat-day-chat.png"><figcaption>A conversation with a permission request. The screenshots were made with a test copy; this exchange is made up.</figcaption></figure></div>
+
+<h3>Night colours</h3>
+<p>Click the moon button for night colours. It becomes a sun. Click the sun to go back.</p>
+<figure><img src="img/chat-night-chat.png" style="width:45mm"><figcaption>The same conversation in night colours.</figcaption></figure>
+</section>
+
+<section>
+<h2>The &#8943; menu</h2>
+<table><tr><th>Item</th><th>What it does</th></tr>
+<tr><td><b>How much Claude may do</b></td><td><b>Ask before edits</b>: you approve every change. Safest, and the default. <b>Auto-accept file edits</b>. <b>Plan only</b>: changes nothing.</td></tr>
+<tr><td><b>Model</b></td><td>Your default, Opus, Sonnet or Haiku.</td></tr>
+<tr><td><b>Colours</b></td><td>Follow my computer, Day, or Night.</td></tr>
+<tr><td><b>Dock to the PCB Editor</b></td><td>Puts the chat back beside the editor.</td></tr>
+<tr><td><b>New chat</b></td><td>Starts a fresh conversation.</td></tr>
+<tr><td><b>Setup checks</b></td><td>Reopens the checks from Step 6.</td></tr>
+<tr><td><b>Send feedback...</b></td><td>See "Feedback".</td></tr>
+<tr><td><b>Keep a usage log for this board</b></td><td>Switches the private log on or off.</td></tr></table>
+<p>Your mode and model are remembered.</p>
+
+<h2 style="margin-top:1.4em">Your first board, step by step</h2>
+<p>A worked example: a small USB sensor board. Follow the same pattern for your own idea.</p>
+<ol>
+<li><b>Make a project.</b> Open your new KiCad project's PCB Editor. Click the green button.</li>
+<li><b>Describe the board.</b> Click <b>Start a new board</b>. The box fills with "I want to design a board that ". Finish it, for example "...reads a temperature sensor and talks to a computer over USB-C." Press Enter.</li>
+<li><b>Answer Claude's questions.</b> Answer in plain words. If you do not know, say so.</li>
+<li><b>Approve the spec.</b> Claude writes down what the board must do (stage 1). Read it. Ask for changes if it is wrong. Approve it when it is right.</li>
+<li><b>Click Next step.</b> Claude does the next stage. After each one, look at the stage row. Green means that gate passed.</li>
+<li><b>Allow or deny each request.</b> Read each amber card before you click.</li>
+<li><b>Approve the routing plan.</b> Before routing, Claude shows a plan. You must approve it first. Approval is yours alone: type <code>/boardwright:pcb-plan</code> when Claude asks.</li>
+<li><b>If a chip turns red,</b> a gate failed. Click <b>Fix what's failing</b> and read the reason Boardwright shows.</li>
+<li><b>Click Run checks and Review</b> near the end.</li>
+<li><b>Find your release files</b> in the <code>fab/</code> folder of your project (stage 8).</li>
+<li><b>Send them to the factory yourself.</b> Boardwright never orders or uploads for you.</li></ol>
+</section>
+
+<section>
+<h2>The routing engine</h2>
+<p>Routing means drawing the copper tracks between parts. Boardwright can use an optional engine for this.</p>
+<ul><li>The engine routes first: <b>KiCadRoutingTools</b>, then <b>Freerouting</b>.</li>
+<li>It keeps only routes that add no DRC error. It drops just the nets that would. Claude then handles what is left.</li>
+<li>It <b>never routes mains or hazardous nets</b>. It routes fast nets (USB and the like) only when allowed.</li>
+<li>A routing plan must be <b>approved by you</b> before any routing starts.</li></ul>
+<h3>Installing the engine</h3>
+<p>In Setup checks click <b>Install engine</b>. It shows exactly what it will download, about <b>220 MB</b>: a Java runtime, Freerouting 2.5.0 and KiCadRoutingTools 0.24.1. Each is checked against a fixed checksum. It asks before it downloads.</p>
+
+<h2 style="margin-top:1.4em">Staying safe</h2>
+<ul><li><b>Approvals.</b> The default mode, <b>Ask before edits</b>, makes you approve every change. <b>Plan only</b> changes nothing at all. <b>Deny</b> is always safe.</li>
+<li><b>Undo.</b> Every edit saves a history step. To go back, type <code>/boardwright:pcb-undo</code>. Restoring is your command only.</li>
+<li><b>Nothing is sent.</b> Boardwright does not order, upload or publish. You send the files.</li>
+<li><b>Your sign-in.</b> Boardwright never asks for, reads or stores a password, key or token.</li></ul>
+
+<h2 style="margin-top:1.4em">Feedback</h2>
+<ol><li>Click <b>&#8943; &rarr; Send feedback...</b></li>
+<li>Say what you want to tell us.</li>
+<li>Boardwright puts the feedback on the clipboard. If the usage log is on, the redacted usage report goes there too.</li>
+<li>A new GitHub issue page opens. Paste, read it, and press <b>Submit</b> only if you are happy.</li></ol>
+<p>Nothing is sent without you. Switch the log on or off in <b>&#8943; &rarr; Keep a usage log for this board</b>.</p>
+</section>
+
+<section>
+<h2>Using Boardwright from Claude Code</h2>
+<p>You do not need KiCad's chat. The same work runs in Claude Code's terminal or app with the <b>boardwright plugin</b>. These commands are available:</p>
+<p><code>/boardwright:pcb-new</code> &nbsp; <code>/boardwright:pcb-run</code> &nbsp; <code>/boardwright:pcb-auto</code> &nbsp; <code>/boardwright:pcb-gates</code> &nbsp; <code>/boardwright:pcb-review</code> &nbsp; <code>/boardwright:pcb-plan</code> &nbsp; <code>/boardwright:pcb-undo</code> &nbsp; <code>/boardwright:pcb-doctor</code> &nbsp; <code>/boardwright:pcb-retro</code> &nbsp; <code>/boardwright:pcb-diagnostics</code></p>
+<p>The plugin also gives Claude an <b>MCP server</b> with compact tools: status, check, find, edit, place, route, plan, history, fab, lifecycle, diagnostics, engine, setup, digest and export. Claude uses them for you.</p>
+
+<h2 style="margin-top:1.2em">Troubleshooting</h2>
+<table><tr><th>Problem</th><th>What to do</th></tr>
+<tr><td>I cannot find the button.</td><td>It is the small green speech bubble at the far right of the PCB Editor's top toolbar. It shows only in the PCB Editor, not the project manager. Restart KiCad after installing. Tick <b>Enable KiCad API server</b>.</td></tr>
+<tr><td>A KiCad message says "Font ... not found; substituting ..."</td><td>This may pop up during engine runs from older versions. Click OK. It is harmless.</td></tr>
+<tr><td>It says "Not signed in".</td><td>Use <b>Sign in</b> in Setup checks.</td></tr>
+<tr><td>Usage limit reached.</td><td>Pick another model in <b>&#8943; &rarr; Model</b> and send again.</td></tr></table>
+
+<h2 style="margin-top:1.2em">Glossary</h2>
+<table>
+<tr><td><b>Gate</b></td><td>A check at the end of a stage. If it fails, Boardwright stops and shows why.</td></tr>
+<tr><td><b>Net</b></td><td>A set of pins that must be connected together, such as ground.</td></tr>
+<tr><td><b>DRC</b></td><td>Design rule check. KiCad checks that the board layout follows the rules.</td></tr>
+<tr><td><b>ERC</b></td><td>Electrical rules check. KiCad checks the schematic for wiring mistakes.</td></tr>
+<tr><td><b>BOM</b></td><td>Bill of materials. The list of parts you need to buy.</td></tr>
+<tr><td><b>Footprint</b></td><td>The copper pattern on the board where one part is soldered.</td></tr></table>
+</section>
+</body></html>

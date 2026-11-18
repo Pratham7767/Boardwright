@@ -103,8 +103,27 @@ def required(mains_vrms: float, ovc: str = "II", pd: int = 2, mg: str = "IIIb",
             "impulse_v": impulse_v, "working_vrms": working_vrms, "peak_v": round(peak_v, 1),
             "inputs": {"mains_vrms": mains_vrms, "ovc": ovc, "pd": pd, "mg": mg, "insulation": insulation,
                        "altitude_m": altitude_m},
-            "rows_used": used, "status": "secondary source (IEC 60664-1:2020 tables via summaries; not checked "
-                                         "against the purchased standard or the product standard)"}
+            "rows_used": used, "status": _table_status()}
+
+
+def _table_status() -> str:
+    """Status text from the tables' own 'checked' logs (set by tools/mark_table_checked.py)."""
+    names = ("impulse_voltage_F1", "clearance_transient_F2", "clearance_peak_F8", "altitude_A2",
+             "creepage_F5", "groove_6_8")
+    done, open_ = [], []
+    for n in names:
+        log = (TABLES.get(n) or {}).get("checked") or []
+        if log and isinstance(log[-1], dict):
+            e = log[-1]
+            done.append(f"{n}: checked against {e.get('against', '?')} by {e.get('by', '?')} on {e.get('date', '?')}")
+        else:
+            open_.append(n)
+    if not done:
+        return ("secondary source (IEC 60664-1:2020 tables via summaries; not checked "
+                "against the purchased standard or the product standard)")
+    if not open_:
+        return "; ".join(done) + " (the product standard can still require more)"
+    return ("partly checked: " + "; ".join(done) + ". Not checked against the purchased standard: " + ", ".join(open_))
 
 
 def main(argv: list) -> int:

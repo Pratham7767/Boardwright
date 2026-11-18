@@ -47,10 +47,28 @@ def fmt_f(f: float) -> str:
     return f"{f / 1e6:.3f} MHz" if f >= 1e6 else f"{f / 1e3:.1f} kHz"
 
 
-def harmonics(f0: float, lo: float, hi: float, cap: int = 4000, last: bool = True) -> list:
-    """Harmonics in [lo, hi) (or [lo, hi] for the last band), so a frequency on a band edge counts once."""
+LIST_CAP = 2000          # harmonics listed per source and band; the rest are only counted
+
+
+def harmonic_span(f0: float, lo: float, hi: float, last: bool = True) -> tuple:
+    """(first n, last n) of the harmonics in [lo, hi) (or [lo, hi] for the last band), so a frequency on a
+    band edge counts once. Plain arithmetic: no loop, whatever f0 is. (0, -1) when there is none."""
     n0 = max(1, math.ceil(lo / f0 - 1e-9))
-    return [(n, n * f0) for n in range(n0, cap) if n * f0 < hi or (last and n * f0 <= hi)]
+    n1 = math.floor(hi / f0 + 1e-9)
+    while n1 >= n0 and not (n1 * f0 < hi or (last and n1 * f0 <= hi)):
+        n1 -= 1
+    return (n0, n1) if n1 >= n0 else (0, -1)
+
+
+def count_odd(n0: int, n1: int) -> int:
+    """How many odd numbers lie in n0..n1."""
+    return 0 if n1 < n0 else (n1 + 1) // 2 - n0 // 2
+
+
+def harmonics(f0: float, lo: float, hi: float, cap: int = LIST_CAP, last: bool = True) -> list:
+    """The strongest (lowest) harmonics in the band, at most cap of them. Use harmonic_span for the exact count."""
+    n0, n1 = harmonic_span(f0, lo, hi, last)
+    return [(n, n * f0) for n in range(n0, min(n1, n0 + cap - 1) + 1)]
 
 
 def board_ports(pcb: Path) -> list:
@@ -61,27 +79,37 @@ def board_ports(pcb: Path) -> list:
 
 
 def plan(clocks: list) -> dict:
-    out = {"radiated": [], "conducted": [], "coincidences": []}
+    out = {"radiated": [], "conducted": [], "coincidences": [], "notes": []}
     allh = []
     for c in clocks:
         f0 = float(c["f_hz"])
         knee = 1 / (math.pi * c["edge_ns"] * 1e-9) if c.get("edge_ns") else None
         for b in RADIATED:
-            hs = harmonics(f0, b["band"][0], b["band"][1], last=b is RADIATED[-1])
-            if hs:
-                odd = sum(1 for n, _ in hs if n % 2)
-                above = sum(1 for _, f in hs if knee and f > knee)
+            n0, n1 = harmonic_span(f0, b["band"][0], b["band"][1], last=b is RADIATED[-1])
+            if n1 >= n0:
+                count = n1 - n0 + 1
+                odd = count_odd(n0, n1)
+                above = 0
+                if knee:
+                    k0 = max(n0, math.floor(knee / f0) + 1)     # harmonics with n * f0 > knee
+                    above = max(0, n1 - k0 + 1)
                 out["radiated"].append({"source": c["name"], "band": [fmt_f(b["band"][0]), fmt_f(b["band"][1])],
-                                        "count": len(hs), "odd": odd, "first": f"{hs[0][0]} x = {fmt_f(hs[0][1])}",
+                                        "count": count, "odd": odd, "first": f"{n0} x = {fmt_f(n0 * f0)}",
                                         "above_knee": above, "fcc_b_3m_dbuv_m": b["fcc_b_3m_dbuv_m"],
                                         "cispr32_b_10m_dbuv_m": b["cispr32_b_10m_dbuv_m"]})
-        hs = harmonics(f0, *CONDUCTED)
-        if hs:
-            out["conducted"].append({"source": c["name"], "kind": c.get("kind", "clock"), "count": len(hs),
-                                     "first": f"{hs[0][0]} x = {fmt_f(hs[0][1])}",
+        n0, n1 = harmonic_span(f0, *CONDUCTED)
+        if n1 >= n0:
+            out["conducted"].append({"source": c["name"], "kind": c.get("kind", "clock"), "count": n1 - n0 + 1,
+                                     "first": f"{n0} x = {fmt_f(n0 * f0)}",
                                      "note": "the switcher's harmonics fill this band: plan the input filter and a LISN "
                                              "measurement" if c.get("kind") == "switcher" else ""})
-        allh += [(f, c["name"], n) for n, f in harmonics(f0, 30e6, 1e9)]
+        m0, m1 = harmonic_span(f0, 30e6, 1e9)
+        listed = harmonics(f0, 30e6, 1e9)
+        more = (m1 - m0 + 1) - len(listed) if m1 >= m0 else 0
+        if more > 0:
+            out["notes"].append(f"{c['name']}: {more} more in this band (30 MHz - 1 GHz), not listed; only the "
+                                f"strongest {len(listed)} (lowest n) are checked for coinciding harmonics")
+        allh += [(f, c["name"], n) for n, f in listed]
     allh.sort()
     for (f1, s1, n1), (f2, s2, n2) in zip(allh, allh[1:]):
         if s1 != s2 and abs(f2 - f1) <= 0.01 * f1:
@@ -113,7 +141,7 @@ def main(argv: list) -> int:
     if not clocks:
         md += ["No emc.clocks in boardwright.json: list every crystal, oscillator, PLL output and switching "
                "regulator with its frequency and source, then rerun."]
-        p = {"radiated": [], "conducted": [], "coincidences": []}
+        p = {"radiated": [], "conducted": [], "coincidences": [], "notes": []}
     else:
         p = plan(clocks)
         md += ["Sources declared:"] + [f"- {c['name']}: {fmt_f(float(c['f_hz']))} ({c.get('kind', 'clock')}"
@@ -131,6 +159,8 @@ def main(argv: list) -> int:
                 [[r["source"], r["kind"], r["count"], r["first"], r["note"]] for r in p["conducted"]]) + [""]
         if p["coincidences"]:
             md += ["## Coinciding harmonics (within 1%, they add)", ""] + [f"- {x}" for x in p["coincidences"][:30]] + [""]
+        if p["notes"]:
+            md += [f"- {x}" for x in p["notes"]] + [""]
     md += ["## Cable ports to probe first", "", ", ".join(ports) if ports else "no connectors found on the board", "",
            f"Limits: {SOURCES['fcc']}; {SOURCES['cispr']}.",
            "This is a measurement plan, not an emission prediction: levels depend on the layout, cables and "
@@ -147,6 +177,7 @@ def main(argv: list) -> int:
         out.append(f"- {c['name']} {fmt_f(float(c['f_hz']))}: {sum(r['count'] for r in rad)} harmonics in 30 MHz-1 GHz"
                    + (f" (first {rad[0]['first']})" if rad else "")
                    + (f"; {con[0]['count']} in the conducted band" if con else ""))
+    out += [f"- {x}" for x in p["notes"]]
     if p["coincidences"]:
         out.append(f"- coinciding harmonics: {len(p['coincidences'])}, first: " + "; ".join(p["coincidences"][:3]))
     out.append(f"- cable ports to probe first: {', '.join(ports) if ports else 'none found'}")

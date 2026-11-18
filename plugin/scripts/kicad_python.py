@@ -40,9 +40,29 @@ def find() -> str | None:
     return None
 
 
+def quiet() -> None:
+    """KiCad's Python shows some messages (for example "Font 'Lato' not found") in a message box, and the
+    script then waits for someone to click OK. Send them to stderr instead, so no script ever blocks."""
+    try:
+        if sys.platform != "win32" and sys.platform != "darwin"                 and not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+            return                       # headless Linux: wx.App would exit with "Unable to access the X Display"
+        import wx
+        if not wx.GetApp():
+            avail = getattr(wx.App, "IsDisplayAvailable", None)
+            if avail is not None and not avail():
+                return
+            wx.App(False)
+        wx.Log.SetActiveTarget(wx.LogStderr())
+    except KeyboardInterrupt:
+        raise
+    except BaseException:                # wx raises SystemExit when there is no display
+        pass
+
+
 def ensure(script: str) -> None:
     try:
         import pcbnew  # noqa: F401
+        quiet()
         return
     except ImportError:
         pass

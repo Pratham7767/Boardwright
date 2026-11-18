@@ -17,7 +17,7 @@ Formulas (closed form, cited):
               with the Wheeler/Hammerstad strip-thickness correction;
   stripline   IPC-2141A symmetric stripline: Z0 = 60/sqrt(er) * ln(4b / (0.67 pi (0.8 w + t)));
   differential edge-coupled microstrip: Zdiff = 2 Z0 (1 - 0.48 exp(-0.96 s/h)) (IPC-2141A), and
-              edge-coupled stripline: Zdiff = 2 Z0 (1 - 0.374 exp(-2.9 s/b)).
+              edge-coupled stripline: Zdiff = 2 Z0 (1 - 0.347 exp(-2.9 s/b)).
 These are estimates (typically within 5-10% of a field solver for common geometries). The fab's own
 calculator for its real materials decides the width: this check catches a width that is clearly wrong.
 Writes reports/impedance.json/.md. Exit 0 within tolerance, 1 outside, 2 setup problem.
@@ -73,7 +73,7 @@ def diff_microstrip(w: float, s: float, h: float, t: float, er: float) -> float:
 
 
 def diff_stripline(w: float, s: float, b: float, t: float, er: float) -> float:
-    return 2 * stripline(w, b, t, er) * (1 - 0.374 * math.exp(-2.9 * s / b))
+    return 2 * stripline(w, b, t, er) * (1 - 0.347 * math.exp(-2.9 * s / b))
 
 
 def board_stackup(pcb: Path) -> dict | None:

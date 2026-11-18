@@ -20,12 +20,50 @@ from typing import Iterable, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bw_core as core                                              # noqa: E402
+import bw_dock                                                      # noqa: E402
 
 DEFAULT_WIDTH = 480
-QUICK = (("Doctor", "/boardwright:pcb-doctor"),
-         ("Continue", "/boardwright:pcb-run"),
-         ("Gates", "/boardwright:pcb-gates"),
-         ("Review", "/boardwright:pcb-review"))
+# Suggestions under the message box: (label, tooltip, "send" or "fill", text).
+# "fill" puts a sentence starter in the box for the user to finish.
+QUICK = (("Next step", "Carry on with the next stage. Claude stops when it needs you.",
+          "send", "/boardwright:pcb-run"),
+         ("Run checks", "Run every check (ERC, DRC, the stage gates) and say in plain words what fails.",
+          "send", "/boardwright:pcb-gates"),
+         ("Review", "Have the strongest model check the work so far against the evidence.",
+          "send", "/boardwright:pcb-review"),
+         ("Doctor", "Check that Claude Code, the plugin, KiCad and the routing engine work.",
+          "send", "/boardwright:pcb-doctor"))
+WELCOME_NEW = (
+    ("Start a new board", "Describe it in your own words; Claude asks the rest",
+     "fill", "I want to design a board that "),
+    ("Use my schematic", "Claude checks the schematic you have and takes it through the remaining stages",
+     "send", "This project already has a schematic. Check it, tell me what you find, and take it through "
+             "the remaining stages. Ask before changing anything."),
+    ("Check my setup", "Claude Code, the plugin, KiCad, the routing engine",
+     "send", "/boardwright:pcb-doctor"),
+)
+WELCOME_STARTED = (
+    ("Where am I?", "One plain line per stage, then the next step",
+     "send", "Where does this board stand? One plain line per stage, then tell me the single next step."),
+    ("Next step", "Claude works on and stops when it needs you", "send", "/boardwright:pcb-run"),
+    ("Fix what's failing", "Each problem with a proposed fix; asks before changing anything",
+     "send", "Show me what is failing on this board, in plain words, with a proposed fix for each. "
+             "Ask before changing anything."),
+    ("Run checks", "Every check, in plain words", "send", "/boardwright:pcb-gates"),
+)
+
+
+class _Flag:
+    """The dock on/off state (shown as a check mark in the menu)."""
+
+    def __init__(self) -> None:
+        self.v = False
+
+    def GetValue(self) -> bool:
+        return self.v
+
+    def SetValue(self, v: bool) -> None:
+        self.v = bool(v)
 
 
 def out(msg: str) -> None:
@@ -37,15 +75,21 @@ def out(msg: str) -> None:
 
 
 def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: str,
-            width: int, side: str) -> int:
+            width: int, side: str, theme_arg: Optional[str] = None, snapshot: Optional[str] = None) -> int:
     import wx
+    import bw_theme as theme
 
     class Frame(wx.Frame):
         def __init__(self) -> None:
             super().__init__(None, title=core.window_title(project))
             self.project = project
             self.mode = mode
-            self.model_key = core.DEFAULT_MODEL
+            saved_mode = core.settings_get("mode")
+            if saved_mode in core.MODES and mode == core.DEFAULT_MODE:
+                self.mode = saved_mode
+            saved_model = core.settings_get("model")
+            self.model_key = saved_model if saved_model in core.MODELS else core.DEFAULT_MODEL
+            self.cost_seen = 0.0                       # Claude Code reports a running total per process
             self.checks: Optional[dict] = None
             self.session: Optional[core.ClaudeSession] = None
             self.resume_id: Optional[str] = None       # session to pick up after a restart
@@ -56,15 +100,10 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             self.turn_text = ""
             self.last_turn = ""
             self.model = ""
-            dark = wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW).GetLuminance() < 0.5
-            self.col = {
-                "text": wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWTEXT),
-                "you": wx.Colour(110, 170, 255) if dark else wx.Colour(0, 70, 170),
-                "dim": wx.Colour(150, 150, 150) if dark else wx.Colour(105, 105, 105),
-                "bad": wx.Colour(255, 110, 110) if dark else wx.Colour(180, 0, 0),
-                "ok": wx.Colour(110, 200, 130) if dark else wx.Colour(20, 120, 50),
-                "warn": wx.Colour(235, 180, 80) if dark else wx.Colour(160, 100, 0),
-            }
+            self.theme_choice = theme_choice
+            self.col = theme.T                         # transcript colours follow the theme
+            self.segs: list = []                       # transcript as (text, role, bold), for repainting
+            self.talked = False                        # the welcome panel shows until the first message
             self._build()
             self._place(width, side)
             self.Bind(wx.EVT_CLOSE, self.on_close)
@@ -73,56 +112,88 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             self.beat.Start(15000)
             self.stop_timer = wx.Timer(self)
             self.Bind(wx.EVT_TIMER, self.on_stop_timeout, self.stop_timer)
-            self.add(f"{self.project}\n", "dim")
+            # docked to the PCB Editor's side by default (the user's choice); the Dock button turns it off
+            self.dock = bw_dock.Dock(self, Path(self.project).name, width=max(380, min(width, 520)),
+                                     on_change=lambda on: self.dock_btn.SetValue(on))
+            self.dock_timer = wx.Timer(self)
+            self.Bind(wx.EVT_TIMER, lambda e: self.dock.poll(), self.dock_timer)
+            self.dock_tries = 0
+            wx.CallLater(300, self.try_dock)
             self.add("Runs your own Claude Code in this folder. Each message uses your Claude plan.\n\n", "dim")
+            self.apply_theme()
+            self.refresh_stages()
+            self.stage_timer = wx.Timer(self)
+            self.Bind(wx.EVT_TIMER, lambda e: self.refresh_stages(), self.stage_timer)
+            self.stage_timer.Start(20000)
             self.update_controls()
             self.recheck()
 
         # ---------------- layout ----------------
         def _build(self) -> None:
+            P = theme.Pill
             p = self.panel = wx.Panel(self)
+            p.SetFont(theme.font())
             root = wx.BoxSizer(wx.VERTICAL)
 
+            # --- top bar: logo, board name, day/night, menu ---
             head = wx.BoxSizer(wx.HORIZONTAL)
-            title = wx.StaticText(p, label=Path(self.project).name or self.project)
-            tf = title.GetFont()
-            tf.SetPointSize(tf.GetPointSize() + 2)
-            tf.SetWeight(wx.FONTWEIGHT_BOLD)
-            title.SetFont(tf)
+            head.Add(theme.Logo(p, 34), 0, wx.ALIGN_CENTER_VERTICAL)
+            names = wx.BoxSizer(wx.VERTICAL)
+            title = theme.label(p, Path(self.project).name or self.project, "text", wx.FONTWEIGHT_SEMIBOLD)
             title.SetToolTip(self.project)
-            head.Add(title, 1, wx.ALIGN_CENTER_VERTICAL)
-            self.mode_choice = wx.Choice(p, choices=[core.MODES[k][0] for k in core.MODES])
-            self.mode_choice.SetSelection(list(core.MODES).index(self.mode))
-            self.mode_choice.Bind(wx.EVT_CHOICE, self.on_mode)
-            self.model_choice = wx.Choice(p, choices=[core.MODELS[k][0] for k in core.MODELS])
-            self.model_choice.SetSelection(list(core.MODELS).index(self.model_key))
-            self.model_choice.Bind(wx.EVT_CHOICE, self.on_model)
-            self.new_btn = wx.Button(p, label="New chat")
-            self.new_btn.Bind(wx.EVT_BUTTON, lambda e: self.new_chat())
-            self.setup_btn = wx.Button(p, label="Setup")
-            self.setup_btn.Bind(wx.EVT_BUTTON, lambda e: self.toggle_setup())
-            head.Add(self.new_btn, 0, wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, 4)
-            head.Add(self.setup_btn, 0, wx.ALIGN_CENTER_VERTICAL)
-            root.Add(head, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
-            opts = wx.FlexGridSizer(cols=4, hgap=6, vgap=0)
-            opts.AddGrowableCol(1, 3)
-            opts.AddGrowableCol(3, 2)
-            opts.Add(wx.StaticText(p, label="Mode"), 0, wx.ALIGN_CENTER_VERTICAL)
-            opts.Add(self.mode_choice, 1, wx.EXPAND)
-            opts.Add(wx.StaticText(p, label="Model"), 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 6)
-            opts.Add(self.model_choice, 1, wx.EXPAND)
-            root.Add(opts, 0, wx.EXPAND | wx.ALL, 10)
+            names.Add(title, 0, wx.EXPAND)
+            names.Add(theme.label(p, "Boardwright", "dim", size_delta=-2), 0, wx.EXPAND)
+            head.Add(names, 1, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 10)
+            self.theme_btn = P(p, "", "circle", tip="Day or night colours")
+            self.theme_btn.Bind(wx.EVT_BUTTON, lambda e: self.toggle_theme())
+            self.menu_btn = P(p, "⋯", "circle", tip="Mode, model, dock, new chat, setup")
+            self.menu_btn.Bind(wx.EVT_BUTTON, lambda e: self.show_menu())
+            head.Add(self.theme_btn, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
+            head.Add(self.menu_btn, 0, wx.ALIGN_CENTER_VERTICAL)
+            root.Add(head, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 16)
 
-            # --- setup panel (first run) ---
-            self.setup = wx.Panel(p)
-            box = wx.StaticBoxSizer(wx.VERTICAL, self.setup, "Setup")
-            sb = box.GetStaticBox()
+            # --- the eight stages; click one to ask about it ---
+            strip = wx.WrapSizer(wx.HORIZONTAL, 0)
+            self.stage_btns = []
+            for num, name, _f in theme.STAGES:
+                b = P(p, f"{num} {name}", "chip", tip=name)
+                b.Bind(wx.EVT_BUTTON, lambda e, n=num, nm=name: self.ask_stage(n, nm))
+                strip.Add(b, 0, wx.RIGHT | wx.BOTTOM, 4)
+                self.stage_btns.append(b)
+            root.Add(strip, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.LEFT | wx.RIGHT | wx.TOP, 14)
+
+            # --- home: the ring and a short welcome (until the first message) ---
+            self.home = wx.Panel(p)
+            hs = wx.BoxSizer(wx.VERTICAL)
+            self.ring = theme.Ring(self.home, 120)
+            hs.Add(self.ring, 1, wx.EXPAND)                # grows into the free space, shrinks when cards show
+            self.home_title = theme.label(self.home, "", "text", wx.FONTWEIGHT_NORMAL, size_delta=7,
+                                          display=True, centre=True)
+            hs.Add(self.home_title, 0, wx.EXPAND | wx.TOP, 18)
+            self.home_sub = theme.label(self.home, "", "dim", centre=True, wrap=True)
+            hs.Add(self.home_sub, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP | wx.BOTTOM, 8)
+            self.home.SetSizer(hs)
+            root.Add(self.home, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 20)
+
+            # --- transcript (the chat view) ---
+            self.log = wx.TextCtrl(p, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2 | wx.TE_WORDWRAP
+                                   | wx.BORDER_NONE)
+            self.log.SetMargins(6, 6)
+            self.log.SetFont(theme.font(1))
+            self.log.bw_bg = "bg"
+            root.Add(self.log, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 14)
+
+            # --- setup checks (first run), as a card ---
+            self.setup = theme.Card(p, "surface")
+            sb = self.setup.body
+            box = wx.BoxSizer(wx.VERTICAL)
+            box.Add(theme.label(sb, "Setup", "text", wx.FONTWEIGHT_SEMIBOLD, bg="surface"), 0, wx.BOTTOM, 6)
             self.rows = {}
-            grid = wx.FlexGridSizer(cols=2, vgap=4, hgap=8)
+            grid = wx.FlexGridSizer(cols=2, vgap=6, hgap=8)
             grid.AddGrowableCol(0, 1)
-            for key in ("claude", "auth", "plugin", "helpers"):
-                lab = wx.StaticText(sb, label="checking...")
-                btn = wx.Button(sb, label="", style=wx.BU_EXACTFIT)
+            for key in ("claude", "auth", "plugin", "helpers", "engine"):
+                lab = theme.label(sb, "checking...", "dim", bg="surface")
+                btn = P(sb, "", "primary")
                 btn.Hide()
                 grid.Add(lab, 1, wx.ALIGN_CENTER_VERTICAL | wx.EXPAND)
                 grid.Add(btn, 0, wx.ALIGN_CENTER_VERTICAL)
@@ -131,75 +202,227 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             self.rows["auth"][1].Bind(wx.EVT_BUTTON, lambda e: self.on_sign_in())
             self.rows["plugin"][1].Bind(wx.EVT_BUTTON, lambda e: self.on_install_plugin())
             self.rows["helpers"][1].Bind(wx.EVT_BUTTON, lambda e: self.on_install_helpers())
-            box.Add(grid, 0, wx.EXPAND | wx.ALL, 4)
+            self.rows["engine"][1].Bind(wx.EVT_BUTTON, lambda e: self.on_install_engine())
+            box.Add(grid, 0, wx.EXPAND | wx.RIGHT, 4)
             self.setup_note = wx.TextCtrl(sb, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.BORDER_NONE,
                                           size=(-1, 54))
-            self.setup_note.SetBackgroundColour(sb.GetBackgroundColour())
-            box.Add(self.setup_note, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 4)
-            row = wx.BoxSizer(wx.HORIZONTAL)
-            self.recheck_btn = wx.Button(sb, label="Check again")
+            self.setup_note.bw_bg = "surface"
+            box.Add(self.setup_note, 0, wx.EXPAND | wx.TOP, 6)
+            self.recheck_btn = P(sb, "↻  Check again", "ghost")
             self.recheck_btn.Bind(wx.EVT_BUTTON, lambda e: self.recheck())
-            row.Add(self.recheck_btn, 0)
-            box.Add(row, 0, wx.ALL, 4)
-            self.setup.SetSizer(box)
-            root.Add(self.setup, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+            box.Add(self.recheck_btn, 0, wx.TOP, 4)
+            sb.SetSizer(box)
+            root.Add(self.setup, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
 
-            self.log = wx.TextCtrl(p, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2 | wx.TE_WORDWRAP)
-            self.log.SetMargins(8, 6)
-            root.Add(self.log, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
+            # --- one question after sign-in: keep a usage log? ---
+            self.feedback_card = theme.Card(p, "surface")
+            fb = self.feedback_card.body
+            fs = wx.BoxSizer(wx.VERTICAL)
+            fs.Add(theme.label(fb, "Help make Boardwright better?", "text", wx.FONTWEIGHT_SEMIBOLD, bg="surface"))
+            msg = theme.label(fb, "If you agree, a private usage log stays on this computer for the boards you open "
+                                  "here: which steps ran, "
+                                  "errors, token counts and cost. Nothing is sent by itself. When you choose "
+                                  "Send feedback, you read the report and post it yourself on GitHub.",
+                              "dim", size_delta=-1, bg="surface", wrap=True)
+            msg.Wrap(370)
+            fs.Add(msg, 0, wx.EXPAND | wx.TOP, 4)
+            self.fb_prompts = wx.CheckBox(fb, label="Also keep my messages (passwords, keys and paths are removed)")
+            self.fb_prompts.bw_bg = "surface"
+            fs.Add(self.fb_prompts, 0, wx.TOP, 6)
+            fr = wx.BoxSizer(wx.HORIZONTAL)
+            yes = P(fb, "Yes, keep a usage log", "primary")
+            no = P(fb, "No thanks", "ghost")
+            yes.Bind(wx.EVT_BUTTON, lambda e: self.answer_usage_log(True))
+            no.Bind(wx.EVT_BUTTON, lambda e: self.answer_usage_log(False))
+            fr.Add(yes, 0, wx.RIGHT, 6)
+            fr.Add(no, 0)
+            fs.Add(fr, 0, wx.TOP, 8)
+            later = theme.label(fb, "You can change it any time in the \u22ef menu.", "dim", size_delta=-2,
+                                bg="surface", wrap=True)
+            later.Wrap(330)
+            fs.Add(later, 0, wx.TOP, 6)
+            fb.SetSizer(fs)
+            self.feedback_card.Hide()
+            root.Add(self.feedback_card, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
 
-            # --- permission bar ---
-            self.perm = wx.Panel(p)
+            # --- permission request, as a card ---
+            self.perm = theme.Card(p, "warn_soft")
+            pb = self.perm.body
             ps = wx.BoxSizer(wx.VERTICAL)
-            self.perm_label = wx.StaticText(self.perm, label="")
-            f = self.perm_label.GetFont()
-            f.SetWeight(wx.FONTWEIGHT_BOLD)
-            self.perm_label.SetFont(f)
-            self.perm_detail = wx.TextCtrl(self.perm, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 70))
+            self.perm_label = theme.label(pb, "", "warn", wx.FONTWEIGHT_SEMIBOLD, bg="warn_soft")
+            self.perm_help = theme.label(pb, "Read what it wants to do, then choose. Deny is always safe.",
+                                         "dim", size_delta=-1, bg="warn_soft")
+            self.perm_detail = wx.TextCtrl(pb, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.BORDER_NONE,
+                                           size=(-1, 64))
+            self.perm_detail.bw_bg = "surface"
             pr = wx.BoxSizer(wx.HORIZONTAL)
-            self.allow_btn = wx.Button(self.perm, label="Allow")
-            self.always_btn = wx.Button(self.perm, label="Always allow")
-            self.deny_btn = wx.Button(self.perm, label="Deny")
+            self.allow_btn = P(pb, "Allow", "primary", tip="Let Claude do this once")
+            self.always_btn = P(pb, "Always allow", "ghost", tip="Allow this kind of action from now on")
+            self.deny_btn = P(pb, "Deny", "danger", tip="Refuse; Claude is told and carries on")
             self.allow_btn.Bind(wx.EVT_BUTTON, lambda e: self.answer(True))
             self.always_btn.Bind(wx.EVT_BUTTON, lambda e: self.answer(True, remember=True))
             self.deny_btn.Bind(wx.EVT_BUTTON, lambda e: self.answer(False))
             for b in (self.allow_btn, self.always_btn, self.deny_btn):
-                pr.Add(b, 0, wx.RIGHT, 4)
-            ps.Add(self.perm_label, 0, wx.EXPAND | wx.BOTTOM, 2)
-            ps.Add(self.perm_detail, 0, wx.EXPAND | wx.BOTTOM, 4)
+                pr.Add(b, 0, wx.RIGHT, 6)
+            ps.Add(self.perm_label, 0, wx.EXPAND)
+            ps.Add(self.perm_help, 0, wx.EXPAND | wx.TOP, 2)
+            ps.Add(self.perm_detail, 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 8)
             ps.Add(pr, 0)
-            self.perm.SetSizer(ps)
+            pb.SetSizer(ps)
             self.perm.Hide()
             root.Add(self.perm, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
 
-            quick = wx.BoxSizer(wx.HORIZONTAL)
+            # --- suggestions (home) or one-click requests (chat), then the message box ---
+            self.suggest_sizer = wx.WrapSizer(wx.HORIZONTAL, 0)
             self.quick_btns = []
-            for label, text in QUICK:
-                b = wx.Button(p, label=label, style=wx.BU_EXACTFIT)
-                b.SetToolTip(text)
-                b.Bind(wx.EVT_BUTTON, lambda e, t=text: self.send(t))
-                quick.Add(b, 1, wx.RIGHT, 4)
-                self.quick_btns.append(b)
-            root.Add(quick, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
-
-            self.inp = wx.TextCtrl(p, style=wx.TE_MULTILINE | wx.TE_WORDWRAP, size=(-1, 84))
-            self.inp.SetHint("Message Claude about this board. Enter sends; Shift+Enter adds a line.")
-            self.inp.Bind(wx.EVT_KEY_DOWN, self.on_key)
-            root.Add(self.inp, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
-
-            row = wx.BoxSizer(wx.HORIZONTAL)
-            self.send_btn = wx.Button(p, label="Send")
-            self.send_btn.Bind(wx.EVT_BUTTON, lambda e: self.send_input())
-            self.stop_btn = wx.Button(p, label="Stop")
-            self.stop_btn.Bind(wx.EVT_BUTTON, lambda e: self.stop())
-            self.send_btn.SetDefault()
-            row.AddStretchSpacer(1)
-            row.Add(self.stop_btn, 0, wx.RIGHT, 6)
-            row.Add(self.send_btn, 0)
-            root.Add(row, 0, wx.EXPAND | wx.ALL, 10)
+            root.Add(self.suggest_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 12)
+            self.box = theme.RoundInput(p, self.on_key, self.send_input, self.stop)
+            self.inp = self.box.text
+            self.send_btn, self.stop_btn = self.box.send_btn, self.box.stop_btn
+            root.Add(self.box, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+            self.status = theme.label(p, "", "dim", size_delta=-2, centre=True)
+            self.status.SetStatusText = self.status.SetLabel       # same call the old status bar took
+            root.Add(self.status, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 16)
             p.SetSizer(root)
-            self.status = self.CreateStatusBar(1, wx.STB_SIZEGRIP | wx.STB_ELLIPSIZE_END | wx.STB_SHOW_TIPS)
-            self.SetMinSize(wx.Size(360, 520))
+            self.dock_btn = _Flag()
+            self.spinner = None
+            self.SetMinSize(wx.Size(360, 600))
+            self.build_welcome()
+
+        # ---------------- home, suggestions, stages, theme, menu ----------------
+        def build_welcome(self) -> None:
+            """Home view until the first message: the ring, a welcome line, suggestions under it."""
+            started = theme.has_started(self.project)
+            name = Path(self.project).name
+            self.home_title.SetLabel("Welcome back" if started else "What are we building?")
+            self.home_sub.SetLabel(
+                f"Your own Claude Code, working on {name}. Pick a suggestion or ask anything; "
+                "it asks before it changes your board." if started else
+                "Describe a board in your own words. Claude plans it with you, stage by stage, "
+                "and asks before it changes anything.")
+            self.home_sub.Wrap(max(240, self.GetClientSize().width - 80))
+            items = list(WELCOME_STARTED if started else WELCOME_NEW)
+            last = (core.settings_get("last_chats", {}) or {}).get(self.project)
+            if last:
+                items.insert(0, ("Continue last chat", "Pick up the conversation you had about this board",
+                                 "resume", last))
+            self.fill_suggestions(items)
+            self.show_view()
+
+        def fill_suggestions(self, items) -> None:
+            s = self.suggest_sizer
+            s.Clear(delete_windows=True)
+            self.quick_btns = []
+            for title, tip, action, text in items:
+                b = theme.Pill(self.panel, title, "suggest", tip=tip)
+                b.Bind(wx.EVT_BUTTON, lambda e, a=action, t=text: self.on_card(a, t))
+                s.Add(b, 0, wx.RIGHT, 2)
+                self.quick_btns.append(b)
+
+        def show_view(self) -> None:
+            home = not self.talked
+            self.home.Show(home)
+            self.ring.active(home)
+            self.log.Show(not home)
+            if not home and not getattr(self, "_chat_suggestions", False):
+                self._chat_suggestions = True
+                self.fill_suggestions(QUICK)
+            elif home:
+                self._chat_suggestions = False
+            self.panel.Layout()
+
+        def remember_chat(self) -> None:
+            sid = (self.session.session_id if self.session else None) or self.resume_id
+            if sid:
+                chats = core.settings_get("last_chats", {}) or {}
+                chats[self.project] = sid
+                core.settings_set("last_chats", chats)
+
+        def on_card(self, action: str, text: str) -> None:
+            if action == "resume":
+                self.resume_id = text
+                self.talked = True
+                self.show_view()
+                self.line("Continuing your last chat about this board. Type your next message.", "dim")
+                self.inp.SetFocus()
+                return
+            if action == "feedback":
+                self.send_feedback()
+                return
+            if action == "fill":                 # put a sentence starter in the box for the user to finish
+                self.inp.SetValue(text)
+                self.inp.SetFocus()
+                self.inp.SetInsertionPointEnd()
+            else:
+                self.send(text)
+
+        def ask_stage(self, num: str, name: str) -> None:
+            self.send(f"Tell me where stage {num} ({name}) stands, in plain words: what was done, what is "
+                      f"open, and what I should do next. Don't change anything.")
+
+        def refresh_stages(self) -> None:
+            labels = {"done": "done", "failed": "needs attention", "current": "next", "pending": "not started"}
+            for b, (num, name, state, note) in zip(self.stage_btns, theme.stage_states(self.project)):
+                b.set_status(state, f"Stage {num}, {name}: {labels[state]}\n{note}\nClick to ask Claude about it.")
+
+        def toggle_theme(self) -> None:
+            self.set_theme_choice("day" if theme.CURRENT["name"] == "night" else "night")
+
+        def set_theme_choice(self, choice: str) -> None:
+            self.theme_choice = choice
+            theme.save_choice(choice)
+            theme.set_theme(theme.resolve(choice))
+            self.apply_theme()
+
+        def apply_theme(self) -> None:
+            night = theme.CURRENT["name"] == "night"
+            self.theme_btn.SetLabel("☀" if night else "☾")
+            self.theme_btn.SetToolTip("Switch to day colours" if night else "Switch to night colours")
+            self.SetBackgroundColour(theme.T["bg"])
+            theme.apply_colours(self.panel)
+            self.repaint_log()
+            self.update_controls()
+            self.Refresh()
+
+        def show_menu(self) -> None:
+            m = wx.Menu()
+
+            def radio(sub, items, current, pick):
+                for i, text in enumerate(items):
+                    it = sub.AppendRadioItem(wx.ID_ANY, text)
+                    it.Check(i == current)
+                    self.Bind(wx.EVT_MENU, lambda e, i=i: pick(i), it)
+            mode = wx.Menu()
+            radio(mode, [core.MODES[k][0] for k in core.MODES], list(core.MODES).index(self.mode), self.pick_mode)
+            m.AppendSubMenu(mode, "How much Claude may do")
+            model = wx.Menu()
+            radio(model, [core.MODELS[k][0] for k in core.MODELS], list(core.MODELS).index(self.model_key),
+                  self.pick_model)
+            m.AppendSubMenu(model, "Model")
+            look = wx.Menu()
+            choices = ["auto", "day", "night"]
+            radio(look, ["Follow my computer", "Day", "Night"], choices.index(self.theme_choice)
+                  if self.theme_choice in choices else 0, lambda i: self.set_theme_choice(choices[i]))
+            m.AppendSubMenu(look, "Colours")
+            m.AppendSeparator()
+            if bw_dock.Dock.available():
+                it = m.AppendCheckItem(wx.ID_ANY, "Dock to the PCB Editor")
+                it.Check(self.dock_btn.GetValue())
+                self.Bind(wx.EVT_MENU, lambda e: (self.dock_btn.SetValue(not self.dock_btn.GetValue()),
+                                                  self.on_dock_toggle(None)), it)
+            it = m.Append(wx.ID_ANY, "New chat")
+            it.Enable(not self.busy)
+            self.Bind(wx.EVT_MENU, lambda e: self.new_chat(), it)
+            it = m.Append(wx.ID_ANY, "Setup checks")
+            self.Bind(wx.EVT_MENU, lambda e: self.toggle_setup(), it)
+            m.AppendSeparator()
+            it = m.Append(wx.ID_ANY, "Send feedback\u2026")
+            self.Bind(wx.EVT_MENU, lambda e: self.send_feedback(), it)
+            it = m.AppendCheckItem(wx.ID_ANY, "Keep a usage log for this board")
+            it.Check(core.usage_log_on(self.project))
+            self.Bind(wx.EVT_MENU, lambda e: self.toggle_usage_log(), it)
+            self.menu_btn.PopupMenu(m, (0, self.menu_btn.GetSize().height + 4))
+            m.Destroy()
 
         def _place(self, w: int, side: str) -> None:
             area = wx.Display(0).GetClientArea()
@@ -208,16 +431,37 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             self.SetSize(wx.Rect(x, area.y, w, area.height))
 
         # ---------------- transcript ----------------
-        def add(self, text: str, colour: str = "text", bold: bool = False) -> None:
-            if not text:
-                return
-            attr = wx.TextAttr(self.col[colour])
+        # roles: text, dim, you, you_msg (your message, tinted), claude, tool, ok, bad, warn
+        def _paint_seg(self, text: str, role: str, bold: bool) -> None:
+            T = theme.T
+            fg = {"you_msg": T["text"], "tool": T["tool"]}.get(role) or T.get(role) or T["text"]
+            attr = wx.TextAttr(fg, T["you_bg"] if role == "you_msg" else T["bg"])
             f = self.log.GetFont()
             f.SetWeight(wx.FONTWEIGHT_BOLD if bold else wx.FONTWEIGHT_NORMAL)
             attr.SetFont(f)
             self.log.SetDefaultStyle(attr)
             self.log.AppendText(text)
+
+        def add(self, text: str, colour: str = "text", bold: bool = False) -> None:
+            if not text:
+                return
+            if self.segs and self.segs[-1][1] == colour and self.segs[-1][2] == bold:
+                self.segs[-1] = (self.segs[-1][0] + text, colour, bold)
+            else:
+                self.segs.append((text, colour, bold))
+            self._paint_seg(text, colour, bold)
             self.at_line_start = text.endswith("\n")
+            self.log.ShowPosition(self.log.GetLastPosition())
+
+        def repaint_log(self) -> None:
+            """Draw the whole transcript again in the current colours."""
+            self.log.Freeze()
+            try:
+                self.log.Clear()
+                for text, role, bold in self.segs:
+                    self._paint_seg(text, role, bold)
+            finally:
+                self.log.Thaw()
             self.log.ShowPosition(self.log.GetLastPosition())
 
         def fresh_line(self) -> None:
@@ -234,6 +478,7 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             self.recheck_btn.Disable()
             for lab, btn in self.rows.values():
                 lab.SetLabel("checking...")
+                lab.bw_fg = "dim"
                 lab.SetForegroundColour(self.col["dim"])
                 btn.Hide()
 
@@ -246,6 +491,7 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             lab, btn = self.rows[key]
             mark = {"ok": "✓", "bad": "✗", "warn": "!"}[state]
             lab.SetLabel(f"{mark}  {text}")
+            lab.bw_fg = state
             lab.SetForegroundColour(self.col[state])
             btn.SetLabel(button)
             btn.Show(bool(button))
@@ -260,7 +506,8 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             else:
                 self.set_row("claude", "bad", "Claude Code is not installed", "How to install")
                 cmd = core.INSTALL_COMMANDS.get(sys.platform, core.INSTALL_COMMANDS["linux"])
-                notes.append("Install Claude Code: open PowerShell and run\n    " + cmd +
+                notes.append("Install Claude Code: open " + ("PowerShell" if sys.platform == "win32" else "a terminal") +
+                             " and run\n    " + cmd +
                              "\nthen press 'Check again'. The button opens the official instructions "
                              "and copies this command.")
             if not c["ok"]:
@@ -276,7 +523,13 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
                     notes.append("'Sign in' starts Claude Code's own sign-in: a small black window opens "
                                  "and your browser asks you to log in to Claude. This plugin never sees "
                                  "your password or any key.")
-                if pl["ok"]:
+                if pl["ok"] and pl.get("older"):
+                    self.set_row("plugin", "warn", f"an older Boardwright ({pl.get('version')}) is installed; the chat "
+                                 f"uses the newer one that came with this add-on ({pl.get('bundle_version')})")
+                    notes.append(f"An older Boardwright ({pl.get('version')}) is installed; the chat uses the newer one "
+                                 f"that came with this add-on ({pl.get('bundle_version')}). Update with:  "
+                                 + core.PLUGIN_UPDATE_COMMAND)
+                elif pl["ok"]:
                     self.set_row("plugin", "ok", f"boardwright plugin installed ({pl.get('version') or '?'})")
                 elif pl["installed"]:
                     self.set_row("plugin", "warn", "boardwright plugin is installed but switched off")
@@ -299,17 +552,92 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
                              "(uv, kicad-buddy, the schematic tools) and can tick KiCad's API setting.")
             else:
                 self.set_row("helpers", "ok", "KiCad tools found (kicad-buddy, uvx, kicad-cli)")
+            eng = res.get("engine") or {"ok": False}
+            if eng["ok"]:
+                self.set_row("engine", "ok", "Routing engine installed (Freerouting, KiCadRoutingTools)")
+            else:
+                self.set_row("engine", "warn", "Routing engine not installed (optional)", "Install engine")
+                notes.append("The routing engine routes most nets for you before Claude steps in, which saves "
+                             "time and your Claude plan. 'Install engine' shows what it downloads and asks first.")
             self.setup_note.SetValue("\n".join(notes))
             self.setup_note.Show(bool(notes))
             self.recheck_btn.Enable()
-            all_ok = res["ready"] and pl and pl["ok"] and not missing
+            all_ok = res["ready"] and pl and pl["ok"] and not pl.get("older") and not missing
             if not res["ready"] or not was_ready:
                 self.setup.Show(not all_ok)
             if res["ready"] and not was_ready:
                 self.waiting_login = False
                 self.line("Ready. Type a question below.", "ok")
+                self.after_sign_in()
             self.update_controls()
             self.panel.Layout()
+
+        # ---------------- usage log and feedback ----------------
+        def after_sign_in(self) -> None:
+            """Ask once, right after sign-in, whether to keep a usage log; apply a 'yes' to each board opened."""
+            answer = core.settings_get("usage_log")
+            if answer is None:
+                self.feedback_card.Show()
+                self.panel.Layout()
+            elif answer.get("on") and not core.usage_log_decided(self.project):
+                core.set_usage_log(self.project, True, bool(answer.get("prompts")),
+                                   "chat: the user said yes to the usage log for every board")
+
+        def answer_usage_log(self, on: bool) -> None:
+            prompts = bool(on and self.fb_prompts.GetValue())
+            core.settings_set("usage_log", {"on": on, "prompts": prompts})
+            ok = core.set_usage_log(self.project, on, prompts,
+                                    "chat: the user clicked " + ("Yes" if on else "No thanks"))
+            self.feedback_card.Hide()
+            self.panel.Layout()
+            if on:
+                self.line("Thanks. A private usage log is kept on this computer. Nothing is sent: use "
+                          "\u22ef \u2192 Send feedback when you want to share it." if ok else
+                          "Could not switch the usage log on (the plugin copy was not found).", "ok" if ok else "bad")
+            else:
+                self.line("No usage log is kept. You can still send feedback from the \u22ef menu.", "dim")
+
+        def toggle_usage_log(self) -> None:
+            on = not core.usage_log_on(self.project)
+            prev = core.settings_get("usage_log") or {}
+            core.settings_set("usage_log", {"on": on, "prompts": bool(prev.get("prompts")) and on})
+            core.set_usage_log(self.project, on, bool(prev.get("prompts")) and on,
+                               "chat: the user switched the usage log " + ("on" if on else "off") + " in the menu")
+            self.line("Usage log " + ("on" if on else "off") + " for this board.", "dim")
+
+        def send_feedback(self) -> None:
+            """The user's feedback (and, if the usage log is on, its redacted report) as a GitHub issue they
+            post themselves: the text goes on the clipboard and the browser opens the new-issue page."""
+            dlg = wx.TextEntryDialog(self, "What should we know? What worked, what didn't, what you expected.",
+                                     "Send feedback", style=wx.TextEntryDialogStyle | wx.TE_MULTILINE)
+            dlg.SetSize((460, 300))
+            if dlg.ShowModal() != wx.ID_OK:
+                dlg.Destroy()
+                return
+            text = dlg.GetValue().strip()
+            dlg.Destroy()
+            parts = ["## Feedback", "", text or "(no text)", ""]
+            if core.usage_log_on(self.project):
+                wx.BeginBusyCursor()
+                try:
+                    report, note = core.build_report(self.project)
+                finally:
+                    wx.EndBusyCursor()
+                if report:
+                    if len(report) > 60000:
+                        report = report[:60000] + "\n\n(cut: the full report is at " + note + ")"
+                    parts += ["## Usage report (redacted)", "", report]
+                else:
+                    parts += [f"(no usage report: {note})"]
+            parts += ["", f"Add-on {core.bundle_version() or '?'}, {sys.platform}"]
+            body = "\n".join(parts)
+            if wx.TheClipboard.Open():
+                wx.TheClipboard.SetData(wx.TextDataObject(body))
+                wx.TheClipboard.Close()
+            webbrowser.open(core.feedback_issue_url())
+            wx.MessageBox("Your feedback is on the clipboard. In the GitHub page that opened, paste it into the "
+                          "description, read it, and press Submit. Nothing is sent until you do.",
+                          "Send feedback", wx.OK | wx.ICON_INFORMATION, self)
 
         def toggle_setup(self) -> None:
             self.setup.Show(not self.setup.IsShown())
@@ -331,6 +659,17 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
                 return
             self.line("A console window opened with the helper setup. Answer its questions there, "
                       "then press 'Check again'.", "dim")
+
+        def on_install_engine(self) -> None:
+            msg = core.engine_downloads_text() + "\n\nA console window shows the progress. Install now?"
+            if wx.MessageBox(msg, "Install the routing engine", wx.YES_NO | wx.ICON_QUESTION, self) != wx.YES:
+                return
+            err = core.start_engine_setup()
+            if err:
+                self.line(err, "bad")
+                return
+            self.line("The routing engine is installing in its own window. Press 'Check again' when it "
+                      "says it has finished.", "dim")
 
         def on_sign_in(self) -> None:
             claude = self.checks["claude"]["path"]
@@ -385,29 +724,29 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             ready = bool(self.checks and self.checks["ready"])
             self.send_btn.Enable(ready and not self.busy)
             self.stop_btn.Enable(self.busy)
-            self.new_btn.Enable(not self.busy)
-            self.mode_choice.Enable(not self.busy)
-            self.model_choice.Enable(not self.busy)
+            self.box.busy(self.busy)
+            self.ring.spin(self.busy)
             for b in self.quick_btns:
                 b.Enable(ready and not self.busy)
-            sid = (self.session.session_id if self.session else None) or self.resume_id
             bits = [core.MODES[self.mode][0]]
-            if self.model:
+            if self.model_key != "default":
+                bits.append(core.MODELS[self.model_key][0])
+            elif self.model:
                 bits.append(self.model)
-            if sid:
-                bits.append("chat " + sid[:8])
             if self.busy:
-                bits.append("working...")
+                bits.insert(0, "Claude is working\u2026")
             elif self.last_turn:
                 bits.append(self.last_turn)
             self.status.SetStatusText("   \u00b7   ".join(bits))
+            self.panel.Layout()
 
         # ---------------- chat ----------------
         def ensure_session(self) -> bool:
             if self.session and self.session.alive:
                 return True
             ch = self.checks
-            use_bundle = ch["bundle"] and not (ch["plugin"] and ch["plugin"]["installed"])
+            pl = ch["plugin"]
+            use_bundle = ch["bundle"] and not (pl and pl["installed"] and not pl.get("older"))
             argv = core.build_argv(ch["claude"]["path"], self.mode, resume=self.resume_id,
                                    plugin_dir=str(core.bundle_dir() / "plugin") if use_bundle else None,
                                    model=self.model_key)
@@ -419,6 +758,7 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
                 self.line(f"Could not start Claude Code: {exc}", "bad")
                 return False
             self.session = sess
+            self.cost_seen = 0.0
             return True
 
         def drop_session(self, keep_chat: bool = True) -> None:
@@ -435,18 +775,23 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             self.drop_session(keep_chat=False)
             self.last_turn = ""
             self.log.Clear()
+            self.segs = []
             self.at_line_start = True
+            self.talked = False
+            self.build_welcome()
             self.add("New chat\n\n", "dim")
             self.update_controls()
 
-        def on_mode(self, _e) -> None:
-            self.mode = list(core.MODES)[self.mode_choice.GetSelection()]
+        def pick_mode(self, i: int) -> None:
+            self.mode = list(core.MODES)[i]
+            core.settings_set("mode", self.mode)
             self.drop_session(keep_chat=True)       # applies from the next message, same chat
             self.line(f"Mode: {core.MODES[self.mode][0]}")
             self.update_controls()
 
-        def on_model(self, _e) -> None:
-            self.model_key = list(core.MODELS)[self.model_choice.GetSelection()]
+        def pick_model(self, i: int) -> None:
+            self.model_key = list(core.MODELS)[i]
+            core.settings_set("model", self.model_key)
             self.drop_session(keep_chat=True)       # applies from the next message, same chat
             self.line(core.MODELS[self.model_key][0] if self.model_key != "default"
                       else "Model: your Claude Code default")
@@ -470,9 +815,13 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
                 return False
             if not self.ensure_session():
                 return False
+            if not self.talked:
+                self.talked = True
+                self.show_view()
             self.fresh_line()
-            self.add("You\n", "you", bold=True)
-            self.add(text + "\n\n", "text")
+            self.add("\u25cf You\n", "you", bold=True)
+            self.add(" " + text.replace("\n", "\n ") + " \n", "you_msg")
+            self.add("\n", "text")
             if not self.session.send(text):
                 self.line("Claude Code is not running; try again.", "bad")
                 self.drop_session()
@@ -486,7 +835,7 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             if self.need_header:
                 self.need_header = False
                 self.fresh_line()
-                self.add("Claude\n", "ok", bold=True)
+                self.add("\u25c6 Claude\n", "claude", bold=True)
 
         def stop(self) -> None:
             if not self.busy:
@@ -513,7 +862,7 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
                 self.add(p)
                 self.turn_text += p
             elif kind == "tool":
-                self.line(("      \u203a " if p["sub"] else "   \u203a ") + p["summary"], "dim")
+                self.line(("      \u203a " if p["sub"] else "   \u203a ") + p["summary"], "tool")
                 self.need_header = True
             elif kind == "tool_error":
                 self.line("   ! " + p, "warn")
@@ -540,10 +889,15 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
                     self.setup.Show()
                     self.recheck()
                 bits = []
-                if p.get("cost"):
-                    bits.append(f"${p['cost']:.3f}")
-                bits.append(f"{p['tokens_in']} in / {p['tokens_out']} out")
-                self.last_turn = "last turn " + ", ".join(bits)
+                if p.get("cost") is not None:
+                    total = float(p["cost"] or 0)
+                    turn = max(0.0, total - self.cost_seen)    # the running total includes earlier answers
+                    self.cost_seen = total
+                    bits.append(f"about ${turn:.3f}")
+                bits.append(f"{p['tokens_in']:,} in / {p['tokens_out']:,} out")
+                self.last_turn = "last answer " + ", ".join(bits)
+                self.remember_chat()
+                self.refresh_stages()
                 self.fresh_line()
                 self.add("\n")
             elif kind == "exit":
@@ -572,7 +926,7 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
                 self.ask_questions(p)
                 wx.CallAfter(self.show_permission)
                 return
-            self.perm_label.SetLabel("Claude wants to use " + p["summary"].split(":")[0])
+            self.perm_label.SetLabel("\u26a0  Claude asks: may it use " + p["summary"].split(":")[0] + "?")
             detail = p.get("title") or ""
             body =json.dumps(p["input"], indent=2, ensure_ascii=False)
             self.perm_detail.SetValue((detail + "\n" if detail else "") + body)
@@ -596,6 +950,13 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
         def ask_questions(self, p: dict) -> None:
             """Claude's multiple-choice questions (AskUserQuestion)."""
             answers = {}
+            sess = self.session          # Claude Code may exit while a dialog is open
+
+            def reply_ok() -> bool:
+                if sess is None or self.session is not sess:
+                    self.line("    Claude Code ended while the question was open; no answer was sent", "warn")
+                    return False
+                return True
             for q in p["input"].get("questions") or []:
                 text = str(q.get("question", ""))
                 opts = [o for o in q.get("options") or [] if isinstance(o, dict)]
@@ -612,8 +973,9 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
                         picked = [dlg.GetSelection()]
                 dlg.Destroy()
                 if picked is None:
-                    self.session.deny(p["request_id"], "The user closed the question without answering.")
-                    self.line("    question closed without an answer", "warn")
+                    if reply_ok():
+                        sess.deny(p["request_id"], "The user closed the question without answering.")
+                        self.line("    question closed without an answer", "warn")
                     return
                 vals = []
                 for i in picked:
@@ -626,9 +988,39 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
                         t.Destroy()
                 answers[text] = ", ".join(vals)
                 self.line(f"    {text}  →  {answers[text]}", "you")
-            self.session.allow(p["request_id"], dict(p["input"], answers=answers))
+            if reply_ok():
+                sess.allow(p["request_id"], dict(p["input"], answers=answers))
+
+        # ---------------- docking to the PCB Editor ----------------
+        def try_dock(self) -> None:
+            """Dock at start; KiCad may still be drawing the PCB Editor, so try a few times."""
+            if self.dock.docked or not bw_dock.Dock.available():
+                return
+            if self.dock.attach():
+                self.dock_timer.Start(300)
+                self.status.SetStatusText("Docked to the PCB Editor. Click Dock to float the chat.")
+            elif self.dock_tries < 5:
+                self.dock_tries += 1
+                wx.CallLater(1000, self.try_dock)
+
+        def on_dock_toggle(self, e) -> None:
+            if self.dock_btn.GetValue():
+                if self.dock.attach():
+                    self.dock_timer.Start(300)
+                    self.status.SetStatusText("Docked to the PCB Editor.")
+                else:
+                    self.dock_btn.SetValue(False)
+                    self.status.SetStatusText("The PCB Editor for this board is not open, so there is nothing to dock to.")
+            else:
+                self.dock_timer.Stop()
+                self.dock.detach()
+                self.status.SetStatusText("Floating. Click Dock to attach the chat to the PCB Editor again.")
 
         def on_close(self, e) -> None:
+            self.stage_timer.Stop()
+            self.ring.active(False)
+            self.dock_timer.Stop()
+            self.dock.detach()
             self.waiting_login = False
             if self.session:
                 self.session.kill()
@@ -637,6 +1029,13 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
             e.Skip()
 
     app = wx.App(False)
+    theme_choice = theme_arg or theme.load_choice()
+    theme.set_theme(theme.resolve(theme_choice))
+    if theme.CURRENT["name"] == "night" and hasattr(app, "MSWEnableDarkMode"):
+        try:
+            app.MSWEnableDarkMode(1)            # dark scrollbars, menus and dialogs on Windows
+        except Exception:
+            pass
     if not core.acquire_lock(project):
         core.raise_window(project)
         out(f"{core.APP_NAME} is already open for {project}")
@@ -647,7 +1046,59 @@ def run_gui(project: str, claude_override: Optional[str], selftest: bool, mode: 
     if selftest:
         state = {"ok": False}
 
+        def demo_chat() -> None:
+            """Selftest pictures only: a made-up exchange and a permission request, nothing is sent."""
+            frame.setup.Hide()
+            frame.talked = True
+            frame.show_view()
+            frame.add("● You\n", "you", bold=True)
+            frame.add(" Where does this board stand? \n", "you_msg")
+            frame.add("\n◆ Claude\n", "claude", bold=True)
+            frame.add("   › Read reports/07-bom.md\n", "tool")
+            frame.add("Stages 1 and 3 to 6 are done. Stage 2 (parts) and stage 7 (BOM) need attention: "
+                      "R3 is out of stock.\n", "text")
+            frame.add("✓ DRC: 0 errors\n", "ok")
+            frame.pending = [{"tool_name": "Edit", "summary": "Edit: reports/07-bom.md", "request_id": "demo",
+                              "input": {"file_path": "reports/07-bom.md"}, "suggestions": [{}], "title": ""}]
+            frame.show_permission()
+            frame.panel.Layout()
+
         def finish() -> None:
+            if snapshot:
+                shots = [(t, v) for v in ("welcome", "setup", "consent", "home", "chat") for t in ("day", "night")] \
+                    if "*" in snapshot else [(None, "welcome")]
+                for name, view in shots:
+                    if view == "setup":
+                        frame.feedback_card.Hide()
+                        frame.setup.Show()
+                        frame.panel.Layout()
+                    if view == "home":
+                        frame.setup.Hide()
+                        frame.feedback_card.Hide()
+                        frame.panel.Layout()
+                    if view == "consent":
+                        frame.setup.Hide()
+                        frame.feedback_card.Show()
+                        frame.panel.Layout()
+                    if view == "chat" and frame.home.IsShown():
+                        demo_chat()
+                    if name:
+                        theme.set_theme(name)
+                        frame.apply_theme()
+                    frame.Update()
+                    wx.Yield()
+                    w, h = frame.GetSize()
+                    bmp = wx.Bitmap(w, h)
+                    mdc = wx.MemoryDC(bmp)
+                    if os.name == "nt":             # PrintWindow draws it even when other windows cover it
+                        import ctypes
+                        pw = ctypes.windll.user32.PrintWindow
+                        pw.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint]
+                        pw(frame.GetHandle(), mdc.GetHandle(), 2)
+                    else:
+                        mdc.Blit(0, 0, w, h, wx.WindowDC(frame), 0, 0)
+                    mdc.SelectObject(wx.NullBitmap)
+                    bmp.SaveFile(snapshot.replace("*", f"{name}-{view}" if name else ""), wx.BITMAP_TYPE_PNG)
             state["ok"] = frame.IsShown() and frame.GetSize().width > 0 and frame.checks is not None
             out(f"selftest: shown={frame.IsShown()} size={tuple(frame.GetSize())} checks={frame.checks}")
             frame.Close()
@@ -679,6 +1130,8 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     ap.add_argument("--mode", choices=list(core.MODES), default=core.DEFAULT_MODE)
     ap.add_argument("--width", type=int, default=DEFAULT_WIDTH)
     ap.add_argument("--side", choices=("right", "left"), default="right")
+    ap.add_argument("--theme", choices=("auto", "day", "night"), help="colours (default: your last choice)")
+    ap.add_argument("--snapshot", help=argparse.SUPPRESS)      # selftest: save a picture of the window
     a = ap.parse_args(list(argv) if argv is not None else None)
     project = a.project
     if a.ask_project or not project:
@@ -689,7 +1142,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     if not os.path.isdir(project):
         out(f"project folder not found: {project}")
         return 2
-    return run_gui(project, a.claude, a.selftest, a.mode, a.width, a.side)
+    return run_gui(project, a.claude, a.selftest, a.mode, a.width, a.side, a.theme, a.snapshot)
 
 
 if __name__ == "__main__":

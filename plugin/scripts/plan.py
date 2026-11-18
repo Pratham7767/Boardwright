@@ -265,6 +265,35 @@ def _base_properties(project, cfg):
 
 # ---------------------------------------------------------------- evidence
 
+_GATE_LABEL = re.compile(r"^[\s>*#\-_]*(gate(\s+status|\s+result)?|result)\s*\**\s*[:–—-]", re.I)
+_GATE_HEAD = re.compile(r"^\s*#+\s*(gate(\s+status|\s+result)?|result)\s*$", re.I)
+_GATE_BAD = re.compile(r"\bFAIL(ED)?\b|NOT\s+PASS|\(\s*open\s*\)|^[\s>*#\-_]*(gate|result)[^:]*:\s*\**\s*open\b", re.I)
+
+
+def _gate_lines(text):
+    """The report's gate lines: a line that starts with Gate / Gate status / Result
+    followed by a colon, and every line under a heading that is just 'Gate'."""
+    out, in_gate = [], False
+    for ln in text.splitlines():
+        if ln.lstrip().startswith("#"):
+            in_gate = bool(_GATE_HEAD.match(ln))
+            continue
+        if _GATE_LABEL.match(ln) or (in_gate and ln.strip()):
+            out.append(ln)
+    return out
+
+
+def _gate_line_evidence(rel, needle, text, mtime):
+    pat = re.compile(r"\b" + re.escape(needle) + r"(ED)?\b", re.I)
+    lines = _gate_lines(text)
+    failed = next((ln.strip() for ln in lines if _GATE_BAD.search(ln)), None)
+    if failed:
+        return "fail", f"{rel}: " + clip(failed, 70), mtime
+    if any(pat.search(ln) for ln in lines):
+        return "ok", f"{rel} has a {needle} gate line", mtime
+    return "none", f"{rel} has no {needle} gate line yet", mtime
+
+
 def eval_evidence(node, project, cfg):
     """-> (state, detail, evidence_mtime). state: ok | fail | none."""
     ev = node.get("evidence")
@@ -280,18 +309,7 @@ def eval_evidence(node, project, cfg):
         p = project / rel
         if not p.is_file():
             return "none", f"missing {rel}", None
-        pat = re.compile(r"\b" + re.escape(needle) + r"(ED)?\b", re.I)
-        bad = re.compile(r"NOT\s+PASS|\bFAIL", re.I)
-        failed = None
-        for ln in read_text(p).splitlines():
-            if bad.search(ln):
-                failed = failed or ln.strip()
-                continue
-            if pat.search(ln):
-                return "ok", f"{rel} has a {needle} line", p.stat().st_mtime
-        if failed:
-            return "fail", f"{rel}: " + clip(failed, 70), p.stat().st_mtime
-        return "none", f"{rel} has no {needle} line yet", p.stat().st_mtime
+        return _gate_line_evidence(rel, needle, read_text(p), p.stat().st_mtime)
     if "gate" in ev:
         gp = project / "reports" / "gates.json"
         g = read_json(gp) if gp.is_file() else None

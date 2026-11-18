@@ -107,6 +107,20 @@ claude plugin marketplace remove boardwright
 
 For the KiCad chat button: **Plugin and Content Manager → Installed → Boardwright → Uninstall**. Your board folders are never touched.
 
+The installer also set up a few helpers. Remove them only if no other project uses them:
+
+- The live link to KiCad (kicad-buddy), which the installer put in with uv:
+
+```bash
+uv tool uninstall kicad-buddy
+```
+
+  If you set it up by some other route, remove it the same way you installed it. The companion plugin it added inside KiCad is small and can stay.
+- The setting "Enable KiCad API server" in KiCad's Preferences → Plugins can stay on. Other tools use it too.
+- The chat button unpacks its own copy of the plugin the first time it runs. Delete that folder to get the space back:
+  - Windows: `%LOCALAPPDATA%\Boardwright`
+  - Linux and macOS: `~/.cache/Boardwright`
+
 ## Installing by hand
 
 If you prefer not to use the installer:

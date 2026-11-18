@@ -103,19 +103,39 @@ class Rules:
                 "via_d": g("via_diameter", 0.6), "via_drill": g("via_drill", 0.3)}
 
 
-def protected_nets(proj: Path, rules: Rules, names: list) -> dict:
-    """{net: why} for nets the router must never touch."""
+HAZARD_CLASS = re.compile(r"(?i)^hv|mains|^ac(_|$)|hazard|primary")
+
+
+def hazardous_nets(proj: Path, rules: Rules, names: list) -> dict:
+    """{net: why} for nets no automatic router may ever touch, whatever else is allowed: nets in a safety
+    domain above ES1 (or with no stated voltage) and nets in a mains / high-voltage net class. When the board
+    is mains-connected but its safety setup cannot be read, every net counts as hazardous."""
     out = {}
-    cfg = load_config(proj)
     try:
         import safety_class
-        data, _p, _n = safety_class.analyse(proj)
+        try:
+            data, _p, _n = safety_class.analyse(proj)
+        except Exception as exc:
+            if safety_class.mains_declared(proj):
+                return {n: f"mains board whose safety setup cannot be read ({exc})" for n in names}
+            data = {"domains": []}
         for d in data.get("domains", []):
-            if d.get("es") and d["es"] != "ES1":
-                for n in d["nets"]:
-                    out[n] = f"in safety domain {d['name']} ({d['es']})"
-    except Exception:
+            if d.get("es") != "ES1":
+                for n in d.get("net_list") or []:
+                    out[n] = f"in safety domain {d['name']} ({d.get('es') or 'no voltage given'})"
+    except ImportError:
         pass
+    for n in names:
+        c = rules.class_of(n)
+        if HAZARD_CLASS.search(c):
+            out.setdefault(n, f"net class {c}")
+    return out
+
+
+def protected_nets(proj: Path, rules: Rules, names: list) -> dict:
+    """{net: why} for nets the router must never touch."""
+    cfg = load_config(proj)
+    out = dict(hazardous_nets(proj, rules, names))     # fails safe: an unreadable mains setup protects every net
     for pr in (cfg.get("high_speed") or {}).get("pairs") or []:
         for k in ("p", "n"):
             if pr.get(k):
@@ -154,8 +174,13 @@ def drc(pcb: Path) -> dict | None:
     for v in d.get("violations", []):
         if v.get("severity") != "error":
             continue
-        key = (v.get("type"), tuple(sorted(re.sub(r"[\d.]+ mm", "", i.get("description", ""))
-                                           for i in v.get("items", []))))
+        base = (v.get("type"), tuple(sorted(re.sub(r"[\d.]+ mm", "", i.get("description", ""))
+                                            for i in v.get("items", []))))
+        # identical errors are numbered, so a new one that repeats an old one still counts as new
+        n = 0
+        while base + (n,) in errs:
+            n += 1
+        key = base + (n,)
         errs[key] = v.get("description", "") + ": " + "; ".join(i.get("description", "") for i in v.get("items", []))
     return {"errors": errs, "unconnected": len(d.get("unconnected_items", []))}
 

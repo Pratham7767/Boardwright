@@ -89,6 +89,12 @@ def main():
             rows.append(("KiCad python", "skipped", "not found next to kicad-cli; geometry scripts not run"))
         for name, cmd, ok_codes, out in jobs:
             t = time.time()
+            if out:                       # an old report must not let a script that writes nothing pass
+                for suffix in (".json", ".md"):
+                    try:
+                        (proj / out).with_suffix(suffix).unlink()
+                    except OSError:
+                        pass
             try:
                 p = subprocess.run([str(c) for c in cmd], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600)
                 code, text = p.returncode, (p.stdout or "") + (p.stderr or "")
@@ -102,7 +108,7 @@ def main():
                 try:
                     json.loads((proj / out).read_text(encoding="utf-8"))
                 except (OSError, ValueError) as exc:
-                    status, detail = "FAIL", f"{out} not readable: {exc}"
+                    status, detail = "FAIL", f"{out} was not written by the script (missing or not readable): {exc}"
             if code == 1 and status == "ok":
                 detail += " (a check failed on this design; that is a design result, not a script fault)"
             bad += status == "FAIL"

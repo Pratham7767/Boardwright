@@ -3,7 +3,7 @@
 
 Usage:  python run_gates.py [project_dir] [--no-export | --sch-only]
 
---sch-only is for stage 4, before the board exists: it runs the rule guard and ERC, lists DRC
+--sch-only is for stage 4: it runs the rule guard and ERC (it needs no .kicad_pcb), lists DRC
 as "not run" and never exports. A run with a gate "not run" exits 0 only for the gates it ran;
 the layout and release stages must use the other two forms.
 
@@ -477,11 +477,12 @@ def main():
     print(f"kicad-cli: {cli}")
     sch = sorted(project.glob("*.kicad_sch"))
     pcb = sorted(project.glob("*.kicad_pcb"))
-    if not sch or not pcb:
-        print(f"No .kicad_sch / .kicad_pcb found in {project}")
+    if not sch or (not pcb and not sch_only):
+        print(f"No .kicad_sch / .kicad_pcb found in {project}" + (" (--sch-only needs only the schematic)" if not sch else ""))
         return 2
-    pcb = pcb[0]
-    stem = pcb.stem
+    pro = sorted(project.glob("*.kicad_pro"))
+    pcb = pcb[0] if pcb else None
+    stem = pcb.stem if pcb else (pro[0].stem if pro else sch[0].stem)
     # The root sheet has the project name; sub-sheets may sort before it.
     root = project / f"{stem}.kicad_sch"
     sch = root if root.exists() else sch[0]

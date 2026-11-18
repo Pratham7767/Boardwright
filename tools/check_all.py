@@ -84,6 +84,17 @@ def main() -> int:
         run("install.ps1 syntax", [ps, "-NoProfile", "-Command",
                                    "$null=[scriptblock]::Create((Get-Content -Raw install/install.ps1))"])
     run("add-on tests (fake Claude Code)", [py, "kicad-addon/tests/test_core.py"])
+    sys.path.insert(0, str(ROOT / "plugin" / "scripts"))
+    try:
+        import kicad_python
+        kpy = kicad_python.find()
+    except Exception:
+        kpy = None
+    if kpy:                      # the window parts need wxPython, which KiCad's Python has
+        run("add-on window: the living ring", [kpy, "kicad-addon/tests/test_ring.py"])
+        run("add-on window: docking to the PCB Editor", [kpy, "kicad-addon/tests/test_dock.py"])
+    else:
+        skip("add-on window tests", "KiCad's Python not found")
     run("safety, EMC and high-speed checks (planted faults)", [py, "plugin/tests/test_safety.py"])
     run("diagnostics: consent, recording, redaction, report, export", [py, "plugin/tests/test_diagnostics.py"])
     run("lifecycle check (fake LCSC answers)", [py, "plugin/tests/test_lifecycle.py"])
@@ -91,6 +102,11 @@ def main() -> int:
     run("history: projects sharing a repository, parallel saves, non-English names", [py, "plugin/tests/test_history.py"])
     run("edit tool: dry run, all-or-nothing batches, via clearance, corridors", [py, "plugin/tests/test_edit_fixes.py"])
     run("factory profiles: layer count and rows", [py, "plugin/tests/test_fab_rules.py"])
+    run("planner: a gate passes only on its own gate line", [py, "plugin/tests/test_plan_evidence.py"])
+    run("MCP server: tools, guards, history, refusals", [py, "plugin/tests/test_mcp_tools.py"])
+    if not QUICK:
+        run("routing engine: strict routing, protected nets, Freerouting path (skips without the engine tools)",
+            [py, "plugin/tests/test_engine.py"], timeout=1800)
     if not QUICK:
         import tempfile
         tmp = Path(tempfile.mkdtemp(prefix="bw-mcp-")) / "usb-sensor-test"

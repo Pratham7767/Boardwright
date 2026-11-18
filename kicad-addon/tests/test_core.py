@@ -175,11 +175,69 @@ def real_smoke():
         s.close()
 
 
+def test_settings_and_usage_log():
+    """Chat settings survive a restart; the usage log follows the user's click; the feedback report builds;
+    the engine check reads engine.json written by PowerShell (with a byte-order mark)."""
+    import json as _json
+    import zipfile
+    tmp = Path(tempfile.mkdtemp(prefix="bw_settings_"))
+    old_env = {k: os.environ.get(k) for k in ("LOCALAPPDATA", "XDG_CONFIG_HOME", "BOARDWRIGHT_ENGINE_DIR")}
+    old_zip = core.BUNDLE_ZIP
+    try:
+        os.environ["LOCALAPPDATA"] = str(tmp / "local")
+        os.environ["XDG_CONFIG_HOME"] = str(tmp / "local")
+        core.settings_set("mode", "plan")
+        core.settings_set("last_chats", {"C:/b": "abc"})
+        assert core.settings_get("mode") == "plan" and core.settings_get("last_chats") == {"C:/b": "abc"}
+        assert core.settings_get("missing", 7) == 7
+        # a bundle like the one build.py makes: the plugin under plugin/, a marketplace beside it
+        z = tmp / "claude-plugin.zip"
+        repo = ROOT.parent
+        with zipfile.ZipFile(z, "w") as zf:
+            for f in (repo / "plugin").rglob("*"):
+                if f.is_file() and "__pycache__" not in f.parts:
+                    zf.write(f, "plugin/" + f.relative_to(repo / "plugin").as_posix())
+            zf.write(repo / ".claude-plugin" / "marketplace.json", ".claude-plugin/marketplace.json")
+        core.BUNDLE_ZIP = z
+        proj = tmp / "board"
+        proj.mkdir()
+        (proj / "PROJECT.md").write_text("# test\n", "utf-8")
+        assert not core.usage_log_decided(str(proj)) and not core.usage_log_on(str(proj))
+        assert core.set_usage_log(str(proj), True, False, "test: clicked Yes")
+        assert core.usage_log_decided(str(proj)) and core.usage_log_on(str(proj))
+        report, note = core.build_report(str(proj))
+        assert report, note
+        assert core.set_usage_log(str(proj), False, False, "test: switched off")
+        assert not core.usage_log_on(str(proj))
+        url = core.feedback_issue_url()
+        assert url.startswith(core.REPO_URL + "/issues/new?title=") and proj.name not in url
+        eng = tmp / "engine"
+        eng.mkdir()
+        for name in ("java", "fr.jar", "krt", "py"):
+            (eng / name).write_text("x", "utf-8")
+        cfg = {"java": str(eng / "java"), "freerouting_jar": str(eng / "fr.jar"), "krt": str(eng / "krt"),
+               "krt_python": str(eng / "py")}
+        (eng / "engine.json").write_bytes(b"\xef\xbb\xbf" + _json.dumps(cfg).encode("utf-8"))
+        os.environ["BOARDWRIGHT_ENGINE_DIR"] = str(eng)
+        assert core.check_engine()["ok"], core.check_engine()
+        (eng / "fr.jar").unlink()
+        assert not core.check_engine()["ok"]
+    finally:
+        core.BUNDLE_ZIP = old_zip
+        for k, v in old_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+    print("ok  chat settings, usage log on/off, feedback report, engine check")
+
+
 if __name__ == "__main__":
     test_parser()
     fake = make_fake()
     test_checks(fake)
     test_session(fake)
+    test_settings_and_usage_log()
     if "--real" in sys.argv:
         real_smoke()
     print("all passed")

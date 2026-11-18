@@ -34,6 +34,27 @@ WRITE_MCP = re.compile(
     r"^mcp__plugin_boardwright_kicad-(live__(pcb_(add|delete|place|align|paste|refill|revert|save|set)"
     r"|sch_(add|delete|set)|lib_(create|copy|add|upgrade)|kicad_run_action)"
     r"|schematic__(add|remove|move|place|set|connect|wire|no_connect|modify|auto_place))")
+# Boardwright's own MCP server: its write tools take the edit lock themselves (so clients without hooks are
+# protected too). The hook only refuses when another session holds the lock, and hands this session's own
+# lock over to the server for the call.
+BW_MCP_WRITE = re.compile(r"^mcp__plugin_boardwright_boardwright__(edit|place|route|plan|fab|engine|setup|export)$")
+BW_MCP_READ_ACTIONS = {"plan": ("show", "verify"), "fab": ("list", "check"), "engine": ("status", "leftovers"),
+                       "setup": ("doctor", "new")}
+# `python .../engine.py <project> run ...` through Bash/PowerShell takes the lock itself, like the MCP engine tool.
+ENGINE_RUN_CMD = re.compile(r"engine\.py\S*\s+(?:\"[^\"]*\"|'[^']*'|\S+)\s+run(\s|$)")
+
+
+def is_bw_mcp_write(tool: str, inp: dict) -> bool:
+    if tool in ("Bash", "PowerShell"):
+        cmd = str(inp.get("command", ""))
+        return bool(ENGINE_RUN_CMD.search(cmd)) and "--dry-run" not in cmd
+    m = BW_MCP_WRITE.match(tool)
+    if not m:
+        return False
+    act = str(inp.get("action", ""))
+    if m.group(1) == "export" and act == "datasheets":
+        return inp.get("pages") is None            # a follow-up page read writes nothing
+    return act not in BW_MCP_READ_ACTIONS.get(m.group(1), ())
 
 
 def is_design_path(p: str) -> bool:
@@ -44,12 +65,14 @@ def is_design_path(p: str) -> bool:
 def is_edit(tool: str, inp: dict) -> bool:
     if tool in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
         return is_design_path(str(inp.get("file_path", "")))
+    if tool in ("Bash", "PowerShell") and is_bw_mcp_write(tool, inp):
+        return True
     if tool == "Bash":
         cmd = str(inp.get("command", ""))
         writes = re.search(r'"(move|set|add|delete|netclass|rule|refill|place|route)"\s*:', cmd)
         return ("bw_edit.py" in cmd and (bool(writes) or "@" in cmd)) or bool(
             re.search(r"history\.py\S*\s+\S+\s+restore", cmd))
-    return bool(WRITE_MCP.match(tool) or OTHER_KICAD_WRITE.match(tool))
+    return bool(WRITE_MCP.match(tool) or OTHER_KICAD_WRITE.match(tool) or is_bw_mcp_write(tool, inp))
 
 
 def answers_of(inp: dict, response) -> dict:
@@ -210,8 +233,18 @@ def main() -> None:
             print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
                                                      "permissionDecisionReason": "Boardwright: " + why}}))
             return
-    if mode == "pre" and is_edit(tool, inp):
+    if mode == "pre" and is_bw_mcp_write(tool, inp):
+        other = history.lock_read(proj)
+        if other and other.get("who") == who:
+            history.lock_release(proj, who)          # the server takes it for the call; the post hook takes it back
+            other = None
+        elif other and str(other.get("who", "")).startswith("mcp-"):
+            other = None                              # the server's own lock: it refuses by itself if it is not free
+    elif mode == "pre" and is_edit(tool, inp):
         other = history.lock_take(proj, who, "session " + who[:8])
+    else:
+        other = None
+    if mode == "pre" and (is_bw_mcp_write(tool, inp) or is_edit(tool, inp)):
         if other:
             print(json.dumps({"hookSpecificOutput": {
                 "hookEventName": "PreToolUse", "permissionDecision": "deny",

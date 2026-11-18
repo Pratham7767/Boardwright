@@ -136,11 +136,24 @@ if ($py -and $setup -and (Test-Path $setup)) {
     if ($LASTEXITCODE -ne 0) { Warn 'helper setup left items open; its summary is above' }
 } else { Warn 'helper setup skipped (needs Python and the plugin); later run: python <plugin>\scripts\setup.py' }
 
+Step '6b' 'Routing engine (Freerouting, a Java runtime for it, KiCadRoutingTools; about 150 MB, each file checked)'
+$eng = if ($setup) { Join-Path (Split-Path $setup) 'setup_engine.ps1' } else { $null }
+if ($eng -and (Test-Path $eng)) {
+    if (Ask 'Install the routing engine tools into your user folder (Boardwright\engine)?') {
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $eng
+        if ($LASTEXITCODE -ne 0) { Warn "routing engine setup did not finish; run it again with: powershell -ExecutionPolicy Bypass -File `"$eng`"" }
+        else { Ok 'routing engine tools installed' }
+    } else { Warn "routing engine not installed; later run: powershell -ExecutionPolicy Bypass -File `"$eng`"" }
+} else { Warn 'routing engine setup skipped (needs the plugin)' }
+
 Step 7 'The KiCad add-on (chat button in the PCB Editor)'
 $zip = $null
 if ($Local -and $py) {
     & $py (Join-Path $Here 'kicad-addon\build.py') | Out-Null
-    $zip = Join-Path $Here 'kicad-addon\dist\boardwright-kicad.zip'
+    if ($LASTEXITCODE -ne 0) {
+        $zip = $null
+        Warn "the add-on build failed (build.py exit code $LASTEXITCODE), so no add-on package was made; an older zip in kicad-addon\dist is NOT used. Run: python kicad-addon\build.py"
+    } else { $zip = Join-Path $Here 'kicad-addon\dist\boardwright-kicad.zip' }
 } elseif (Ask "Download the add-on zip from $AddonUrl ?") {
     $zip = Join-Path $env:TEMP 'boardwright-kicad.zip'
     try { Invoke-WebRequest $AddonUrl -OutFile $zip -UseBasicParsing } catch { $zip = $null; Warn "download failed: $_" }

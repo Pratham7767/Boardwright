@@ -78,6 +78,14 @@ def main():
         else:
             shutil.copy2(src, dst)
             print(f"copied   scripts/{src.name}")
+    # quiet_site/sitecustomize.py: keeps KiCad's message boxes out of unattended engine runs
+    (target / "scripts" / "quiet_site").mkdir(exist_ok=True)
+    qsrc, qdst = here / "quiet_site" / "sitecustomize.py", target / "scripts" / "quiet_site" / "sitecustomize.py"
+    if qdst.exists() and qdst.read_bytes() != qsrc.read_bytes() and not update:
+        print("kept     scripts/quiet_site/sitecustomize.py (differs from the plugin version; rerun with --update-scripts to replace it)")
+    else:
+        shutil.copy2(qsrc, qdst)
+        print("copied   scripts/quiet_site/sitecustomize.py")
     for d in ("reports", "datasheets", "fab"):
         (target / d).mkdir(exist_ok=True)
     gi = target / ".gitignore"

@@ -34,6 +34,8 @@ def es_class(d: dict) -> str:
     es = TABLES["energy_classes"]
     if d.get("mains_referenced") or d.get("kind") == "mains":
         return es["es_above"]
+    if not d.get("rest") and all(d.get(k) is None for k in ("vdc", "vrms", "vpeak")):
+        return "unverified"          # no voltage stated: cannot be called safe
     for row in es["es"]:
         ok = all(d.get(k) is None or d[k] <= row[m] for k, m in
                  (("vdc", "max_vdc"), ("vrms", "max_vrms"), ("vpeak", "max_vpeak")))
@@ -95,6 +97,8 @@ def analyse(project: Path) -> tuple:
             dn |= set(by_class.get(cls, []))
         for n in d.get("nets") or []:
             (dn.add(n) if n in nets else problems.append(f"domain '{name}': net '{n}' is not on the board"))
+        if not d.get("rest") and not d.get("mains_referenced") and d.get("kind") != "mains"                 and all(d.get(k) is None for k in ("vdc", "vrms", "vpeak")):
+            problems.append(f"domain {name} has no voltage: give vdc, vrms or vpeak")
         domains.append({"name": name, "nets": dn, "rest": bool(d.get("rest")), "cfg": d,
                         "es": es_class(d), "netclasses": d.get("netclasses") or []})
     taken = set()
@@ -114,7 +118,7 @@ def analyse(project: Path) -> tuple:
             notes.append(f"{len(loose)} net(s) in no domain are treated as ES1 (add a domain with \"rest\": true to "
                          f"state their voltage): {', '.join(loose[:8])}{' ...' if len(loose) > 8 else ''}")
 
-    hazardous = [d for d in domains if d["es"] != "ES1"]
+    hazardous = [d for d in domains if d["es"] not in ("ES1", "unverified")]
     if hazardous and not s.get("standard"):
         problems.append("a domain is above ES1 but no product safety standard is named (safety.standard, e.g. "
                         "'IEC 62368-1:2023'); choosing it is the user's decision")
@@ -139,7 +143,7 @@ def analyse(project: Path) -> tuple:
         if cls == "unverified":
             notes.append(f"supply '{p.get('name')}': no max_w, so its PS class is unverified")
     out = {"standard": s.get("standard"), "product_class": s.get("product_class"),
-           "domains": [{"name": d["name"], "es": d["es"], "netclasses": d["netclasses"], "nets": len(d["nets"]),
+           "domains": [{"name": d["name"], "es": d["es"], "netclasses": d["netclasses"], "nets": len(d["nets"]), "net_list": sorted(d["nets"]),
                         "vdc": d["cfg"].get("vdc"), "vrms": d["cfg"].get("vrms"), "vpeak": d["cfg"].get("vpeak")}
                        for d in domains],
            "supplies": supplies, "barriers": barriers}
