@@ -23,8 +23,12 @@ jobs:
       - name: KiCad 10 from the official PPA (no 3D models)
         run: |
           sudo add-apt-repository -y ppa:kicad/kicad-10.0-releases
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends kicad kicad-symbols kicad-footprints python3-pyflakes
+          # the package archive sometimes fails a download: try three times before failing the build
+          for i in 1 2 3; do
+            sudo apt-get update && sudo apt-get install -y --no-install-recommends --fix-missing               kicad kicad-symbols kicad-footprints python3-pyflakes && exit 0
+            echo "install attempt $i failed; retrying in 30 s"; sleep 30
+          done
+          exit 1
       - name: All checks, including the gate scripts on the example board
         run: python3 tools/check_all.py
       - name: Linux installer, check mode
