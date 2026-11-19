@@ -1,0 +1,126 @@
+{
+ "date": "2026-11-19",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 90.0,
+ "boards": [
+  {
+   "name": "cm5_minima",
+   "default": {
+    "connections_before": 208,
+    "drc_unconnected_before": 208,
+    "drc_list_capped": false,
+    "errors_before": 4,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 1655.0,
+    "skipped": false,
+    "output_tail": "CM5/HDMI_PI.CEC, /CM5/HDMI_PI.CK_N, /CM5/HDMI_PI.CK_P, /CM5/HDMI_PI.D0_N, /CM5/HDMI_PI.D0_P, /CM5/HDMI_PI.D1_N, /CM5/HDMI_PI.D1_P, /CM5/HDMI_PI.D2_N ... and 54 more\nvariants (open connections after): krt-first 25, freerouting-first 24, planned-krt-first 28; kept freerouting-first\nfreerouting-first: freerouting: ACCEPTED in 906.4 s; routed 92 net(s); kept 92 net(s); dropped 2 that caused DRC errors: M2_3V3, /CM5/PCIE_PI.PWR_EN\nfreerouting-first: krt2: REJECTED in 101.7 s; routed 0 net(s); adds new DRC errors: new: Items shorting two nets (nets /CM5/PCIE_PI.nWAKE and /CM5/PCIE_PI.PWR_EN): Track [/CM5/PCIE_PI.nWAKE] on B.Cu, length 0.2171\ndrc: 0 new error(s), 0 fixed, 4 unchanged; open connections 208 -> 24\ntime 1654.5 s\nLeftovers for Claude: 24 connection(s) on 3 net(s)\n  /CM5/PCIE_PI.PWR_EN: Module302.106 -> R704.1\n  /CM5/PCIE_PI.PWR_EN: R704.1 -> U702.7\n  GND: Module302.120 -> Zone [GND] at 74.99,20.22\n  GND: Module302.162 -> J503.2\n  GND: Module302.192 -> Zone [GND] at 74.99,20.22\n  GND: Zone [GND] at 74.99,20.22 -> Module302.120\n  GND: Zone [GND] at 74.99,20.22 -> Module302.180\n  GND: Zone [GND] at 74.99,20.22 -> Zone [GND] at 74.99,20.22\n  GND: Zone [GND] at 74.99,20.22 -> Zone [GND] at 74.99,20.22\n  M2_3V3: C707.1 -> Zone [M2_3V3] at 119.55,70.75\n  M2_3V3: C710.1 -> Zone [M2_3V3] at 121.45,31.4\n  M2_3V3: C711.1 -> J701.4\n  ... 12 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 24,
+    "copper_items_after": 1204,
+    "connections_after": 24,
+    "completion": 0.8846,
+    "new_drc_errors": 0,
+    "errors_after": 4,
+    "nets_open_before": 94,
+    "chosen_nets": 94,
+    "connections_allowed": 207,
+    "connections_allowed_after": 17,
+    "completion_allowed": 0.9179,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "freerouting-first: freerouting": {
+      "seconds": 906.4,
+      "accepted": true,
+      "unconnected_after_stage": 24,
+      "new_errors_in_stage": "0",
+      "nets_routed": 92,
+      "why": "kept 92 net(s); dropped 2 that caused DRC errors: M2_3V3, /CM5/PCIE_PI.PWR_EN"
+     },
+     "freerouting-first: krt2": {
+      "seconds": 101.7,
+      "accepted": false,
+      "unconnected_after_stage": 7,
+      "new_errors_in_stage": "7",
+      "nets_routed": 0,
+      "why": "adds new DRC errors: new: Items shorting two nets (nets /CM5/PCIE_PI.nWAKE and /CM5/PCIE_PI.PWR_EN): Track [/CM5/PCIE_PI.nWAKE] on B.Cu, length 0.2171 mm; Track [/CM5/PCIE_PI.PWR_EN; new: Clearance violation (netclass '90ohm' clearance 0.20"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 1654.1,
+    "engine_result": "routed 92 of 94 chosen net(s) (krt 0, freerouting 92); open connections 208 -> 24"
+   },
+   "removed": 2528,
+   "copper_layers": 6,
+   "footprints": 112,
+   "nets": 220,
+   "zones": 14
+  },
+  {
+   "name": "royalblue54L_feather",
+   "default": {
+    "connections_before": 142,
+    "drc_unconnected_before": 142,
+    "drc_list_capped": false,
+    "errors_before": 51,
+    "copper_items_before": 15,
+    "exit": 1,
+    "wall_s": 1446.6,
+    "skipped": false,
+    "output_tail": "/Debugger/nRF52_VDD, /nPM1300/NPM1300.INT, /nPM1300/NPM1300.SCL, /nPM1300/NPM1300.SDA, /nRF54L15/D2_FLASH, /nRF54L15/D3_FLASH ... and 25 more\nleft out /Debugger/D+: fast net, route it by hand or pass --allow-fast (net class USB_DIFF)\nleft out /Debugger/D-: fast net, route it by hand or pass --allow-fast (net class USB_DIFF)\nvariants (open connections after): krt-first 50, freerouting-first 48, planned-krt-first 45; kept planned-krt-first\nplanned-krt-first: krt: ACCEPTED in 294.6 s; routed 41 net(s)\nplanned-krt-first: freerouting: ACCEPTED in 907.5 s; routed 10 net(s)\nplanned-krt-first: krt2: ACCEPTED in 218.3 s; routed 0 net(s)\ndrc: 0 new error(s), 0 fixed, 51 unchanged; open connections 146 -> 45\ntime 1446.1 s\nLeftovers for Claude: 45 connection(s) on 17 net(s)\n  /Connectors/DIG.D9: Track [/Connectors/DIG.D9] at 165.32,109.03 -> PTH pad 8 of J2 at 161.01,94.82\n  /Connectors/I2C.SCL: U1.G8 -> Track [/Connectors/I2C.SCL] at 157.9,97.7\n  /Connectors/SPI.MOSI: U1.J8 -> Track [/Connectors/SPI.MOSI] at 158.7,107.95\n  /Connectors/UART.TX: Track [/Connectors/UART.TX] at 168.375,102.3 -> U6.13\n  /Debugger/D+: J3.A6 -> J3.B6\n  /Debugger/D+: J3.B6 -> U3.4\n  /Debugger/D+: TP7.1 -> J3.B6\n  /Debugger/D+: U5.13 -> U3.4\n  /Debugger/D-: J3.A7 -> U3.2\n  /Debugger/D-: J3.B7 -> J3.A7\n  /Debugger/D-: J3.B7 -> TP8.1\n  /Debugger/D-: U5.12 -> U3.2\n  ... 33 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 45,
+    "copper_items_after": 1163,
+    "connections_after": 45,
+    "completion": 0.6831,
+    "new_drc_errors": 0,
+    "errors_after": 51,
+    "nets_open_before": 67,
+    "chosen_nets": 65,
+    "connections_allowed": 131,
+    "connections_allowed_after": 14,
+    "completion_allowed": 0.8931,
+    "left_out_by_reason": {
+     "fast net, route it by hand or pass --allow-fast": 2
+    },
+    "left_out_connections": 8,
+    "stages": {
+     "planned-krt-first: krt": {
+      "seconds": 294.6,
+      "accepted": true,
+      "unconnected_after_stage": 53,
+      "new_errors_in_stage": "0",
+      "nets_routed": 41,
+      "why": ""
+     },
+     "planned-krt-first: freerouting": {
+      "seconds": 907.5,
+      "accepted": true,
+      "unconnected_after_stage": 45,
+      "new_errors_in_stage": "0",
+      "nets_routed": 10,
+      "why": ""
+     },
+     "planned-krt-first: krt2": {
+      "seconds": 218.3,
+      "accepted": true,
+      "unconnected_after_stage": 45,
+      "new_errors_in_stage": "0",
+      "nets_routed": 0,
+      "why": ""
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 1445.7,
+    "engine_result": "routed 51 of 65 chosen net(s) (krt 41, freerouting 10); open connections 146 -> 45"
+   },
+   "removed": 1126,
+   "copper_layers": 8,
+   "footprints": 71,
+   "nets": 95,
+   "zones": 267
+  }
+ ]
+}

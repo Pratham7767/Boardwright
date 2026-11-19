@@ -8,6 +8,33 @@ Each demo folder is copied to a work directory (the KiCad install is never touch
 
 Completion is `1 - connections after / connections before`, over all connections. "Allowed" completion counts only the connections on nets the engine was permitted to route (it skips hazardous nets, and fast nets unless `--allow-fast`). "New errors" is the number of DRC errors not present on the stripped board.
 
+## Round 4: the rest of the research plan (0.7.0)
+
+What changed after round 3:
+- **Repeatable Freerouting:** a fixed item-order seed and one thread (two runs with the same seed produced byte-identical files).
+- **A portfolio of three variants** run at the same time, the one with the fewest open connections kept (ties to the first): KiCadRoutingTools first; Freerouting first; and KiCadRoutingTools first with its global planner (#589) on. Each ends with a KiCadRoutingTools pass on the leftovers. KiCadRoutingTools' PathFinder-style history costs (#590) are on in all of them (its default). Big boards (more than 1000 open connections) run the plane repair and Freerouting only.
+- **Blame by place:** when a new DRC error names no routed net, the nets with new copper within 3 mm of the error are dropped instead of the whole stage.
+- **Pours refilled with the project's rules:** the baseline and every checked result are refilled by `kicad-cli` on a project copy, which applies the project's own rules file; KiCad's Python refill did not, which made pour-to-pad errors on jetson that no route caused. The routers still chain the boards as merged (given the refilled boards, Freerouting routed half as much on video); the board written to the project is refilled by `kicad-cli` and checked once more before it is written.
+- Freerouting detects plane nets by itself in this build ("configured for plane routing"), so no plane-net setting is passed.
+- Tried and not kept: KiCadRoutingTools' lean setup on big boards (6 s instead of 30+ minutes, but it left more open than Freerouting alone, video 636 against 375), and Freerouting without fan-out on big boards (jetson slightly better, video much worse). See `docs/research/pathfinder-plan.md`.
+
+Open connections left after the engine with the final 0.7.0 code (lower is better); no run added a DRC error:
+
+| Board | Layers | Connections | Round 3 | 0.7.0 | Routed | Variant that won |
+|---|---|---|---|---|---|---|
+| kit-dev-coldfire-xilinx_5213 | 4 | 478 | 97 | **2** | 99.6% | Freerouting first |
+| stickhub | 2 | 128 | 5 | **5** | 96% | KiCadRoutingTools first |
+| pic_programmer | 2 | 86 | 7 | **6** | 93% | KiCadRoutingTools first |
+| cm5_minima | 6 | 208 | 25 | **24** | 88% | Freerouting first |
+| royalblue54L_feather | 8 | 142 | 44 | **44** | 69% | Freerouting first |
+| video | 4 | 1345 | 315 | **317-745** | 45-76% | plane repair + Freerouting |
+| jetson-agx-thor-baseboard | 10 | 2946 | 1691 | **1646-1691** | 43-44% | plane repair + Freerouting |
+
+Notes, honestly:
+- **Video depends on the machine.** Freerouting stops at a time limit (15 minutes here). The same code left 317 open on a quiet machine and 734-745 when only about 3 GB of memory was free (Freerouting is a Java program that needs a lot of memory on a board this size). A longer limit, or more free memory, helps big boards directly.
+- An earlier run of this round reported cm5 10 and royalblue 31 open. Those were checked with pours refilled by KiCad's Python, which ignores a project's own rules file; every check now refills with `kicad-cli` and the project's rules, as KiCad itself does, and the numbers above are from that stricter check.
+- Jetson's Freerouting stage is now kept (it was thrown out whole before). In 15 minutes Freerouting finishes few nets on a board that size; the rest needs much longer runs or the deeper router work in `docs/research/pathfinder-plan.md`.
+
 ## Round 3: Freerouting's nightly build (0.7.0)
 
 Freerouting 2.5.0 accepts a board-edge clearance setting but never reads it, so it routed too close to the board edge, and KiCad's DRC dropped those nets. Its 2.5.1 nightly of 2026-11-16 (commit 12f085e) applies the board-edge and hole clearances. The engine now installs that build, pinned by checksum, from the project's official image on ghcr.io.

@@ -74,6 +74,18 @@ def main() -> int:
             check(f"pattern for {n} matches only itself", fnmatch.fnmatchcase(n, engine.krt_pattern(n))
                   and not engine.krt_pattern(n).startswith("-"))
         check("A*B? does not match AxBy", not fnmatch.fnmatchcase("AxBy", engine.krt_pattern("A*B?")))
+
+        # blame by place: the nets with copper near a DRC error's position (needs KiCad's Python)
+        import kicad_python
+        kpy = kicad_python.find()
+        board = Path(__file__).resolve().parents[2] / "examples" / "usb-sensor-test" / "usb-sensor-test.kicad_pcb"
+        if kpy and board.is_file():
+            near = engine.nets_near(kpy, board, board, [(117.0, 112.4)], ["/+3V3", "/GND", "/USB_DP"], 3.0)
+            check("nets near a spot: the copper around C3 is +3V3 and GND, not USB", near == ["/+3V3", "/GND"], near)
+            check("nets near a spot far from any copper: none",
+                  engine.nets_near(kpy, board, board, [(0.0, 0.0)], ["/+3V3", "/GND"], 1.0) == [])
+        else:
+            print("skip nets near a spot: KiCad not found")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     print("ALL PASSED" if not BAD else f"{len(BAD)} FAILED")

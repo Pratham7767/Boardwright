@@ -6,6 +6,8 @@
     python.exe -I engine_kicad.py copper <in.kicad_pcb>                              {net: [tracks, vias]} as JSON
     python.exe -I engine_kicad.py open   <in.kicad_pcb>                              open connections per net
     python.exe -I engine_kicad.py rules  <in.kicad_pcb>                              the board's limits (um) as JSON
+    python.exe -I engine_kicad.py near   <in.kicad_pcb> <request.json>               nets with copper near spots
+    python.exe -I engine_kicad.py refill <in.kicad_pcb>                              refill every zone, save in place
 
 open: by KiCad's own connectivity, not capped like the DRC's unconnected list (499 items). For each net,
 the pads fall into islands of copper joined to each other; a net with k islands needs k-1 connections.
@@ -112,6 +114,39 @@ def cmd_rules(a):
     return 0
 
 
+def cmd_near(a):
+    """request: {"spots": [[x, y] mm ...], "nets": [...], "radius": mm} -> the nets (of those) that have a track
+    or via within radius of a spot."""
+    pcbnew, b = load(a[0])
+    req = json.loads(open(a[1], encoding="utf-8").read())
+    nets, r = set(req["nets"]), float(req.get("radius", 1.5))
+    spots = [(float(x), float(y)) for x, y in req["spots"]]
+    hit = set()
+    for t in b.GetTracks():
+        n = t.GetNetname()
+        if n not in nets or n in hit:
+            continue
+        if t.Type() == pcbnew.PCB_VIA_T:
+            pts = [t.GetPosition()]
+        else:
+            pts = [t.GetStart(), t.GetEnd(), (t.GetStart() + t.GetEnd()) / 2]
+        for p in pts:
+            px, py = pcbnew.ToMM(p.x), pcbnew.ToMM(p.y)
+            if any((px - x) ** 2 + (py - y) ** 2 <= r * r for x, y in spots):
+                hit.add(n)
+                break
+    print(json.dumps(sorted(hit)))
+    return 0
+
+
+def cmd_refill(a):
+    pcbnew, b = load(a[0])
+    pcbnew.ZONE_FILLER(b).Fill(b.Zones())
+    b.Save(a[0])
+    print(json.dumps({"ok": True}))
+    return 0
+
+
 def cmd_merge(a):
     pcbnew, base = load(a[0])
     _p, res = load(a[1])
@@ -138,7 +173,7 @@ def cmd_merge(a):
 
 
 def main(argv):
-    cmds = {"dsn": cmd_dsn, "ses": cmd_ses, "merge": cmd_merge, "copper": cmd_copper, "open": cmd_open, "rules": cmd_rules}
+    cmds = {"dsn": cmd_dsn, "ses": cmd_ses, "merge": cmd_merge, "copper": cmd_copper, "open": cmd_open, "rules": cmd_rules, "near": cmd_near, "refill": cmd_refill}
     if not argv or argv[0] not in cmds:
         print(__doc__)
         return 2

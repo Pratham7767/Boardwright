@@ -1,0 +1,318 @@
+{
+ "date": "2026-11-18",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 150.0,
+ "boards": [
+  {
+   "name": "video",
+   "default": {
+    "connections_before": 1345,
+    "drc_unconnected_before": 499,
+    "drc_list_capped": true,
+    "errors_before": 0,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 3411.5,
+    "skipped": false,
+    "output_tail": "12, /DQ13, /DQ14, /DQ15, /DQ16, /DQ17 ... and 331 more\nvariants (open connections after): krt-first 636, freerouting-first 375, planned-krt-first 624; kept freerouting-first\nfreerouting-first: krt-planes: ACCEPTED in 239.5 s; routed 2 net(s)\nfreerouting-first: freerouting: ACCEPTED in 912.0 s; routed 124 net(s)\nfreerouting-first: krt2: REJECTED in 630.1 s; routed 0 net(s); did not stop within 7.5 minutes plus its grace time\ndrc: 0 new error(s), 0 fixed, 0 unchanged; open connections 1345 -> 375\ntime 3410.8 s\nLeftovers for Claude: 375 connection(s) on 247 net(s)\n  +3.3V: BUS1.B36 -> Track [+3.3V] at 135.89,158.496\n  +3.3V: BUS1.B36 -> Track [+3.3V] at 143.51,158.496\n  +3.3V: Track [+3.3V] at 120.65,158.496 -> Track [+3.3V] at 125.73,158.496\n  +3.3V: Track [+3.3V] at 128.27,158.496 -> Track [+3.3V] at 133.35,158.496\n  +3.3V: Track [+3.3V] at 151.13,158.496 -> Track [+3.3V] at 148.59,158.496\n  +3.3V: Track [+3.3V] at 161.29,158.496 -> Track [+3.3V] at 151.13,158.496\n  +5F: L3.2 -> Track [+5F] at 75.057,127.381\n  +5F: Track [+5F] at 75.946,98.907 -> L3.2\n  +5V: PTH pad 1 of RR2 at 188.595,137.795 -> Track [+5V] at 188.6,134.7\n  +5V: Track [+5V] at 154.28,73.04 -> Via [+5V] at 151.892,67.896\n  +5V: Zone [+5V] at 185.674,154.305 -> Zone [+5V] at 185.674,154.305\n  +5V: Zone [+5V] at 185.674,154.305 -> Zone [+5V] at 185.674,154.305\n  ... 363 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 375,
+    "copper_items_after": 4774,
+    "connections_after": 375,
+    "completion": 0.7212,
+    "new_drc_errors": 0,
+    "errors_after": 0,
+    "nets_open_before": 121,
+    "chosen_nets": 371,
+    "connections_allowed": 495,
+    "connections_allowed_after": 366,
+    "completion_allowed": null,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "freerouting-first: krt-planes": {
+      "seconds": 239.5,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 2,
+      "why": ""
+     },
+     "freerouting-first: freerouting": {
+      "seconds": 912.0,
+      "accepted": true,
+      "unconnected_after_stage": 375,
+      "new_errors_in_stage": "0",
+      "nets_routed": 124,
+      "why": ""
+     },
+     "freerouting-first: krt2": {
+      "seconds": 630.1,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 7.5 minutes plus its grace time"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 3410.2,
+    "engine_result": "routed 124 of 371 chosen net(s) (krt 2, freerouting 124); open connections 1345 -> 375"
+   },
+   "removed": 8740,
+   "copper_layers": 4,
+   "footprints": 189,
+   "nets": 588,
+   "zones": 2
+  },
+  {
+   "name": "jetson-agx-thor-baseboard",
+   "default": {
+    "connections_before": 2946,
+    "drc_unconnected_before": 499,
+    "drc_list_capped": true,
+    "errors_before": 3,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 7207.7,
+    "skipped": false,
+    "output_tail": "3 minutes plus its grace time\nkrt-first: krt2-6: REJECTED in 240.1 s; routed 0 net(s); did not stop within 3 minutes plus its grace time\nkrt-first: krt2-7: REJECTED in 240.0 s; routed 0 net(s); did not stop within 3 minutes plus its grace time\nkrt-first: krt2-8: REJECTED in 240.0 s; routed 0 net(s); did not stop within 3 minutes plus its grace time\nkrt-first: krt2-9: REJECTED in 240.0 s; routed 0 net(s); did not stop within 3 minutes plus its grace time\nkrt-first: krt2-10: REJECTED in 240.0 s; routed 0 net(s); did not stop within 3 minutes plus its grace time\nkrt-first: krt2-11: REJECTED in 240.0 s; routed 0 net(s); did not stop within 3 minutes plus its grace time\nkrt-first: krt2-12: REJECTED in 240.1 s; routed 0 net(s); did not stop within 3 minutes plus its grace time\ndrc: 0 new error(s), 0 fixed, 3 unchanged; open connections 2946 -> 1691\ntime 7207.2 s\nLeftovers for Claude: 1691 connection(s) on 870 net(s)\n  +12V: 6 connection(s) open\n  +1V15: 22 connection(s) open\n  +1V8: 57 connection(s) open\n  +20V: 8 connection(s) open\n  +3V3_AON: 30 connection(s) open\n  +5V: 46 connection(s) open\n  +5V_AON: 14 connection(s) open\n  +5V_SOM: 22 connection(s) open\n  /CSI/CAM0.CSI2_CLK+: 1 connection(s) open\n  /CSI/CAM0.CSI2_CLK-: 1 connection(s) open\n  /CSI/CAM0.CSI2_D0+: 1 connection(s) open\n  /CSI/CAM0.CSI2_D0-: 1 connection(s) open\n  ... 858 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 499,
+    "copper_items_after": 7795,
+    "connections_after": 1691,
+    "completion": 0.426,
+    "new_drc_errors": 0,
+    "errors_after": 3,
+    "nets_open_before": 1,
+    "chosen_nets": 715,
+    "connections_allowed": 499,
+    "connections_allowed_after": 438,
+    "completion_allowed": null,
+    "left_out_by_reason": {
+     "fast net, route it by hand or pass --allow-fast": 157
+    },
+    "left_out_connections": 0,
+    "stages": {
+     "krt-first: krt-1": {
+      "seconds": 240.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt-2": {
+      "seconds": 240.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt-3": {
+      "seconds": 240.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt-4": {
+      "seconds": 240.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt-5": {
+      "seconds": 240.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt-6": {
+      "seconds": 240.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt-7": {
+      "seconds": 240.1,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt-8": {
+      "seconds": 240.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt-9": {
+      "seconds": 240.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt-10": {
+      "seconds": 240.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt-11": {
+      "seconds": 240.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt-12": {
+      "seconds": 240.1,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt-planes": {
+      "seconds": 319.8,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 2,
+      "why": ""
+     },
+     "krt-first: freerouting": {
+      "seconds": 1020.5,
+      "accepted": false,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "9",
+      "nets_routed": 1,
+      "why": "adds new DRC errors: new: Clearance violation (rule '(hs_zone_clearance' clearance 1.0000 mm; actual 0.1005 mm): Pad 1 [/Expansion connector/PCIe_{C2x1}.CLK-] of R202 on B.Cu; Zone ; new: Clearance violation (rule '(hs_zone_clearance' clear"
+     },
+     "krt-first: krt2-1": {
+      "seconds": 240.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt2-2": {
+      "seconds": 240.1,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt2-3": {
+      "seconds": 240.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt2-4": {
+      "seconds": 240.1,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt2-5": {
+      "seconds": 240.1,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt2-6": {
+      "seconds": 240.1,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt2-7": {
+      "seconds": 240.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt2-8": {
+      "seconds": 240.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt2-9": {
+      "seconds": 240.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt2-10": {
+      "seconds": 240.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt2-11": {
+      "seconds": 240.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     },
+     "krt-first: krt2-12": {
+      "seconds": 240.1,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 3 minutes plus its grace time"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 7205.7,
+    "engine_result": "routed 2 of 715 chosen net(s) (krt 2, freerouting 0); open connections 2946 -> 1691"
+   },
+   "removed": 25386,
+   "copper_layers": 10,
+   "footprints": 1125,
+   "nets": 1387,
+   "zones": 125
+  }
+ ]
+}
