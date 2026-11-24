@@ -5,3 +5,5 @@ kicad-addon/dist/
 Thumbs.db
 *.bak
 .env
+.env.*
+*omniroute*key*
