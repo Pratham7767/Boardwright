@@ -8,6 +8,17 @@ Each demo folder is copied to a work directory (the KiCad install is never touch
 
 Completion is `1 - connections after / connections before`, over all connections. "Allowed" completion counts only the connections on nets the engine was permitted to route (it skips hazardous nets, and fast nets unless `--allow-fast`). "New errors" is the number of DRC errors not present on the stripped board.
 
+## Round 5: Freerouting rounds on big boards (0.7.0)
+
+On boards with more than 1000 open connections Freerouting stops at its time limit long before it is done. It now runs again from the board as kept, up to 4 rounds, while a round still closes at least 1 % of what is open. Each round is checked by KiCad's DRC like any stage.
+
+| Board | Round 4 | Round 5 | Rounds |
+|---|---|---|---|
+| video (4 layers, 1345 connections) | 317-745 open | **284 open (79 % routed)** | 4 rounds: 100, 39, 25 and 28 nets kept |
+| jetson (10 layers, 2946 connections) | 1646-1691 | 1679 | stopped after the first round (no net completed) |
+
+Smaller boards run one round, as before. No run added a DRC error.
+
 ## Round 4: the rest of the research plan (0.7.0)
 
 What changed after round 3:

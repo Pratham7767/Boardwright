@@ -380,6 +380,7 @@ def board_rules(kpy: str, pcb: Path) -> dict:
 
 
 def freerouting_stage(tools: dict, kpy: str, base: Path, work: Path, minutes: float, rules: dict | None = None) -> dict:
+    work.mkdir(parents=True, exist_ok=True)
     dsn, ses, raw = work / "fr.dsn", work / "fr.ses", work / "fr_raw.kicad_pcb"
     res = {"engine": "freerouting", "seconds": 0.0, "raw": None}
     t0 = time.time()
@@ -536,6 +537,7 @@ def evaluate(proj, kpy, work, name, st, base_open, orig_drc, nets, base_pcb) -> 
 
 # ------------------------------------------------------------------ report
 KRT_MAX_OPEN = 1000                             # above this many open connections KiCadRoutingTools is skipped
+FR_ROUNDS_BIG = 4                               # Freerouting rounds at most on a big board, while each helps
 BIG_POUR = 60                                   # open connections above which a pour net gets its own pass
 DRC_CAP = 499                                   # kicad-cli lists at most this many unconnected items
 
@@ -718,11 +720,20 @@ def cmd_run(proj: Path, args: list) -> int:
                         run_stage(planes_stage(tools, kpy, v["pcb"], vwork, pours, min(minutes, 10), proj),
                                   "krt-planes", pours)
                 elif step == "fr":
-                    # Freerouting may only touch the nets still open; the merge keeps every other net as it was
-                    todo = [n for n in chosen if n in cur_open]
-                    if todo:
-                        run_stage(freerouting_stage(tools, kpy, v["pcb"], vwork, minutes, board_limits),
-                                  "freerouting", todo)
+                    # Freerouting may only touch the nets still open; the merge keeps every other net as it was.
+                    # On a big board it stops at the time limit long before it is done (video, jetson), so it runs
+                    # again from the board as kept, while a round still closes at least 1 % of what is open.
+                    rounds = FR_ROUNDS_BIG if sum(op0["open"].values()) > KRT_MAX_OPEN else 1
+                    for r in range(1, rounds + 1):
+                        todo = [n for n in chosen if n in v["open"]]
+                        if not todo:
+                            break
+                        before = sum(v["open"].values())
+                        tag = "freerouting" if r == 1 else f"freerouting-{r}"
+                        run_stage(freerouting_stage(tools, kpy, v["pcb"], vwork / tag, minutes, board_limits),
+                                  tag, todo)
+                        if sum(v["open"].values()) > before * 0.99:
+                            break
             for s in v["stages"]:
                 s.pop("raw", None)
             return v
