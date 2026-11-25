@@ -1,0 +1,78 @@
+{
+ "date": "2026-11-25",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15,
+ "cap_min": 180.0,
+ "boards": [
+  {
+   "name": "jetson-agx-thor-baseboard",
+   "allow_fast": {
+    "connections_before": 2946,
+    "drc_unconnected_before": 499,
+    "drc_list_capped": true,
+    "errors_before": 3,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 4334.1,
+    "skipped": false,
+    "output_tail": "M0.CSI3_D1+, /CSI/CAM0.CSI3_D1-, /CSI/CAM1.CSI0_CLK+, /CSI/CAM1.CSI0_CLK-, /CSI/CAM1.CSI0_D0+, /CSI/CAM1.CSI0_D0-, /CSI/CAM1.CSI0_D1+, /CSI/CAM1.CSI0_D1-, /CSI/CAM1.CSI1_D0+, /CSI/CAM1.CSI1_D0-, /CSI/CAM1.CSI1_D1+, /CSI/CAM1.CSI1_D1-, /CSI/CAM2.CSI4_CLK+, /CSI/CAM2.CSI4_CLK-, /CSI/CAM2.CSI4_D0+, /CSI/CAM2.CSI4_D0-, /CSI/CAM2.CSI4_D1+, /CSI/CAM2.CSI4_D1-, /CSI/CAM2.CSI5_D0+, /CSI/CAM2.CSI5_D0-, /CSI/CAM2.CSI5_D1+, /CSI/CAM2.CSI5_D1-, /CSI/CAM3.CSI6_CLK+ ... and 832 more\nkrt-pairs (0.17/0.18 mm): ACCEPTED in 439.0 s; routed 36 net(s)\nkrt-pairs-2 (0.19/0.18 mm): REJECTED in 900.0 s; routed 0 net(s); timed out after 15 minutes\nkrt-planes: ACCEPTED in 521.6 s; routed 2 net(s)\nfreerouting: ACCEPTED in 1077.9 s; routed 0 net(s)\nfreerouting: ACCEPTED in 1073.6 s; routed 0 net(s)\ndrc: 0 new error(s), 0 fixed, 3 unchanged; open connections 2946 -> 1624\ntime 4333.7 s\nLeftovers for Claude: 1624 connection(s) on 834 net(s)\n  +12V: 6 connection(s) open\n  +1V15: 22 connection(s) open\n  +1V8: 55 connection(s) open\n  +20V: 8 connection(s) open\n  +3V3_AON: 30 connection(s) open\n  +5V: 46 connection(s) open\n  +5V_AON: 14 connection(s) open\n  +5V_SOM: 22 connection(s) open\n  /CSI/CAM0.CSI2_CLK+: 1 connection(s) open\n  /CSI/CAM0.CSI2_CLK-: 1 connection(s) open\n  /CSI/CAM0.CSI2_D0+: 1 connection(s) open\n  /CSI/CAM0.CSI2_D0-: 1 connection(s) open\n  ... 822 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 499,
+    "copper_items_after": 10716,
+    "connections_after": 1639,
+    "completion": 0.4437,
+    "new_drc_errors": 0,
+    "errors_after": 3,
+    "nets_open_before": 1,
+    "chosen_nets": 872,
+    "connections_allowed": 499,
+    "connections_allowed_after": 495,
+    "completion_allowed": null,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "krt-pairs (0.17/0.18 mm)": {
+      "seconds": 439.0,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 36,
+      "why": ""
+     },
+     "krt-pairs-2 (0.19/0.18 mm)": {
+      "seconds": 900.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "timed out after 15 minutes"
+     },
+     "krt-planes": {
+      "seconds": 521.6,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 2,
+      "why": ""
+     },
+     "freerouting": {
+      "seconds": 1073.6,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 0,
+      "why": ""
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 4308.4,
+    "engine_result": "routed 38 of 872 chosen net(s) (krt 38, freerouting 0); open connections 2946 -> 1624"
+   },
+   "removed": 25386,
+   "copper_layers": 10,
+   "footprints": 1125,
+   "nets": 1387,
+   "zones": 125
+  }
+ ]
+}

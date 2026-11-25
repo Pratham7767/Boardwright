@@ -432,8 +432,34 @@ def accepted_pairs(report: dict) -> list:
             for n in (pr["p_net"], pr["n_net"])]
 
 
+def pair_groups(sizes_file: str, pairs: list, layout: dict) -> list:
+    """[(layers, width mm, gap mm, [nets])]: the pair members grouped by the layers they may use and the width
+    and gap the project's rules give them there (engine_rules.py). Where a pair's sizes are the same on every
+    non-plane layer it may use all of them; where they differ by layer (jetson: 0.17/0.18 mm outside, 0.125/0.10
+    mm inside) only the layers sharing the outer layers' sizes, where the pads are: the pair router takes one
+    width and gap per run, and a pair laid at another layer's size has the wrong impedance. Pairs whose sizes
+    are unknown form one group with no explicit size (the router's own reading of the rules)."""
+    try:
+        sizes = json.loads(Path(sizes_file).read_text("utf-8"))["sizes"] if sizes_file else {}
+    except (OSError, ValueError, KeyError):
+        sizes = {}
+    std = layout.get("standard") or layout.get("copper") or []
+    plane_std = {std[i] for i, l in enumerate(layout.get("copper") or []) if l in (layout.get("planes") or {})}
+    groups: dict = {}
+    for n in pairs:
+        per = {l: v for l, v in (sizes.get(n) or {}).items() if l not in plane_std and v and v[0] and v[3]}
+        if not per or not std:
+            groups.setdefault(((), 0.0, 0.0), []).append(n)
+            continue
+        outer = per.get(std[0]) or per.get(std[-1]) or next(iter(per.values()))
+        w, g = outer[0], outer[3]
+        layers = tuple(l for l in std if l in per and per[l][0] == w and per[l][3] == g)
+        groups.setdefault((layers, w, g), []).append(n)
+    return [(k[0], k[1], k[2], v) for k, v in groups.items()]
+
+
 def pairs_stage(tools: dict, kpy: str, base: Path, work: Path, nets: list, minutes: float, proj: Path,
-                layout: dict | None = None) -> dict:
+                layout: dict | None = None, layers: tuple = (), width: float = 0.0, gap: float = 0.0) -> dict:
     """Differential pairs routed together by KiCadRoutingTools' pair router, strict like the others. Only the
     pairs it reports as coupled with both members complete are offered for the merge ("coupled"); a pair it
     routed partly, or as two single tracks, is left open (half a pair routed alone is worse than none)."""
@@ -450,6 +476,12 @@ def pairs_stage(tools: dict, kpy: str, base: Path, work: Path, nets: list, minut
     if layout and layout.get("planes") and layout.get("copper"):
         cmd += ["--layers", *(layout.get("standard") or layout["copper"]),
                 "--layer-costs", *["-1" if l in layout["planes"] else "1.0" for l in layout["copper"]]]
+    if width and gap:
+        # the project's rule sizes: the router's default reads the Default class (5 mm placeholders on jetson)
+        cmd += ["--track-width", f"{width:g}", "--diff-pair-gap", f"{gap:g}"]
+    if layers and layout and layout.get("copper"):
+        std = layout.get("standard") or layout["copper"]
+        cmd += ["--layer-costs", *["1.0" if l in layers else "-1" for l in std]]
     cmd += os.environ.get("BOARDWRIGHT_PAIRS_ARGS", "").split()           # extra settings, for experiments
     # the pair router does not read the stop file: at the limit it is killed and nothing is kept
     rc, out, killed, secs = run_until(cmd, minutes, str(router))
@@ -469,6 +501,27 @@ def pairs_stage(tools: dict, kpy: str, base: Path, work: Path, nets: list, minut
     else:
         res["raw"] = raw
     return res
+
+
+# set by cmd_run: the sizes KiCad's rules give each routed net per layer (engine_rules.py), for the audit
+SIZES: dict = {"file": ""}
+
+
+def net_sizes(tools: dict, pcb: Path, nets: list, pairs: list, out: Path) -> str:
+    """Resolve the nets' sizes per layer with KiCadRoutingTools' rules reader (class, then .kicad_dru); the json
+    path, or "" when that fails (the audit then uses the net classes)."""
+    out.parent.mkdir(parents=True, exist_ok=True)
+    req = out.with_suffix(".req.json")
+    mate = {}
+    for n in pairs:
+        for a, b in PAIR_ENDS:
+            if n.endswith(a) or n.endswith(b):
+                mate[n] = n[:-len(a if n.endswith(a) else b)]
+                break
+    req.write_text(json.dumps({"nets": list(nets), "pairs": mate}), "utf-8")
+    rc, _o, _t, _s = sh([tools["krt_python"], "-I", HERE / "engine_rules.py", Path(tools["krt"]) / "py_router",
+                         pcb, req, out], timeout=900)
+    return str(out) if rc == 0 and out.is_file() else ""
 
 
 # set by cmd_run: may new vias sit in SMD pads (see no_via_in_pad)
@@ -585,7 +638,8 @@ def audit(kpy: str, pcb: Path, nets: list, planes: dict, pairs: list | None = No
     req = Path(name)
     try:
         req.write_text(json.dumps({"nets": nets, "planes": planes, "pairs": pairs or [],
-                                   "base": str(base) if base else "", "via_in_pad_ok": VIA_IN_PAD["ok"]}),
+                                   "base": str(base) if base else "", "via_in_pad_ok": VIA_IN_PAD["ok"],
+                                   "sizes_file": SIZES["file"]}),
                        "utf-8")
         return _kicad_json(kpy, "audit", pcb, req) or {}
     finally:
@@ -641,7 +695,7 @@ def trim(kpy: str, raw: Path, out: Path, nets: list) -> dict:
     os.close(fd)
     req = Path(name)
     try:
-        req.write_text(json.dumps(list(nets)), "utf-8")
+        req.write_text(json.dumps({"nets": list(nets), "sizes_file": SIZES["file"]}), "utf-8")
         got = _kicad_json(kpy, "trim", raw, out, req)
         return got if isinstance(got, dict) and out.is_file() else {}
     finally:
@@ -1047,22 +1101,26 @@ def cmd_run(proj: Path, args: list) -> int:
         pre: list = []
         pair_nets = pair_members(fast, board_nets(files["pcb"]))
         frozen = set(left) | set(pair_nets)          # no stage after this may move their copper
+        SIZES["file"] = net_sizes(tools, base_pcb, chosen, pair_nets, work / "sizes.json")
         frozen |= {n for n in board_nets(files["pcb"]) if n and n not in op0["open"]}   # finished before the run
         FROZEN["nets"] = []
         chosen_all = chosen
         if pair_nets:
             chosen = [n for n in chosen if n not in pair_nets]
-            if "krt" in engines and sum(op0["open"].values()) <= KRT_MAX_OPEN:
-                st = pairs_stage(tools, kpy, base_pcb, work / "pairs", pair_nets, minutes, proj, layout)
-                evaluate(proj, kpy, work / "pairs", "krt-pairs", st, op0["open"], orig, st["coupled"], base_pcb,
-                         planes)
-                pre.append(st)
-                if st.get("accepted") and st.get("board"):
-                    start = {"pcb": st["board"], "open": dict(st["open"]["open"]), "drc": st["drc"],
-                             "board": st["board"]}
-            else:
-                pre.append({"engine": "krt-pairs", "seconds": 0.0, "accepted": False, "routed_nets": [],
-                            "why": "not run on a board this big (the pair router's setup is too slow there)"})
+            if "krt" in engines:
+                # one run per size group, each from the board the last one left; a group that runs out of time
+                # loses only itself (the pair router does not read the stop file)
+                for gi, (lays, w, g, nets) in enumerate(pair_groups(SIZES["file"], pair_nets, layout)):
+                    tag = "krt-pairs" + (f"-{gi + 1}" if gi else "")
+                    st = pairs_stage(tools, kpy, start["pcb"], work / tag, nets, minutes, proj, layout, lays, w, g)
+                    if w and g:
+                        st["engine"] = f"{tag} ({w:g}/{g:g} mm)"
+                    evaluate(proj, kpy, work / tag, tag, st, start["open"], orig, st["coupled"], start["pcb"],
+                             planes)
+                    pre.append(st)
+                    if st.get("accepted") and st.get("board"):
+                        start = {"pcb": st["board"], "open": dict(st["open"]["open"]), "drc": st["drc"],
+                                 "board": st["board"]}
         FROZEN["nets"] = sorted(frozen)                # locked in the routers' copies from here on
         from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=len(sequences) or 1) as ex:

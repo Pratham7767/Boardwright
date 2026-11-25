@@ -141,6 +141,20 @@ def main() -> int:
         got = engine.accepted_pairs(rep)
         check("only coupled pairs are kept: not short legs as two tracks, failed coupling, partial, unrouted",
               got == ["/C_P", "/C_N"], got)
+        # pairs grouped by the layers and sizes the rules give them (jetson: other sizes inside than outside)
+        L = ["F.Cu", "In1.Cu", "In2.Cu", "In3.Cu", "B.Cu"]
+        mixed = {l: ([0.17, .45, .1, 0.18] if l in ("F.Cu", "B.Cu") else [0.125, .45, .1, 0.10]) for l in L}
+        even = {l: [0.2, .45, .1, 0.15] for l in L}
+        sf = tmp / "pair_sizes.json"
+        sf.write_text(__import__("json").dumps({"sizes": {"/A+": mixed, "/A-": mixed, "/U_P": even, "/U_N": even}}),
+                      "utf-8")
+        got = engine.pair_groups(str(sf), ["/A+", "/A-", "/U_P", "/U_N", "/X_P", "/X_N"],
+                                 {"copper": L, "standard": L, "planes": {"In2.Cu": "GND"}})
+        check("pairs whose sizes differ by layer keep to the outer layers' size; even ones use every non-plane "
+              "layer; unknown sizes are left to the router",
+              got == [(("F.Cu", "B.Cu"), 0.17, 0.18, ["/A+", "/A-"]),
+                      (("F.Cu", "In1.Cu", "In3.Cu", "B.Cu"), 0.2, 0.15, ["/U_P", "/U_N"]),
+                      ((), 0.0, 0.0, ["/X_P", "/X_N"])], got)
 
         # blame by place: the nets with copper near a DRC error's position (needs KiCad's Python)
         import kicad_python
@@ -176,6 +190,20 @@ def main() -> int:
                 check("a long track at the same width still fails it", net in long_, long_)
             else:
                 check("neck-down boards made", False, made.stderr[-300:])
+            # sizes from the project's rules (engine_rules.py) win over the class, per layer, both ways
+            layers = ["F.Cu", "In1.Cu", "In2.Cu", "B.Cu"]
+            sz = tmp / "sizes.json"
+            sz.write_text(json.dumps({"layers": layers, "sizes": {
+                "/I2C_SCL": {l: [0.5, 0.7, 0.3] for l in layers},        # stricter than its 0.2 mm class
+                "/GND": {l: [0.25, 0.6, 0.3] for l in layers}}}), "utf-8")   # looser than its 0.4 mm class
+            engine.SIZES["file"] = str(sz)
+            try:
+                got = engine.audit(kpy, board, ["/I2C_SCL", "/GND"], {})
+            finally:
+                engine.SIZES["file"] = ""
+            check("a rule wider than the class is enforced", "/I2C_SCL" in got and "rules 0.500" in got["/I2C_SCL"],
+                  got)
+            check("a rule narrower than the class is what counts", "/GND" not in got, got)
         else:
             print("skip nets near a spot: KiCad not found")
     finally:

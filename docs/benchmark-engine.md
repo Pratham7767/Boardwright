@@ -8,6 +8,19 @@ Each demo folder is copied to a work directory (the KiCad install is never touch
 
 Completion is `1 - connections after / connections before`, over all connections. "Allowed" completion counts only the connections on nets the engine was permitted to route (it skips hazardous nets, and fast nets unless `--allow-fast`). "New errors" is the number of DRC errors not present on the stripped board.
 
+## Round 8: sizes from the project's rules file, pairs at their rule sizes (0.7.0)
+
+jetson's high-speed classes set no sizes; its pair widths and gaps are custom rules in its `.kicad_dru`, per layer (90 ohm: 0.17/0.18 mm on the outer layers, 0.125/0.10 mm inside; 85 ohm: 0.19/0.18 and 0.15/0.125). Everything read the Default class's 5 mm placeholders instead: the size audit, the pair router (its default gap is the Default class's, and its "electrically short" floor came out at 100 mm) and the fan-out. KiCad's Python has no rule evaluation, so `engine_rules.py` resolves each net's sizes per layer with KiCadRoutingTools' rules reader (which follows KiCad's DRC order: class, then the rules file, last matching rule winning). The audit and the tap trim use those sizes; the pair router gets each group's width and gap explicitly.
+
+The pair router takes one width and gap per run. Where a pair's sizes differ by layer, it is routed only on the layers sharing the outer layers' size (where its pads are), so every pair is laid at its rule size. jetson's camera pairs (20), in hand tests: inner sizes on every layer coupled 12 but laid the outer parts at the inner width (24 nets under their rules); outer layers at the outer size coupled 8, 0 under their rules, 0 new DRC errors. Kept the second. A fan-out of the module connector first coupled 3 (rejected).
+
+| Board, `--allow-fast` | Connections | Before | Round 8 | Pairs coupled |
+|---|---|---|---|---|
+| cm5_minima | 208 | 54 | 54 | 7, in two groups (100 ohm 0.13/0.25 mm, 90 ohm 0.14/0.154 mm) |
+| jetson-agx-thor-baseboard | 2946 | pairs not routed | 1639 | 18 (90 ohm group: camera, USB 2, 0.17/0.18 mm); the 85 ohm group (PCIe, USB 3, DisplayPort) ran out of its 15 minutes and kept nothing | |
+
+Results: `tools/bench/results/engine-r8-*.json`.
+
 ## Round 7: fast nets, differential pairs, vias in pads, the designer's routing (0.7.0)
 
 Four faults found in this round, each fixed:

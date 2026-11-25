@@ -206,6 +206,7 @@ def cmd_audit(a):
     nets = set(req["nets"] if isinstance(req, dict) else req)
     planes = req.get("planes", {}) if isinstance(req, dict) else {}       # {layer name: the plane's net}
     pairs = set(req.get("pairs", [])) if isinstance(req, dict) else set()  # judged by the pair width
+    sizes = load_sizes(req)
     old = set()                       # the base board's copper: only what a router added is judged
     if isinstance(req, dict) and req.get("base"):
         _p, base = load(req["base"])
@@ -227,9 +228,10 @@ def cmd_audit(a):
         nc = ns.GetEffectiveNetClass(n)
         tol = 1000                                      # 1 um: file rounding
         if t.Type() == pcbnew.PCB_VIA_T:
-            if t.GetWidth(t.TopLayer()) + tol < nc.GetViaDiameter() or t.GetDrillValue() + tol < nc.GetViaDrill():
+            _w, vd, vh = want_sizes(b, pcbnew, t, nc, sizes, n in pairs)
+            if t.GetWidth(t.TopLayer()) + tol < vd or t.GetDrillValue() + tol < vh:
                 bad[n] = (f"via {pcbnew.ToMM(t.GetWidth(t.TopLayer())):.3f}/{pcbnew.ToMM(t.GetDrillValue()):.3f} mm "
-                          f"under its class {pcbnew.ToMM(nc.GetViaDiameter()):.3f}/{pcbnew.ToMM(nc.GetViaDrill()):.3f}")
+                          f"under its rules {pcbnew.ToMM(vd):.3f}/{pcbnew.ToMM(vh):.3f}")
                 continue
             # a via in an SMD pad needs a filled, capped via at the fab, or solder wicks into it
             r = t.GetWidth(t.TopLayer()) // 2
@@ -237,9 +239,10 @@ def cmd_audit(a):
             if pad is not None:
                 bad[n] = f"via in pad {pad.GetParentFootprint().GetReference()}.{pad.GetNumber()}"
             continue
-        want = nc.GetDiffPairWidth() if n in pairs and nc.HasDiffPairWidth() else nc.GetTrackWidth()
+        want = want_sizes(b, pcbnew, t, nc, sizes, n in pairs)[0]
         if t.GetWidth() + tol < want and not neck_down(b, pcbnew, t, want):
-            bad[n] = f"track {pcbnew.ToMM(t.GetWidth()):.3f} mm under its class {pcbnew.ToMM(want):.3f}"
+            bad[n] = (f"track {pcbnew.ToMM(t.GetWidth()):.3f} mm under its {'rules' if sizes.get(n) else 'class'} "
+                      f"{pcbnew.ToMM(want):.3f}")
     print(json.dumps(bad))
     return 0
 
@@ -316,6 +319,33 @@ def track_sig(t, pcbnew):
             round((t.GetWidth(t.TopLayer()) if via else t.GetWidth()) / 1000))
 
 
+def load_sizes(req) -> dict:
+    """{net: {layer: [track mm, via mm, drill mm]}} from the request's sizes_file (engine_rules.py), or {}."""
+    path = req.get("sizes_file") if isinstance(req, dict) else ""
+    if not path:
+        return {}
+    try:
+        return json.loads(open(path, encoding="utf-8").read()).get("sizes", {})
+    except (OSError, ValueError):
+        return {}
+
+
+def want_sizes(b, pcbnew, t, nc, sizes, pair: bool):
+    """(track width, via diameter, via drill) in IU that net t's copper should have on its layer: the resolved
+    rules (sizes) when known, else the net class (the pair width for a pair member)."""
+    s = sizes.get(t.GetNetname())
+    if s:
+        if t.Type() == pcbnew.PCB_VIA_T:
+            vals = [v for v in s.values() if v and v[1] and v[2]]
+            return (0, pcbnew.FromMM(max(v[1] for v in vals)) if vals else 0,
+                    pcbnew.FromMM(max(v[2] for v in vals)) if vals else 0)
+        v = s.get(b.GetStandardLayerName(t.GetLayer())) or []
+        if v and v[0]:
+            return pcbnew.FromMM(v[0]), 0, 0
+    w = nc.GetDiffPairWidth() if pair and nc.HasDiffPairWidth() else nc.GetTrackWidth()
+    return w, nc.GetViaDiameter(), nc.GetViaDrill()
+
+
 def cmd_moved(a):
     """The nets, other than the listed ones, whose copper differs between the base board and a router's result:
     a router that moves another net's tracks out of the way (the plane repair does) must have those moves merged
@@ -341,7 +371,9 @@ def cmd_trim(a):
     open again. Nets with any other undersized copper are reported "untrimmable" (the caller drops them).
     The plane repair necks its tap down to a fine-pitch pad's width (0.3 mm against kit-dev's 0.4 mm class)."""
     pcbnew, b = load(a[0])
-    nets = set(json.loads(open(a[2], encoding="utf-8").read()))
+    req = json.loads(open(a[2], encoding="utf-8").read())
+    nets = set(req["nets"] if isinstance(req, dict) else req)
+    sizes = load_sizes(req)
     ns = b.GetDesignSettings().m_NetSettings
     tol = 1000
 
@@ -358,9 +390,10 @@ def cmd_trim(a):
             continue
         nc = ns.GetEffectiveNetClass(n)
         if t.Type() == pcbnew.PCB_VIA_T:
-            if t.GetWidth(t.TopLayer()) + tol < nc.GetViaDiameter() or t.GetDrillValue() + tol < nc.GetViaDrill():
+            _w, vd, vh = want_sizes(b, pcbnew, t, nc, sizes, False)
+            if t.GetWidth(t.TopLayer()) + tol < vd or t.GetDrillValue() + tol < vh:
                 untrim.add(n)
-        elif t.GetWidth() + tol < nc.GetTrackWidth():
+        elif t.GetWidth() + tol < want_sizes(b, pcbnew, t, nc, sizes, False)[0]:
             if anchored(t.GetStart(), n, t) and anchored(t.GetEnd(), n, t):
                 cut.setdefault(n, []).append(t)
             else:
