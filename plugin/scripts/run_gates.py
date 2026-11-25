@@ -438,6 +438,30 @@ def fab_up_to_date(project):
                                 f"({newest.relative_to(project).as_posix()})")
 
 
+def class_sizes(pcb):
+    """A note, not a failure: copper smaller than its own net class asks for (KiCad's DRC checks only the
+    board's minimums, so a 0.3 mm track on a 0.4 mm power class passes it)."""
+    import kicad_python
+    kpy = kicad_python.find()
+    if not kpy:
+        return result("Net class sizes", "not run", "KiCad's Python not found")
+    fd, name = tempfile.mkstemp(suffix=".json")
+    os.close(fd)                                    # Windows cannot delete a file still open
+    req = Path(name)
+    req.write_text('["*"]', "utf-8")
+    r = subprocess.run([kpy, "-I", str(Path(__file__).resolve().parent / "engine_kicad.py"), "audit", str(pcb),
+                        str(req)], capture_output=True, text=True, encoding="utf-8", errors="replace")
+    req.unlink()
+    lines = [l for l in r.stdout.splitlines() if l.startswith("{")]
+    if not lines:
+        return result("Net class sizes", "not run", (r.stderr or r.stdout).strip()[-200:])
+    bad = json.loads(lines[-1])
+    if not bad:
+        return result("Net class sizes", "pass", "every track and via meets its net class")
+    return result("Net class sizes", "note", f"{len(bad)} net(s) below their class: " +
+                  "; ".join(f"{n} {w}" for n, w in list(bad.items())[:6]))
+
+
 def write_reports(project, cli, results, detail=()):
     reports = project / "reports"
     lines = ["# Gate results", "", "| Gate | Status | Detail |", "| --- | --- | --- |"]
@@ -498,6 +522,7 @@ def main():
     else:
         print("Gate 3: DRC (with schematic parity)")
         results.append(drc_gate("DRC", cli, pcb, reports / "drc.json"))
+        results.append(class_sizes(pcb))
 
     if export and all(r["status"] in ("pass", "note", "not run") for r in results):
         print("Exports: refill check, Gerbers, drill, placement, BOM, schematic PDF")

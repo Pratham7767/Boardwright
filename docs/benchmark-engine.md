@@ -8,6 +8,30 @@ Each demo folder is copied to a work directory (the KiCad install is never touch
 
 Completion is `1 - connections after / connections before`, over all connections. "Allowed" completion counts only the connections on nets the engine was permitted to route (it skips hazardous nets, and fast nets unless `--allow-fast`). "New errors" is the number of DRC errors not present on the stripped board.
 
+## Round 6: the designer's planes kept whole (0.7.0)
+
+Before this round Freerouting ran signal tracks over inner plane layers: on kit-dev it cut about a third out of the GND and +3.3V planes (islands 5 -> 25 and 19 -> 38) and still passed KiCad's DRC. The engine now finds the plane layers (an inner layer where one zone covers at least half the board), exports them to Freerouting as power layers, and forbids them to KiCadRoutingTools (`--layer-costs -1`). An audit after DRC drops a net whose new copper lies on another net's plane or is smaller than its net class (KiCad's DRC checks neither; the gates show the same as a "Net class sizes" note).
+
+Protecting the planes first cost completion (kit-dev 478 -> 181 open). Four causes, found on kit-dev and fixed:
+- the plane repair used the board's default sizes (0.2 mm, 0.6 mm vias) instead of the pour nets' class (0.4 mm, 0.8/0.4 mm vias), so the audit rejected all of it; it now gets the class sizes and the plane layers as forbidden for tracks;
+- the plane repair moves other nets' tracks out of the way, and only the routed nets were merged, so its vias landed on the old tracks (real shorts); the moved nets are now merged and checked with them;
+- both routers ran tracks over board text on copper layers (4 nets dropped per run on kit-dev); the routers' working copies now carry keep-outs over that text (the board written gets none);
+- the plane repair necks a tap down to a fine-pitch pad's width (0.3 mm); such a tap is cut (its pad stays open) instead of dropping the whole pour net.
+
+Open connections after (default runs, 15 minutes per stage; 0 new DRC errors on every board):
+
+| Board | Connections | 0.7.0 (planes could be cut) | Planes kept, before the fixes | Planes kept, fixed | Completion |
+|---|---|---|---|---|---|
+| kit-dev-coldfire-xilinx_5213 (4 layers) | 478 | 2 | 181 | 46 | 90.4% |
+| cm5_minima | 208 | 24 | 35 | 30 | 85.6% |
+| royalblue54L_feather | 142 | 44 | 72 | 55 | 61.3% |
+| video (4 layers) | 1345 | 284 | 196 | 203 | 84.9% |
+| jetson-agx-thor-baseboard (10 layers) | 2946 | 1679 | 1835 | 1679 | 43.0% |
+| pic_programmer (2 layers) | 86 | 6 | - | 0 | 100% |
+| stickhub (2 layers) | 128 | 5 | - | 4 | 96.9% |
+
+The 0.7.0 numbers on multilayer boards were partly bought by cutting planes, so they are not a fair target. video and jetson are within their run-to-run spread of 0.7.0 (video depends on free memory). KiCadRoutingTools 0.24.2 gave the same result as 0.24.1 on kit-dev (183 open both), so it is not adopted. Results: `tools/bench/results/engine-planes-fixed.json`, `engine-planes-fixed-small.json`.
+
 ## Round 5: Freerouting rounds on big boards (0.7.0)
 
 On boards with more than 1000 open connections Freerouting stops at its time limit long before it is done. It now runs again from the board as kept, up to 4 rounds, while a round still closes at least 1 % of what is open. Each round is checked by KiCad's DRC like any stage.

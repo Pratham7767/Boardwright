@@ -16,6 +16,43 @@ import engine  # noqa: E402
 
 BAD = []
 
+# Run under KiCad's Python: two copies of a board, each with one new track narrower than its net's class that
+# starts on the smallest pad of a net whose class is wider than that pad: 1 mm long (a neck-down) and 5 mm long.
+NECK_BOARD = r"""
+import sys
+sys.path.insert(0, sys.argv[1])
+import kicad_python
+kicad_python.quiet()
+import pcbnew
+b = pcbnew.LoadBoard(sys.argv[2])
+ns = b.GetDesignSettings().m_NetSettings
+best = None
+for pad in b.GetPads():
+    n = pad.GetNetname()
+    if not n:
+        continue
+    bb = pad.GetBoundingBox()
+    side = min(bb.GetWidth(), bb.GetHeight())
+    cw = ns.GetEffectiveNetClass(n).GetTrackWidth()
+    if side + 20000 < cw and (best is None or side < best[1]):
+        best = (pad, side)
+pad, side = best
+px, py, net = pad.GetX(), pad.GetY(), pad.GetNetname()
+for old in [x for x in b.GetTracks() if x.GetNetname() == net]:
+    b.Remove(old)                              # only the new track is judged
+for name, length in (("neck_short", 1000000), ("neck_long", 5000000)):
+    t = pcbnew.PCB_TRACK(b)
+    t.SetStart(pcbnew.VECTOR2I(px, py))
+    t.SetEnd(pcbnew.VECTOR2I(px + length, py))
+    t.SetWidth(side)
+    t.SetLayer(pcbnew.F_Cu)
+    t.SetNet(pad.GetNet())
+    b.Add(t)
+    b.Save(sys.argv[3] + "/" + name + ".kicad_pcb")
+    b.Remove(t)
+print("NET=" + net)
+"""
+
 
 def check(name, ok, extra=""):
     print(("ok   " if ok else "FAIL ") + name + ("" if ok else f"  -> {extra}"))
@@ -84,6 +121,31 @@ def main() -> int:
             check("nets near a spot: the copper around C3 is +3V3 and GND, not USB", near == ["/+3V3", "/GND"], near)
             check("nets near a spot far from any copper: none",
                   engine.nets_near(kpy, board, board, [(0.0, 0.0)], ["/+3V3", "/GND"], 1.0) == [])
+            # the routers' working copy: keep-outs over copper text, the copper itself untouched
+            guarded = engine.guard_text(kpy, board, tmp / "guarded.kicad_pcb")
+            check("copper-text keep-outs written to a copy", guarded == tmp / "guarded.kicad_pcb", guarded)
+            check("no net counts as moved between a board and its guarded copy",
+                  engine.moved_nets(kpy, board, guarded, []) == [])
+            # the owner's neck-down rule: narrower than the class only at a pad, as far as the pad needs, <= 2 mm
+            import json
+            import subprocess
+            src = tmp / "neck_src.kicad_pcb"                # every class 3 mm wide: any pad is narrower than that
+            shutil.copyfile(board, src)
+            pro = json.loads(board.with_suffix(".kicad_pro").read_text("utf-8"))
+            for c in pro["net_settings"]["classes"]:
+                c["track_width"] = 3.0
+            for name in ("neck_src", "neck_short", "neck_long"):
+                (tmp / f"{name}.kicad_pro").write_text(json.dumps(pro), "utf-8")
+            made = subprocess.run([kpy, "-I", "-c", NECK_BOARD, str(Path(engine.__file__).parent), str(src),
+                                   str(tmp)], capture_output=True, text=True)
+            net = next((l[4:] for l in made.stdout.splitlines() if l.startswith("NET=")), "")
+            if net and (tmp / "neck_short.kicad_pcb").is_file() and (tmp / "neck_long.kicad_pcb").is_file():
+                short = engine.audit(kpy, tmp / "neck_short.kicad_pcb", [net], {})
+                long_ = engine.audit(kpy, tmp / "neck_long.kicad_pcb", [net], {})
+                check("a short track at a pad's width passes the size audit", net not in short, short)
+                check("a long track at the same width still fails it", net in long_, long_)
+            else:
+                check("neck-down boards made", False, made.stderr[-300:])
         else:
             print("skip nets near a spot: KiCad not found")
     finally:

@@ -310,6 +310,8 @@ def main():
     ap.add_argument("--only", choices=["default", "fast"], default=None)
     ap.add_argument("--out", default=None)
     ap.add_argument("--md", default=str(ROOT / "docs" / "benchmark-engine.md"))
+    ap.add_argument("--repeat", type=int, default=1,
+                    help="runs per board; the engine's time limits make results vary, so judge a change by the spread")
     a = ap.parse_args()
     kpy = kicad_python()
     if not kpy:
@@ -334,14 +336,23 @@ def main():
         else:
             info = {}
             for kind in ([] if a.only == "fast" else ["default"]) + ([] if a.only == "default" else ["allow_fast"]):
-                print(f"[{name}] {kind} ...", flush=True)
-                try:
-                    entry[kind] = one_run(kind, src, work, kpy, a.minutes, a.cap_min, info)
-                except Exception as exc:                # keep going with the other boards
-                    entry[kind] = {"error": str(exc)[:400]}
-                r = entry[kind]
-                print(f"[{name}] {kind}: {r.get('connections_before')} -> {r.get('connections_after')} "
-                      f"exit {r.get('exit')} {r.get('wall_s')} s new errors {r.get('new_drc_errors')}", flush=True)
+                runs = []
+                for k in range(max(1, a.repeat)):
+                    print(f"[{name}] {kind} ..." + (f" (run {k + 1} of {a.repeat})" if a.repeat > 1 else ""), flush=True)
+                    try:
+                        r = one_run(kind, src, work, kpy, a.minutes, a.cap_min, info)
+                    except Exception as exc:                # keep going with the other boards
+                        r = {"error": str(exc)[:400]}
+                    runs.append(r)
+                    print(f"[{name}] {kind}: {r.get('connections_before')} -> {r.get('connections_after')} "
+                          f"exit {r.get('exit')} {r.get('wall_s')} s new errors {r.get('new_drc_errors')}", flush=True)
+                entry[kind] = runs[0]
+                if len(runs) > 1:
+                    after = sorted(r["connections_after"] for r in runs if r.get("connections_after") is not None)
+                    entry[kind + "_runs"] = [r.get("connections_after") for r in runs]
+                    if after:
+                        print(f"[{name}] {kind}: open after, {len(after)} runs: min {after[0]}, "
+                              f"median {after[len(after) // 2]}, max {after[-1]}", flush=True)
                 entry.update(info)
         results["boards"].append(entry)
         out.write_text(json.dumps(results, indent=1, default=str), "utf-8")

@@ -16,6 +16,22 @@ Where Boardwright stands and how to continue, for any Claude (or person) picking
 3. **Release tag.** No `v0.7.0` tag yet; tagging publishes a GitHub release, so it waits for the owner.
 4. **Freerouting**: switch from the nightly to the first proper 2.5.1 release when it appears.
 
+## Routing accuracy: task list (from `reports/Routing ideas from KiCad community.md` in the example project)
+Done in this round: plane layers are detected and kept free of tracks in both routers, with an audit that drops any net whose new copper runs on another net's plane or is smaller than its net class (KiCad's DRC checks neither); a "Net class sizes" note in the gates; Freerouting best-of-N seeds when free memory allows (forced 3 seeds: cm5 unchanged, royalblue 44 -> 37 open, within its run-to-run spread, so inconclusive).
+Plane-protection benchmark (`tools/bench/results/engine-planes.json`, open connections after): kit-dev 181 (was 2 when Freerouting could cut the planes), cm5 35, royalblue 72, video 196 (was about 280), jetson 1835. Diagnosed on kit-dev and fixed (2026-11-25):
+- the plane repair laid GND/+3.3V at the board default (0.2 mm, 0.6 mm vias) instead of their class (0.4 mm, 0.8/0.4 mm): `engine_kicad rules` now returns `pour_classes` and `planes_stage` passes them (`--track-width`, `--min-track-width`, `--via-size`, `--via-drill`), plus `--layers/--layer-costs` so it lays no tracks on plane layers;
+- the plane repair (and KiCadRoutingTools' rip-up) moves other nets' tracks out of the way; only the routed nets were merged, so new vias landed on the old positions. `engine_kicad moved` lists those nets and `evaluate` merges and checks them with the routed ones;
+- KiCadRoutingTools and Freerouting route over board text on copper layers (4 nets per run on kit-dev): `engine_kicad textguard` adds keep-outs over that text in the routers' working copies only (merge takes tracks and vias only);
+- the plane repair necks a tap down to a fine-pitch pad's width (0.3 mm): `engine_kicad trim` cuts such single-segment taps (that pad stays open) instead of dropping the whole pour net. Owner's decision (2026-11-25): a track may narrow below its net class at a pad of its own net, only as far as needed (no narrower than the smaller of the class width and the pad's short side, at most 2 mm long); `neck_down` in `engine_kicad.py` audit.
+Next, in order:
+1. **Bench harness:** `--repeat N` (done) and paired per-board results, so a change is judged against run-to-run spread (cm5 has varied 10-24 open, royalblue 28-45).
+2. **KiCadRoutingTools 0.24.2** (downloaded to `%LOCALAPPDATA%\Boardwright\engine\krt-0.24.2` for testing, switch `BOARDWRIGHT_KRT_DIR`): on kit-dev it gave the same result as 0.24.1 (183 open both). Not adopted; A/B on the other boards only if time allows. Note: its Rust router still reports 0.24.1, so its `rust_router/Cargo.toml` must say 0.24.1.
+2b. **KiCadRoutingTools' second pass rips up nets and does not route them back** (kit-dev krt2: /DSI, /IRQ-5 left more open, so it is mostly dropped). Try `repair_planes --rip-blocker-nets` for the last plane pads, and a finer grid for the leftovers.
+3. **jetson's custom rules:** its `.kicad_dru` (for example `hs_zone_clearance`) cannot go into Freerouting's DSN, which is the leading suspect for Freerouting completing almost nothing there. Tighten the DSN clearances from the rules file, or route those nets with KiCadRoutingTools only.
+4. **Claude placement plans:** KiCadRoutingTools reads `groups.json` (its native plan format) and places with `py_placer/place_simple.py`; Claude writes the plan, a saved plan replays without Claude. Needs an "unplaced" bench mode (strip placement as well as copper). Ignore any via, track or clearance numbers in a plan: they could loosen a rule.
+5. **Topological bus routing** (`awx/route_bus.py`, arXiv 2610.35601): only for boards with a bus of about 8+ nets between ball arrays; no demo board has one. It can lay copper below the requested sizes, so it may run only behind the size audit, and only on approved BGA test boards (a download).
+6. **Congestion-aware routing in the Rust core:** see `docs/research/pathfinder-plan.md`.
+
 ## Resume
 1. Clone `https://github.com/Pratham7767/Boardwright` (or copy this folder) and open it in Claude Code. `CLAUDE.md` holds the working rules.
 2. For routing work on a new computer: run `plugin/scripts/setup_engine.ps1` (or `.sh`) once.

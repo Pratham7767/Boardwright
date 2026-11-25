@@ -8,6 +8,13 @@
     python.exe -I engine_kicad.py rules  <in.kicad_pcb>                              the board's limits (um) as JSON
     python.exe -I engine_kicad.py near   <in.kicad_pcb> <request.json>               nets with copper near spots
     python.exe -I engine_kicad.py refill <in.kicad_pcb>                              refill every zone, save in place
+    python.exe -I engine_kicad.py zones  <in.kicad_pcb>                              filled area and islands per zone
+    python.exe -I engine_kicad.py audit  <in.kicad_pcb> <request.json>               copper below its net class's sizes,
+                                                                                     or tracks on another net's plane
+    python.exe -I engine_kicad.py textguard <in.kicad_pcb> <out.kicad_pcb>         keep-outs over copper text
+    python.exe -I engine_kicad.py moved  <base.kicad_pcb> <result.kicad_pcb> <nets.json>  other nets the router moved
+    python.exe -I engine_kicad.py trim   <in.kicad_pcb> <out.kicad_pcb> <nets.json>   remove undersized single-segment taps
+    python.exe -I engine_kicad.py planes <in.kicad_pcb>                              plane layers and the copper layer order
 
 open: by KiCad's own connectivity, not capped like the DRC's unconnected list (499 items). For each net,
 the pads fall into islands of copper joined to each other; a net with k islands needs k-1 connections.
@@ -110,7 +117,12 @@ def cmd_rules(a):
                       "via_um": max(um(nc.GetViaDiameter()), um(ds.m_ViasMinSize)),
                       "drill_um": max(um(nc.GetViaDrill()), um(ds.m_MinThroughDrill)),
                       "clearance_um": max(um(nc.GetClearance()), um(ds.m_MinClearance)),
-                      "width_um": max(um(nc.GetTrackWidth()), um(ds.m_TrackMinWidth))}))
+                      "width_um": max(um(nc.GetTrackWidth()), um(ds.m_TrackMinWidth)),
+                      # the pour nets' own classes: the plane repair must lay their copper at these sizes
+                      "pour_classes": {n: [um(c.GetTrackWidth()), um(c.GetViaDiameter()), um(c.GetViaDrill())]
+                                       for n in {z.GetNetname() for z in b.Zones()
+                                                 if z.GetNetCode() > 0 and not z.GetIsRuleArea()}
+                                       for c in [ds.m_NetSettings.GetEffectiveNetClass(n)]}}))
     return 0
 
 
@@ -147,6 +159,195 @@ def cmd_refill(a):
     return 0
 
 
+def cmd_zones(a):
+    """{"<net>@<layer>": [filled mm2, islands]} for every copper zone, from the fill saved in the file."""
+    pcbnew, b = load(a[0])
+    out = {}
+    for z in b.Zones():
+        if z.GetIsRuleArea() or z.GetNetCode() <= 0:
+            continue
+        for layer in z.GetLayerSet().Seq():
+            if not z.HasFilledPolysForLayer(layer):
+                continue
+            polys = z.GetFilledPolysList(layer)
+            key = f"{z.GetNetname()}@{b.GetLayerName(layer)}"
+            area = polys.Area() / 1e12 if hasattr(polys, "Area") else 0.0
+            prev = out.get(key, [0.0, 0])
+            out[key] = [round(prev[0] + area, 2), prev[1] + polys.OutlineCount()]
+    print(json.dumps(out))
+    return 0
+
+
+NECK_MAX_NM = 2_000_000      # a neck-down is at most 2 mm long
+
+
+def neck_down(b, pcbnew, t, class_w) -> bool:
+    """The owner's rule (2026-11-25): a track may be narrower than its net class where it enters a pad of its
+    own net, only as far as needed: no narrower than the smaller of the class width and the pad's short side,
+    and at most 2 mm long. A long thin power track still fails."""
+    if t.GetLength() > NECK_MAX_NM:
+        return False
+    for p in (t.GetStart(), t.GetEnd()):
+        for pad in b.GetPads():
+            if pad.GetNetname() == t.GetNetname() and pad.HitTest(p):
+                size = pad.GetBoundingBox()
+                need = min(class_w, size.GetWidth(), size.GetHeight())
+                if t.GetWidth() + 1000 >= need:
+                    return True
+    return False
+
+
+def cmd_audit(a):
+    """{net: first problem} for the listed nets whose tracks are narrower than their net class's track width, or
+    whose vias are smaller than its via size or drill. KiCad's DRC checks only the board's minimums, so a router
+    could lay a power net at the board minimum and still pass it."""
+    pcbnew, b = load(a[0])
+    req = json.loads(open(a[1], encoding="utf-8").read())
+    nets = set(req["nets"] if isinstance(req, dict) else req)
+    planes = req.get("planes", {}) if isinstance(req, dict) else {}       # {layer name: the plane's net}
+    if "*" in nets:                                     # every net with copper
+        nets = {t.GetNetname() for t in b.GetTracks()}
+    ns = b.GetDesignSettings().m_NetSettings
+    bad = {}
+    for t in b.GetTracks():
+        n = t.GetNetname()
+        if n not in nets or n in bad:
+            continue
+        lay = b.GetLayerName(t.GetLayer())
+        if t.Type() != pcbnew.PCB_VIA_T and lay in planes and planes[lay] != n:
+            bad[n] = f"track on {lay}, the {planes[lay]} plane (it would cut the plane)"
+            continue
+        nc = ns.GetEffectiveNetClass(n)
+        tol = 1000                                      # 1 um: file rounding
+        if t.Type() == pcbnew.PCB_VIA_T:
+            if t.GetWidth(t.TopLayer()) + tol < nc.GetViaDiameter() or t.GetDrillValue() + tol < nc.GetViaDrill():
+                bad[n] = (f"via {pcbnew.ToMM(t.GetWidth(t.TopLayer())):.3f}/{pcbnew.ToMM(t.GetDrillValue()):.3f} mm "
+                          f"under its class {pcbnew.ToMM(nc.GetViaDiameter()):.3f}/{pcbnew.ToMM(nc.GetViaDrill()):.3f}")
+        elif t.GetWidth() + tol < nc.GetTrackWidth() and not neck_down(b, pcbnew, t, nc.GetTrackWidth()):
+            bad[n] = f"track {pcbnew.ToMM(t.GetWidth()):.3f} mm under its class {pcbnew.ToMM(nc.GetTrackWidth()):.3f}"
+    print(json.dumps(bad))
+    return 0
+
+
+def cmd_planes(a):
+    """{"planes": {inner layer: net}, "copper": [copper layers in stack order]}. A plane layer is an inner layer
+    where one zone's outline covers at least half of the board's outline box: the designer's plane, which the
+    routers must not cut up with signal tracks (Freerouting cut a third out of kit-dev's GND and +3.3V planes)."""
+    pcbnew, b = load(a[0])
+    box = b.GetBoardEdgesBoundingBox()
+    board = float(box.GetWidth()) * float(box.GetHeight())
+    stack = list(b.GetEnabledLayers().CuStack())
+    copper = [b.GetLayerName(l) for l in stack]                    # the board's own names (the DSN uses these)
+    standard = [b.GetStandardLayerName(l) for l in stack]          # F.Cu, In1.Cu ... (KiCadRoutingTools uses these)
+    planes = {}
+    for z in b.Zones():
+        if z.GetIsRuleArea() or z.GetNetCode() <= 0 or board <= 0:
+            continue
+        for layer in z.GetLayerSet().Seq():
+            name = b.GetLayerName(layer)
+            if name in (copper[0], copper[-1]) or name not in copper:
+                continue
+            if z.Outline().Area() >= 0.5 * board:
+                planes[name] = z.GetNetname()
+    print(json.dumps({"planes": planes, "copper": copper, "standard": standard}))
+    return 0
+
+
+def cmd_textguard(a):
+    """Copy of the board where every board-level text on a copper layer gets a keep-out (no tracks, no vias)
+    over its outline. KiCadRoutingTools and Freerouting route over copper text, which KiCad's DRC then rejects
+    as a short; the keep-outs live only in the routers' working copy (merge takes tracks and vias only)."""
+    pcbnew, b = load(a[0])
+    n = 0
+    for d in list(b.GetDrawings()):
+        if d.Type() not in (pcbnew.PCB_TEXT_T, pcbnew.PCB_TEXTBOX_T) or not pcbnew.IsCopperLayer(d.GetLayer()):
+            continue
+        box = d.GetBoundingBox()
+        z = pcbnew.ZONE(b)
+        z.SetIsRuleArea(True)
+        z.SetDoNotAllowTracks(True)
+        z.SetDoNotAllowVias(True)
+        z.SetDoNotAllowZoneFills(False)
+        z.SetDoNotAllowPads(False)
+        z.SetDoNotAllowFootprints(False)
+        z.SetLayer(d.GetLayer())
+        o = z.Outline()
+        o.NewOutline()
+        for x, y in ((box.GetLeft(), box.GetTop()), (box.GetRight(), box.GetTop()),
+                     (box.GetRight(), box.GetBottom()), (box.GetLeft(), box.GetBottom())):
+            o.Append(x, y)
+        b.Add(z)
+        n += 1
+    b.Save(a[1])
+    print(json.dumps({"guarded": n}))
+    return 0
+
+
+def cmd_moved(a):
+    """The nets, other than the listed ones, whose copper differs between the base board and a router's result:
+    a router that moves another net's tracks out of the way (the plane repair does) must have those moves merged
+    too, or its new copper lands on the old tracks."""
+    pcbnew, base = load(a[0])
+    _p, res = load(a[1])
+    asked = set(json.loads(open(a[2], encoding="utf-8").read()))
+
+    def sig(b):
+        out = {}
+        for t in b.GetTracks():
+            via = t.Type() == pcbnew.PCB_VIA_T
+            s, e = t.GetStart(), t.GetEnd()
+            out.setdefault(t.GetNetname(), set()).add(
+                (via, t.GetLayer(), round(s.x / 1000), round(s.y / 1000), round(e.x / 1000), round(e.y / 1000),
+                 round((t.GetWidth(t.TopLayer()) if via else t.GetWidth()) / 1000)))
+        return out
+    sb, sr = sig(base), sig(res)
+    print(json.dumps(sorted(n for n in set(sb) | set(sr)
+                            if n and n not in asked and sb.get(n, set()) != sr.get(n, set()))))
+    return 0
+
+
+def cmd_trim(a):
+    """For the listed nets, remove each track narrower than its net class when it is a single-segment tap (both
+    ends on a pad or via of its own net), so the rest of the net's new copper can stay; the tap's pad is then
+    open again. Nets with any other undersized copper are reported "untrimmable" (the caller drops them).
+    The plane repair necks its tap down to a fine-pitch pad's width (0.3 mm against kit-dev's 0.4 mm class)."""
+    pcbnew, b = load(a[0])
+    nets = set(json.loads(open(a[2], encoding="utf-8").read()))
+    ns = b.GetDesignSettings().m_NetSettings
+    tol = 1000
+
+    def anchored(p, net, me):
+        for pad in b.GetPads():
+            if pad.GetNetname() == net and pad.HitTest(p):
+                return True
+        return any(v is not me and v.Type() == pcbnew.PCB_VIA_T and v.GetNetname() == net and v.HitTest(p)
+                   for v in b.GetTracks())
+    cut, untrim = {}, set()
+    for t in list(b.GetTracks()):
+        n = t.GetNetname()
+        if n not in nets or n in untrim:
+            continue
+        nc = ns.GetEffectiveNetClass(n)
+        if t.Type() == pcbnew.PCB_VIA_T:
+            if t.GetWidth(t.TopLayer()) + tol < nc.GetViaDiameter() or t.GetDrillValue() + tol < nc.GetViaDrill():
+                untrim.add(n)
+        elif t.GetWidth() + tol < nc.GetTrackWidth():
+            if anchored(t.GetStart(), n, t) and anchored(t.GetEnd(), n, t):
+                cut.setdefault(n, []).append(t)
+            else:
+                untrim.add(n)
+    done = {}
+    for n, ts in cut.items():
+        if n in untrim:
+            continue
+        for t in ts:
+            b.Remove(t)
+        done[n] = len(ts)
+    b.Save(a[1])
+    print(json.dumps({"trimmed": done, "untrimmable": sorted(untrim)}))
+    return 0
+
+
 def cmd_merge(a):
     pcbnew, base = load(a[0])
     _p, res = load(a[1])
@@ -173,7 +374,7 @@ def cmd_merge(a):
 
 
 def main(argv):
-    cmds = {"dsn": cmd_dsn, "ses": cmd_ses, "merge": cmd_merge, "copper": cmd_copper, "open": cmd_open, "rules": cmd_rules, "near": cmd_near, "refill": cmd_refill}
+    cmds = {"dsn": cmd_dsn, "ses": cmd_ses, "merge": cmd_merge, "copper": cmd_copper, "open": cmd_open, "rules": cmd_rules, "near": cmd_near, "refill": cmd_refill, "zones": cmd_zones, "audit": cmd_audit, "planes": cmd_planes, "textguard": cmd_textguard, "moved": cmd_moved, "trim": cmd_trim}
     if not argv or argv[0] not in cmds:
         print(__doc__)
         return 2
