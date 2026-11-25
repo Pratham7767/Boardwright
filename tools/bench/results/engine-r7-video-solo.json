@@ -1,0 +1,62 @@
+{
+ "date": "2026-11-25",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15,
+ "cap_min": 120.0,
+ "boards": [
+  {
+   "name": "video",
+   "default": {
+    "connections_before": 1345,
+    "drc_unconnected_before": 499,
+    "drc_list_capped": true,
+    "errors_before": 0,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 4185.2,
+    "skipped": false,
+    "output_tail": "89.6 s; routed 2 net(s)\nfreerouting: ACCEPTED in 912.6 s; routed 174 net(s); kept 364 net(s); dropped 7 that caused DRC errors: /buspci.sch/P_AD23, /buspci.sch/P_AD7, Net-(U8-RVID0), /DQ1, /DQ5, /DQ6\nfreerouting: ACCEPTED in 915.2 s; routed 22 net(s); kept 215 net(s); dropped 2 that caused DRC errors: /BE-2, /graphic/RESERV1\nfreerouting: ACCEPTED in 914.6 s; routed 17 net(s); kept 184 net(s); dropped 4 that caused DRC errors: /buspci.sch/P_AD24, /buspci.sch/P_AD20, /graphic/IOE-, /modul/CVBS\nfreerouting: ACCEPTED in 914.8 s; routed 14 net(s); kept 160 net(s); dropped 3 that caused DRC errors: /buspci.sch/P_AD20, /graphic/IOE-, /modul/CVBS\ndrc: 0 new error(s), 0 fixed, 0 unchanged; open connections 1345 -> 187\ntime 4184.9 s\nLeftovers for Claude: 187 connection(s) on 142 net(s)\n  //PCRD: Track [//PCRD] at 126.48,83.29 -> Track [//PCRD] at 155.45,121.965\n  //PCWR: Track [//PCWR] at 163.216,114.569 -> Via [//PCWR] at 127.786,82.64\n  /ACCES_RAM-: Track [/ACCES_RAM-] at 202.389,134.366 -> U22.21\n  /ACQ_ON: U24.48 -> U22.13\n  /ADR2: U11.68 -> Track [/ADR2] at 122.659,85.89\n  /ADR3: U11.67 -> Track [/ADR3] at 122.039,86.54\n  /ADR5: U11.64 -> Track [/ADR5] at 126.332,87.6918\n  /ADR6: U11.132 -> Track [/ADR6] at 126.429,89.8406\n  /BE-0: U11.87 -> U24.144\n  /BE-0: U24.144 -> U23.38\n  /BE-1: U11.63 -> U24.145\n  /BE-1: U24.145 -> U23.37\n  ... 175 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 187,
+    "copper_items_after": 6342,
+    "connections_after": 187,
+    "completion": 0.861,
+    "new_drc_errors": 0,
+    "errors_after": 0,
+    "nets_open_before": 121,
+    "chosen_nets": 371,
+    "connections_allowed": 495,
+    "connections_allowed_after": 185,
+    "completion_allowed": null,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "krt-planes": {
+      "seconds": 389.6,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 2,
+      "why": ""
+     },
+     "freerouting": {
+      "seconds": 914.8,
+      "accepted": true,
+      "unconnected_after_stage": 187,
+      "new_errors_in_stage": "0",
+      "nets_routed": 14,
+      "why": "kept 160 net(s); dropped 3 that caused DRC errors: /buspci.sch/P_AD20, /graphic/IOE-, /modul/CVBS"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 14,
+    "engine_seconds": 4179.5,
+    "engine_result": "routed 229 of 371 chosen net(s) (krt 2, freerouting 227); open connections 1345 -> 187"
+   },
+   "removed": 8740,
+   "copper_layers": 4,
+   "footprints": 189,
+   "nets": 588,
+   "zones": 2
+  }
+ ]
+}

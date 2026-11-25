@@ -26,12 +26,12 @@ Open connections after (default runs unless noted, 15 minutes per stage, run thr
 | cm5_minima | 208 | 30 | 73 | its 40 fast nets (82 connections) left out as promised; 31 of the 126 it may route stay open |
 | cm5_minima, `--allow-fast` | 208 | - | 54 | 7 pairs routed coupled |
 | royalblue54L_feather | 142 | 55 | 70 | vias in pads allowed (its design uses them); 94 when they were not |
-| video | 1345 | 203 | 323 (run beside four other jobs; it depends on free memory, re-run alone pending) | |
+| video | 1345 | 203 | 187 | run alone; 323 beside four other jobs (Freerouting stops at a time limit, so load costs completion) |
 | jetson-agx-thor-baseboard | 2946 | 1679 | 1679 | its 301 pair-member nets now left out |
 | pic_programmer | 86 | 0 | 0 | |
 | stickhub | 128 | 4 | 4 | no vias in pads now |
 
-Results: `tools/bench/results/engine-r7-*.json`, `engine-cm5-fastfix.json`.
+Results: `tools/bench/results/engine-r7-*.json` (video alone: `engine-r7-video-solo.json`), `engine-cm5-fastfix.json`.
 
 ## Round 6: the designer's planes kept whole (0.7.0)
 
