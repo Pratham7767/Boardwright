@@ -1,0 +1,64 @@
+{
+ "date": "2026-11-25",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15,
+ "cap_min": 120.0,
+ "boards": [
+  {
+   "name": "royalblue54L_feather",
+   "default": {
+    "connections_before": 142,
+    "drc_unconnected_before": 142,
+    "drc_list_capped": false,
+    "errors_before": 51,
+    "copper_items_before": 15,
+    "exit": 1,
+    "wall_s": 3159.2,
+    "skipped": false,
+    "output_tail": "ed 9 net(s); kept 47 net(s); dropped 16 that caused DRC errors: GND, Net-(U1-P1.01{slash}XL2), /Connectors/ANALOG.A0, /Connectors/ANALOG.A3, VSYS, /Connectors/ENAB\ndrc: 0 new error(s), 0 fixed, 51 unchanged; open connections 142 -> 88\ntime 3157.4 s\nLeftovers for Claude: 88 connection(s) on 49 net(s)\n  /Connectors/ANALOG.A0: U1.E9 -> PTH pad 5 of J1 at 143.23,116.41\n  /Connectors/ANALOG.A1: U1.F8 -> PTH pad 6 of J1 at 145.77,116.41\n  /Connectors/ANALOG.A2: Track [/Connectors/ANALOG.A2] at 161.47,105.43 -> PTH pad 7 of J1 at 148.31,116.41\n  /Connectors/ANALOG.A3: U1.G9 -> PTH pad 8 of J1 at 150.85,116.41\n  /Connectors/ANALOG.A4: Track [/Connectors/ANALOG.A4] at 166.22,101.3111 -> PTH pad 9 of J1 at 153.39,116.41\n  /Connectors/DIG.D11: Track [/Connectors/DIG.D11] at 166.2,107.9 -> Track [/Connectors/DIG.D11] at 157.835,100.505\n  /Connectors/DIG.D12: PTH pad 5 of J2 at 153.39,94.82 -> Track [/Connectors/DIG.D12] at 165.32,106.1105\n  /Connectors/DIG.D13: PTH pad 4 of J2 at 150.85,94.82 -> U1.J6\n  /Connectors/DIG.D6: PTH pad 9 of J2 at 163.55,94.82 -> U1.K4\n  /Connectors/DIG.D9: PTH pad 8 of J2 at 161.01,94.82 -> U1.K5\n  /Connectors/I2C.SCL: Track [/Connectors/I2C.SCL] at 127.1,100.3 -> Track [/Connectors/I2C.SCL] at 162.65,106.35\n  /Connectors/I2C.SCL: Track [/Connectors/I2C.SCL] at 163.3,105.9 -> PTH pad 11 of J2 at 168.63,94.82\n  ... 82 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 94,
+    "copper_items_after": 475,
+    "connections_after": 94,
+    "completion": 0.338,
+    "new_drc_errors": 0,
+    "errors_after": 51,
+    "nets_open_before": 67,
+    "chosen_nets": 65,
+    "connections_allowed": 132,
+    "connections_allowed_after": 88,
+    "completion_allowed": 0.3333,
+    "left_out_by_reason": {
+     "fast net, route it by hand or pass --allow-fast": 2
+    },
+    "left_out_connections": 8,
+    "stages": {
+     "freerouting-first: freerouting": {
+      "seconds": 909.8,
+      "accepted": true,
+      "unconnected_after_stage": 107,
+      "new_errors_in_stage": "0",
+      "nets_routed": 9,
+      "why": "kept 50 net(s); dropped 18 that caused DRC errors: /Debugger/nRF52_VDD, /Connectors/I2C.SDA, Net-(J6-Pin_2), /Connectors/ANALOG.A0, /Debugger/SWD_TRG.~{RESET}, /Debugger/SWD_TRG.SWDIO"
+     },
+     "freerouting-first: krt2": {
+      "seconds": 968.9,
+      "accepted": true,
+      "unconnected_after_stage": 94,
+      "new_errors_in_stage": "0",
+      "nets_routed": 9,
+      "why": "kept 47 net(s); dropped 16 that caused DRC errors: GND, Net-(U1-P1.01{slash}XL2), /Connectors/ANALOG.A0, /Connectors/ANALOG.A3, VSYS, /Connectors/ENABLE"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 3149.5,
+    "engine_result": "routed 18 of 65 chosen net(s) (krt 9, freerouting 9); open connections 142 -> 88"
+   },
+   "removed": 1126,
+   "copper_layers": 8,
+   "footprints": 71,
+   "nets": 95,
+   "zones": 267
+  }
+ ]
+}

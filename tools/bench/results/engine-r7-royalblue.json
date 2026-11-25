@@ -1,0 +1,72 @@
+{
+ "date": "2026-11-25",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15,
+ "cap_min": 120.0,
+ "boards": [
+  {
+   "name": "royalblue54L_feather",
+   "default": {
+    "connections_before": 142,
+    "drc_unconnected_before": 142,
+    "drc_list_capped": false,
+    "errors_before": 51,
+    "copper_items_before": 15,
+    "exit": 1,
+    "wall_s": 2882.9,
+    "skipped": false,
+    "output_tail": "in 686.0 s; routed 0 net(s); kept 38 net(s); dropped 6 that caused DRC errors: VSYS, Net-(D3-BK), Net-(JP1-A), /Debugger/nRF52_VDD, Net-(D3-GK), Net-(U2-SW2)\ndrc: 0 new error(s), 0 fixed, 51 unchanged; open connections 142 -> 62\ntime 2881.4 s\nLeftovers for Claude: 62 connection(s) on 42 net(s)\n  /Connectors/ANALOG.A1: Via [/Connectors/ANALOG.A1] at 162.62,105.43 -> PTH pad 6 of J1 at 145.77,116.41\n  /Connectors/ANALOG.A2: Track [/Connectors/ANALOG.A2] at 161.47,105.43 -> PTH pad 7 of J1 at 148.31,116.41\n  /Connectors/ANALOG.A3: U1.G9 -> PTH pad 8 of J1 at 150.85,116.41\n  /Connectors/ANALOG.A5: PTH pad 10 of J1 at 155.93,116.41 -> Track [/Connectors/ANALOG.A5] at 165.32,101.83\n  /Connectors/DIG.D11: SW2.1 -> Track [/Connectors/DIG.D11] at 166.2,107.9\n  /Connectors/DIG.D12: PTH pad 5 of J2 at 153.39,94.82 -> U1.J5\n  /Connectors/DIG.D13: Track [/Connectors/DIG.D13] at 164.85,105.8572 -> PTH pad 4 of J2 at 150.85,94.82\n  /Connectors/DIG.D6: PTH pad 9 of J2 at 163.55,94.82 -> U1.K4\n  /Connectors/DIG.D9: PTH pad 8 of J2 at 161.01,94.82 -> Track [/Connectors/DIG.D9] at 165.32,109.03\n  /Connectors/I2C.SCL: Track [/Connectors/I2C.SCL] at 163.3,106.2 -> Track [/Connectors/I2C.SCL] at 152.3,96.5\n  /Connectors/SPI.MISO: U1.K9 -> U4.2\n  /Connectors/SPI.MOSI: PTH pad 12 of J1 at 161.01,116.41 -> Via [/Connectors/SPI.MOSI] at 162.62,108.13\n  ... 58 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 70,
+    "copper_items_after": 1210,
+    "connections_after": 70,
+    "completion": 0.507,
+    "new_drc_errors": 0,
+    "errors_after": 51,
+    "nets_open_before": 67,
+    "chosen_nets": 65,
+    "connections_allowed": 132,
+    "connections_allowed_after": 61,
+    "completion_allowed": 0.5379,
+    "left_out_by_reason": {
+     "fast net, route it by hand or pass --allow-fast": 2
+    },
+    "left_out_connections": 8,
+    "stages": {
+     "krt-first: krt": {
+      "seconds": 1020.1,
+      "accepted": true,
+      "unconnected_after_stage": 93,
+      "new_errors_in_stage": "0",
+      "nets_routed": 25,
+      "why": "kept 63 net(s); dropped 2 that caused DRC errors: VSYS, GND"
+     },
+     "krt-first: freerouting": {
+      "seconds": 912.7,
+      "accepted": true,
+      "unconnected_after_stage": 83,
+      "new_errors_in_stage": "0",
+      "nets_routed": 1,
+      "why": "kept 44 net(s); dropped 10 that caused DRC errors: /Debugger/nRF52_VDD, /Connectors/I2C.SCL, /Connectors/DIG.D11, /Connectors/SPI.MOSI, /Connectors/SPI.MISO, VSYS"
+     },
+     "krt-first: krt2": {
+      "seconds": 686.0,
+      "accepted": true,
+      "unconnected_after_stage": 70,
+      "new_errors_in_stage": "0",
+      "nets_routed": 0,
+      "why": "kept 38 net(s); dropped 6 that caused DRC errors: VSYS, Net-(D3-BK), Net-(JP1-A), /Debugger/nRF52_VDD, Net-(D3-GK), Net-(U2-SW2)"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 2874.2,
+    "engine_result": "routed 26 of 65 chosen net(s) (krt 25, freerouting 1); open connections 142 -> 62"
+   },
+   "removed": 1126,
+   "copper_layers": 8,
+   "footprints": 71,
+   "nets": 95,
+   "zones": 267
+  }
+ ]
+}

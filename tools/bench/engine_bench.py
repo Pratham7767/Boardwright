@@ -160,6 +160,15 @@ def one_run(kind: str, src: Path, work: Path, kpy, minutes, cap_min, info_cache:
         shutil.rmtree(folder, onerror=_rw)          # demo files may be read-only
     folder.parent.mkdir(parents=True, exist_ok=True)
     pcb = make_project(src, folder)
+    # stripping removes the vias, so record first whether the design puts vias in pads (the engine follows it)
+    lay = subprocess.run([kpy, "-I", str(SCRIPTS / "engine_kicad.py"), "planes", str(pcb)], capture_output=True,
+                         text=True, encoding="utf-8", errors="replace").stdout
+    got = [json.loads(l) for l in lay.splitlines() if l.startswith("{")]
+    if got and got[-1].get("via_in_pad"):
+        cfg = folder / "boardwright.json"
+        c = json.loads(cfg.read_text("utf-8")) if cfg.is_file() else {}
+        c.setdefault("engine", {})["via_in_pad"] = True
+        cfg.write_text(json.dumps(c, indent=1), "utf-8")
     info = strip(kpy, folder, pcb, work)
     d0 = drc(pcb)
     if d0 is None:

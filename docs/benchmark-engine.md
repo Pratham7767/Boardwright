@@ -8,6 +8,31 @@ Each demo folder is copied to a work directory (the KiCad install is never touch
 
 Completion is `1 - connections after / connections before`, over all connections. "Allowed" completion counts only the connections on nets the engine was permitted to route (it skips hazardous nets, and fast nets unless `--allow-fast`). "New errors" is the number of DRC errors not present on the stripped board.
 
+## Round 7: fast nets, differential pairs, vias in pads, the designer's routing (0.7.0)
+
+Four faults found in this round, each fixed:
+- **High-speed nets slipped through.** The engine leaves fast nets alone unless `--allow-fast`, but it knew them only by class names such as "usb" or "hdmi". cm5's classes are named by impedance ("100ohm", "90ohm"), so about 80 DPHY, HDMI, PCIe and USB nets were routed, each half of a pair as its own track. Fast now also means an impedance-named class, or a net named like a high-speed pair member (an interface word such as USB, HDMI, PCIe, DPHY, MIPI, LVDS, SATA, CSI standing alone, and a pair ending such as `_P`/`_N`, `+`/`-`, `DP`/`DM`).
+- **Vias in pads.** KiCadRoutingTools puts a via inside a same-net SMD pad by default: 98 on the engine's kit-dev result, mostly plane taps on capacitor pads. That needs filled, capped vias at the fab, or solder wicks into them; KiCad's DRC does not check it. Vias are now kept off pads unless the design already uses them (royalblue's designer has 94) or `boardwright.json` says `"engine": {"via_in_pad": true}`; the audit checks the routers' new vias (Freerouting's too).
+- **The designer's own routing was moved.** KiCadRoutingTools ripped the example board's VBUS and laid it again under the project's 0.3 mm power rule. Nets that were finished before the run, and the nets the engine must not route, are now locked in the routers' working copies (their rip-up and Freerouting's DSN both respect locked copper) and their moves are never merged. The size audit now judges only copper a router added, not the designer's.
+- **Half pairs.** See the pair stage below: a pair is merged whole or not at all.
+
+**Differential pairs** (with `--allow-fast`): KiCadRoutingTools' pair router runs once, before the variants, on the pair members (a fast net whose partner is on the board). Only pairs it reports as coupled the whole way, both members complete, are merged; a pair it routed as two single tracks is left open, and pair members never go to the single-track routers. cm5: 7 pairs (15 nets) routed coupled, 0 new DRC errors. Tried and rejected: also taking pairs it calls "electrically short" and routes as two tracks. Its length floor grows with the class's pair spacing and was 100 mm on jetson, where PCIe pairs must couple. On jetson no pair starts at all: every start cell under the module connector is boxed in ("8/8 neighbors blocked"), which needs a fan-out step first.
+
+Open connections after (default runs unless noted, 15 minutes per stage, run three or four boards at a time; 0 new DRC errors on every board):
+
+| Board | Connections | Round 6 | Round 7 | Note |
+|---|---|---|---|---|
+| kit-dev-coldfire-xilinx_5213 | 478 | 46 | 54 | no vias in pads now (98 before) |
+| cm5_minima | 208 | 30 | 73 | its 40 fast nets (82 connections) left out as promised; 31 of the 126 it may route stay open |
+| cm5_minima, `--allow-fast` | 208 | - | 54 | 7 pairs routed coupled |
+| royalblue54L_feather | 142 | 55 | 70 | vias in pads allowed (its design uses them); 94 when they were not |
+| video | 1345 | 203 | 323 (run beside four other jobs; it depends on free memory, re-run alone pending) | |
+| jetson-agx-thor-baseboard | 2946 | 1679 | 1679 | its 301 pair-member nets now left out |
+| pic_programmer | 86 | 0 | 0 | |
+| stickhub | 128 | 4 | 4 | no vias in pads now |
+
+Results: `tools/bench/results/engine-r7-*.json`, `engine-cm5-fastfix.json`.
+
 ## Round 6: the designer's planes kept whole (0.7.0)
 
 Before this round Freerouting ran signal tracks over inner plane layers: on kit-dev it cut about a third out of the GND and +3.3V planes (islands 5 -> 25 and 19 -> 38) and still passed KiCad's DRC. The engine now finds the plane layers (an inner layer where one zone covers at least half the board), exports them to Freerouting as power layers, and forbids them to KiCadRoutingTools (`--layer-costs -1`). An audit after DRC drops a net whose new copper lies on another net's plane or is smaller than its net class (KiCad's DRC checks neither; the gates show the same as a "Net class sizes" note).

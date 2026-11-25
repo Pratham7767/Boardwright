@@ -448,7 +448,14 @@ def class_sizes(pcb):
     fd, name = tempfile.mkstemp(suffix=".json")
     os.close(fd)                                    # Windows cannot delete a file still open
     req = Path(name)
-    req.write_text('["*"]', "utf-8")
+    # vias in pads are the designer's choice unless the project says otherwise (boardwright.json
+    # "engine": {"via_in_pad": false}); then each one is listed
+    try:
+        cfg = json.loads((Path(pcb).parent / "boardwright.json").read_text("utf-8"))
+    except (OSError, ValueError):
+        cfg = {}
+    vip_ok = (cfg.get("engine") or {}).get("via_in_pad") is not False
+    req.write_text(json.dumps({"nets": ["*"], "planes": {}, "via_in_pad_ok": vip_ok}), "utf-8")
     r = subprocess.run([kpy, "-I", str(Path(__file__).resolve().parent / "engine_kicad.py"), "audit", str(pcb),
                         str(req)], capture_output=True, text=True, encoding="utf-8", errors="replace")
     req.unlink()
@@ -458,7 +465,7 @@ def class_sizes(pcb):
     bad = json.loads(lines[-1])
     if not bad:
         return result("Net class sizes", "pass", "every track and via meets its net class")
-    return result("Net class sizes", "note", f"{len(bad)} net(s) below their class: " +
+    return result("Net class sizes", "note", f"{len(bad)} net(s) below their class or with a via in a pad: " +
                   "; ".join(f"{n} {w}" for n, w in list(bad.items())[:6]))
 
 

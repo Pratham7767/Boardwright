@@ -205,13 +205,20 @@ def cmd_audit(a):
     req = json.loads(open(a[1], encoding="utf-8").read())
     nets = set(req["nets"] if isinstance(req, dict) else req)
     planes = req.get("planes", {}) if isinstance(req, dict) else {}       # {layer name: the plane's net}
+    pairs = set(req.get("pairs", [])) if isinstance(req, dict) else set()  # judged by the pair width
+    old = set()                       # the base board's copper: only what a router added is judged
+    if isinstance(req, dict) and req.get("base"):
+        _p, base = load(req["base"])
+        old = {track_sig(x, pcbnew) for x in base.GetTracks()}
     if "*" in nets:                                     # every net with copper
         nets = {t.GetNetname() for t in b.GetTracks()}
     ns = b.GetDesignSettings().m_NetSettings
+    smd = [] if isinstance(req, dict) and req.get("via_in_pad_ok") else \
+        [p for p in b.GetPads() if p.GetAttribute() == pcbnew.PAD_ATTRIB_SMD]
     bad = {}
     for t in b.GetTracks():
         n = t.GetNetname()
-        if n not in nets or n in bad:
+        if n not in nets or n in bad or (old and track_sig(t, pcbnew) in old):
             continue
         lay = b.GetLayerName(t.GetLayer())
         if t.Type() != pcbnew.PCB_VIA_T and lay in planes and planes[lay] != n:
@@ -223,8 +230,16 @@ def cmd_audit(a):
             if t.GetWidth(t.TopLayer()) + tol < nc.GetViaDiameter() or t.GetDrillValue() + tol < nc.GetViaDrill():
                 bad[n] = (f"via {pcbnew.ToMM(t.GetWidth(t.TopLayer())):.3f}/{pcbnew.ToMM(t.GetDrillValue()):.3f} mm "
                           f"under its class {pcbnew.ToMM(nc.GetViaDiameter()):.3f}/{pcbnew.ToMM(nc.GetViaDrill()):.3f}")
-        elif t.GetWidth() + tol < nc.GetTrackWidth() and not neck_down(b, pcbnew, t, nc.GetTrackWidth()):
-            bad[n] = f"track {pcbnew.ToMM(t.GetWidth()):.3f} mm under its class {pcbnew.ToMM(nc.GetTrackWidth()):.3f}"
+                continue
+            # a via in an SMD pad needs a filled, capped via at the fab, or solder wicks into it
+            r = t.GetWidth(t.TopLayer()) // 2
+            pad = next((p for p in smd if p.HitTest(t.GetPosition(), r)), None)
+            if pad is not None:
+                bad[n] = f"via in pad {pad.GetParentFootprint().GetReference()}.{pad.GetNumber()}"
+            continue
+        want = nc.GetDiffPairWidth() if n in pairs and nc.HasDiffPairWidth() else nc.GetTrackWidth()
+        if t.GetWidth() + tol < want and not neck_down(b, pcbnew, t, want):
+            bad[n] = f"track {pcbnew.ToMM(t.GetWidth()):.3f} mm under its class {pcbnew.ToMM(want):.3f}"
     print(json.dumps(bad))
     return 0
 
@@ -249,7 +264,10 @@ def cmd_planes(a):
                 continue
             if z.Outline().Area() >= 0.5 * board:
                 planes[name] = z.GetNetname()
-    print(json.dumps({"planes": planes, "copper": copper, "standard": standard}))
+    smd = [p for p in b.GetPads() if p.GetAttribute() == pcbnew.PAD_ATTRIB_SMD]
+    vip = sum(1 for v in b.GetTracks() if v.Type() == pcbnew.PCB_VIA_T
+              and any(p.HitTest(v.GetPosition(), v.GetWidth(v.TopLayer()) // 2) for p in smd))
+    print(json.dumps({"planes": planes, "copper": copper, "standard": standard, "via_in_pad": vip}))
     return 0
 
 
@@ -258,6 +276,13 @@ def cmd_textguard(a):
     over its outline. KiCadRoutingTools and Freerouting route over copper text, which KiCad's DRC then rejects
     as a short; the keep-outs live only in the routers' working copy (merge takes tracks and vias only)."""
     pcbnew, b = load(a[0])
+    # the nets no router may move (a json list, optional): their copper is locked in this copy
+    frozen = set(json.loads(open(a[2], encoding="utf-8").read())) if len(a) > 2 else set()
+    locked = 0
+    for t in b.GetTracks():
+        if t.GetNetname() in frozen and not t.IsLocked():
+            t.SetLocked(True)
+            locked += 1
     n = 0
     for d in list(b.GetDrawings()):
         if d.Type() not in (pcbnew.PCB_TEXT_T, pcbnew.PCB_TEXTBOX_T) or not pcbnew.IsCopperLayer(d.GetLayer()):
@@ -279,8 +304,16 @@ def cmd_textguard(a):
         b.Add(z)
         n += 1
     b.Save(a[1])
-    print(json.dumps({"guarded": n}))
+    print(json.dumps({"guarded": n, "locked": locked}))
     return 0
+
+
+def track_sig(t, pcbnew):
+    """A track or via's place and size, to 1 um: the same item on two boards has the same signature."""
+    via = t.Type() == pcbnew.PCB_VIA_T
+    s, e = t.GetStart(), t.GetEnd()
+    return (via, t.GetLayer(), round(s.x / 1000), round(s.y / 1000), round(e.x / 1000), round(e.y / 1000),
+            round((t.GetWidth(t.TopLayer()) if via else t.GetWidth()) / 1000))
 
 
 def cmd_moved(a):
@@ -294,11 +327,7 @@ def cmd_moved(a):
     def sig(b):
         out = {}
         for t in b.GetTracks():
-            via = t.Type() == pcbnew.PCB_VIA_T
-            s, e = t.GetStart(), t.GetEnd()
-            out.setdefault(t.GetNetname(), set()).add(
-                (via, t.GetLayer(), round(s.x / 1000), round(s.y / 1000), round(e.x / 1000), round(e.y / 1000),
-                 round((t.GetWidth(t.TopLayer()) if via else t.GetWidth()) / 1000)))
+            out.setdefault(t.GetNetname(), set()).add(track_sig(t, pcbnew))
         return out
     sb, sr = sig(base), sig(res)
     print(json.dumps(sorted(n for n in set(sb) | set(sr)

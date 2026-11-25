@@ -1,0 +1,72 @@
+{
+ "date": "2026-11-25",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15,
+ "cap_min": 120.0,
+ "boards": [
+  {
+   "name": "cm5_minima",
+   "default": {
+    "connections_before": 208,
+    "drc_unconnected_before": 208,
+    "drc_list_capped": false,
+    "errors_before": 4,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 1230.3,
+    "skipped": false,
+    "output_tail": "lass 90ohm)\nleft out /CM5/USB2P.D_P: fast net, route it by hand or pass --allow-fast (net class 90ohm)\nleft out /USB_C.D_N: fast net, route it by hand or pass --allow-fast (net class 90ohm)\nleft out /USB_C.D_P: fast net, route it by hand or pass --allow-fast (net class 90ohm)\nvariants (open connections after): krt-first 73, freerouting-first 73, planned-krt-first 73; kept krt-first\nkrt-first: krt: REJECTED in 137.5 s; routed 0 net(s); every net it routed caused a new DRC error\nkrt-first: freerouting: ACCEPTED in 907.3 s; routed 37 net(s)\nkrt-first: krt2: REJECTED in 129.3 s; routed 0 net(s); every net it routed caused a new DRC error\ndrc: 0 new error(s), 0 fixed, 4 unchanged; open connections 208 -> 73\ntime 1229.5 s\nLeftovers for Claude: 73 connection(s) on 57 net(s)\n  +3V3_PI: Track [+3V3_PI] at 125.1699,51.875 -> Track [+3V3_PI] at 124.4842,62.8851\n  +3V3_PI: Track [+3V3_PI] at 85.4134,71.8741 -> Track [+3V3_PI] at 93.28,58.79\n  +5V: J601.1 -> Track [+5V] at 87.9,49.85\n  +BATT: CN1.1 -> Module301.76\n  /CC1: J101.A5 -> Module301.94\n  /CM5/BL_GPIO24: J503.7 -> Module301.45\n  /CM5/CAM_GPIO0: J802.17 -> Module301.97\n  /CM5/CS_GPIO18: J503.5 -> Module301.49\n  /CM5/DC_GPI25: J503.3 -> Module301.41\n  /CM5/DPHY0_P.C_N: Module302.127 -> J802.8\n  /CM5/DPHY0_P.D0_N: Module302.115 -> J802.2\n  /CM5/DPHY0_P.D0_P: Module302.117 -> J802.3\n  ... 61 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 73,
+    "copper_items_after": 658,
+    "connections_after": 73,
+    "completion": 0.649,
+    "new_drc_errors": 0,
+    "errors_after": 4,
+    "nets_open_before": 94,
+    "chosen_nets": 54,
+    "connections_allowed": 126,
+    "connections_allowed_after": 31,
+    "completion_allowed": 0.754,
+    "left_out_by_reason": {
+     "fast net, route it by hand or pass --allow-fast": 40
+    },
+    "left_out_connections": 81,
+    "stages": {
+     "krt-first: krt": {
+      "seconds": 137.5,
+      "accepted": false,
+      "unconnected_after_stage": 95,
+      "new_errors_in_stage": "0",
+      "nets_routed": 0,
+      "why": "every net it routed caused a new DRC error"
+     },
+     "krt-first: freerouting": {
+      "seconds": 907.3,
+      "accepted": true,
+      "unconnected_after_stage": 73,
+      "new_errors_in_stage": "0",
+      "nets_routed": 37,
+      "why": ""
+     },
+     "krt-first: krt2": {
+      "seconds": 129.3,
+      "accepted": false,
+      "unconnected_after_stage": 48,
+      "new_errors_in_stage": "0",
+      "nets_routed": 0,
+      "why": "every net it routed caused a new DRC error"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 1223.2,
+    "engine_result": "routed 27 of 54 chosen net(s) (krt 0, freerouting 37); open connections 208 -> 73"
+   },
+   "removed": 2528,
+   "copper_layers": 6,
+   "footprints": 112,
+   "nets": 220,
+   "zones": 14
+  }
+ ]
+}

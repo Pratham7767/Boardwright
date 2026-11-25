@@ -1,0 +1,78 @@
+{
+ "date": "2026-11-25",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15,
+ "cap_min": 120.0,
+ "boards": [
+  {
+   "name": "cm5_minima",
+   "allow_fast": {
+    "connections_before": 208,
+    "drc_unconnected_before": 208,
+    "drc_list_capped": false,
+    "errors_before": 4,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 1645.4,
+    "skipped": false,
+    "output_tail": "P, /CM5/USB2P.D_P, /CM5/USB2P.D_N, /CM5/PCIE_PI.CLK_N\nplanned-krt-first: krt: ACCEPTED in 345.4 s; routed 56 net(s); kept 57 net(s); dropped 1 that caused DRC errors: /CM5/SCLK_GPIO21\nplanned-krt-first: freerouting: ACCEPTED in 910.4 s; routed 11 net(s); kept 81 net(s); dropped 5 that caused DRC errors: GND, /CM5/PCIE_PI.RX_P, /CM5/PCIE_PI.RX_N, /CM5/PCIE_PI.TX_P, /CM5/PCIE_PI.TX_N\nplanned-krt-first: krt2: ACCEPTED in 77.8 s; routed 1 net(s); kept 6 net(s); dropped 1 that caused DRC errors: /CM5/SCLK_GPIO21\ndrc: 0 new error(s), 0 fixed, 4 unchanged; open connections 208 -> 40\ntime 1644.5 s\nLeftovers for Claude: 40 connection(s) on 14 net(s)\n  /CM5/DPHY0_P.C_N: Module302.127 -> J802.8\n  /CM5/DPHY0_P.C_P: Module302.129 -> J802.9\n  /CM5/ETH_PI.TRD0_N: Module301.10 -> Track [/CM5/ETH_PI.TRD0_N] at 101.9,38.7\n  /CM5/ETH_PI.TRD0_P: Module301.12 -> Track [/CM5/ETH_PI.TRD0_P] at 101.9,39.2\n  /CM5/ETH_PI.TRD2_N: Track [/CM5/ETH_PI.TRD2_N] at 101.9225,34.623 -> Module301.9\n  /CM5/ETH_PI.TRD2_P: Module301.11 -> Track [/CM5/ETH_PI.TRD2_P] at 101.8,35.1\n  /CM5/PCIE_PI.CLK_N: Module302.112 -> J701.53\n  /CM5/PCIE_PI.CLK_P: Module302.110 -> J701.55\n  /CM5/SCLK_GPIO21: J503.8 -> Module301.25\n  /CM5/USB2P.D_N: USB701.A7 -> USB701.B7\n  /CM5/USB2P.D_N: USB701.B7 -> Via [/CM5/USB2P.D_N] at 86.775,59.5654\n  /CM5/USB2P.D_P: Module302.134 -> D701.1\n  ... 28 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 40,
+    "copper_items_after": 1913,
+    "connections_after": 40,
+    "completion": 0.8077,
+    "new_drc_errors": 0,
+    "errors_after": 4,
+    "nets_open_before": 94,
+    "chosen_nets": 94,
+    "connections_allowed": 207,
+    "connections_allowed_after": 16,
+    "completion_allowed": 0.9227,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "krt-pairs": {
+      "seconds": 121.1,
+      "accepted": true,
+      "unconnected_after_stage": 177,
+      "new_errors_in_stage": "0",
+      "nets_routed": 13,
+      "why": "kept 27 net(s); dropped 7 that caused DRC errors: /USB_C.D_P, /USB_C.D_N, /CM5/PCIE_PI.CLK_P, /CM5/USB2P.D_P, /CM5/USB2P.D_N, /CM5/PCIE_PI.CLK_N"
+     },
+     "planned-krt-first: krt": {
+      "seconds": 345.4,
+      "accepted": true,
+      "unconnected_after_stage": 66,
+      "new_errors_in_stage": "0",
+      "nets_routed": 56,
+      "why": "kept 57 net(s); dropped 1 that caused DRC errors: /CM5/SCLK_GPIO21"
+     },
+     "planned-krt-first: freerouting": {
+      "seconds": 910.4,
+      "accepted": true,
+      "unconnected_after_stage": 40,
+      "new_errors_in_stage": "0",
+      "nets_routed": 11,
+      "why": "kept 81 net(s); dropped 5 that caused DRC errors: GND, /CM5/PCIE_PI.RX_P, /CM5/PCIE_PI.RX_N, /CM5/PCIE_PI.TX_P, /CM5/PCIE_PI.TX_N"
+     },
+     "planned-krt-first: krt2": {
+      "seconds": 77.8,
+      "accepted": true,
+      "unconnected_after_stage": 40,
+      "new_errors_in_stage": "0",
+      "nets_routed": 1,
+      "why": "kept 6 net(s); dropped 1 that caused DRC errors: /CM5/SCLK_GPIO21"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 1637.0,
+    "engine_result": "routed 81 of 94 chosen net(s) (krt 70, freerouting 11); open connections 208 -> 40"
+   },
+   "removed": 2528,
+   "copper_layers": 6,
+   "footprints": 112,
+   "nets": 220,
+   "zones": 14
+  }
+ ]
+}

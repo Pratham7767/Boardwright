@@ -112,6 +112,36 @@ def main() -> int:
                   and not engine.krt_pattern(n).startswith("-"))
         check("A*B? does not match AxBy", not fnmatch.fnmatchcase("AxBy", engine.krt_pattern("A*B?")))
 
+        # high-speed pairs the engine leaves alone (unless --allow-fast), from the demo boards' real names
+        import bw_edit
+        for n in ("/CM5/DPHY0_P.C_N", "/CM5/HDMI_PI.D2_N", "/CM5/PCIE_PI.CLK_P", "/USB_C.D_P",
+                  "/CSI/CAM0.CSI2_D0+", "/USB Hub/USBSS_RX_P", "/USB_DP", "/USB_DM"):
+            check(f"{n} is a high-speed pair member", bool(bw_edit.FAST_NAME.search(n)))
+        for n in ("/graphic/CSIO-", "/DSI", "/Expansion connector/PCIe_{C2x1}.~{CLKREQ}", "/USB_VBUS", "GND",
+                  "/DDAT0", "+3.3V"):
+            check(f"{n} is not", not bw_edit.FAST_NAME.search(n))
+        for c in ("100ohm", "90ohm", "50ohm", "USB"):
+            check(f"net class {c} counts as fast", bool(bw_edit.FAST_CLASS.search(c)))
+        check("net class Power does not", not bw_edit.FAST_CLASS.search("Power"))
+        got = engine.pair_members(["/A_P", "/A_N", "/B+", "/B-", "/C_P", "/USB_DP", "/USB_DM", "/X"])
+        check("pairs need both members", got == ["/A_N", "/A_P", "/B+", "/B-", "/USB_DM", "/USB_DP"], got)
+        got = engine.pair_members(["/ETH.TRD2_N", "/X_P"], ["/ETH.TRD2_N", "/ETH.TRD2_P", "/X_P", "/Y"])
+        check("an open half whose partner is already routed is still a pair, with its partner",
+              got == ["/ETH.TRD2_N", "/ETH.TRD2_P"], got)
+        # which of the pair router's results may be merged (report shapes as KiCadRoutingTools 0.24.1 writes them)
+        rep = {"single_ended_fallback": {"routed": ["/S_P", "/S_N", "/F_P", "/F_N"]}, "pair_reports": [
+            {"p_net": "/C_P", "n_net": "/C_N", "outcome": "coupled", "incomplete_members": []},
+            {"p_net": "/S_P", "n_net": "/S_N", "outcome": "deferred", "failure_reason": "electrically-short",
+             "incomplete_members": []},
+            {"p_net": "/F_P", "n_net": "/F_N", "outcome": "deferred", "failure_reason": "coupled-route-failed",
+             "se_fallback": {"p": "routed", "n": "routed"}, "incomplete_members": []},
+            {"p_net": "/H_P", "n_net": "/H_N", "outcome": "partial", "incomplete_members": ["/H_P", "/H_N"]},
+            {"p_net": "/T_P", "n_net": "/T_N", "outcome": "deferred", "failure_reason": "electrically-short",
+             "incomplete_members": []}]}
+        got = engine.accepted_pairs(rep)
+        check("only coupled pairs are kept: not short legs as two tracks, failed coupling, partial, unrouted",
+              got == ["/C_P", "/C_N"], got)
+
         # blame by place: the nets with copper near a DRC error's position (needs KiCad's Python)
         import kicad_python
         kpy = kicad_python.find()

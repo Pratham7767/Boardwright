@@ -57,7 +57,12 @@ from bw_project import SetupError, load_config, nets_by_class, project_files  # 
 
 MM = 1e6
 MAX_OUT = 12000
-FAST_CLASS = re.compile(r"(?i)usb|hdmi|eth|pcie|lvds|mipi|ddr|serdes|sata|^hv|mains|^ac(_|$)|hazard")
+FAST_CLASS = re.compile(r"(?i)usb|hdmi|eth|pcie|lvds|mipi|ddr|serdes|sata|^hv|mains|^ac(_|$)|hazard"
+                        r"|\d+\s*ohm|imped")      # impedance-named classes too ("100ohm" on cm5)
+# a high-speed interface's pair member by its name alone (cm5's DPHY lanes sat in a "100ohm" class); the
+# interface word must stand alone (video's CSIO- is a chip select) and the name must end like a pair member
+FAST_NAME = re.compile(r"(?i)(?<![a-z])(hdmi|pcie|dphy|mipi|lvds|sata|serdes|usb\w*|csi\d*|dsi\d*)(?![a-z])"
+                       r"[^/]*?([_.]?(d[pm]|[pn])\d*|\+|-)$")
 
 
 def die(msg):
@@ -144,6 +149,8 @@ def protected_nets(proj: Path, rules: Rules, names: list) -> dict:
         c = rules.class_of(n)
         if FAST_CLASS.search(c):
             out.setdefault(n, f"net class {c}")
+        elif FAST_NAME.search(n):
+            out.setdefault(n, "a high-speed pair by its name")
     return out
 
 

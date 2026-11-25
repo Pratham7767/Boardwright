@@ -1,0 +1,70 @@
+{
+ "date": "2026-11-25",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15,
+ "cap_min": 120.0,
+ "boards": [
+  {
+   "name": "kit-dev-coldfire-xilinx_5213",
+   "default": {
+    "connections_before": 478,
+    "drc_unconnected_before": 478,
+    "drc_list_capped": false,
+    "errors_before": 0,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 3233.6,
+    "skipped": false,
+    "output_tail": "CANTX, /CLKIN{slash}EXTAL, /CLKMOD0, /CLKMOD1, /DDAT0, /DDAT1, /DDAT2, /DDAT3, /DSCLK, /DSI, /DSO, /DSPI_DOUT, /DTIN0, /DTIN1, /DTIN2, /DTIN3, /GPT0, /GPT1, /GPT2, /GPT3, /IRQ-1, /IRQ-2, /IRQ-3, /IRQ-4, /IRQ-5, /IRQ-6, /IRQ-7, /JTAG_EN ... and 169 more\nvariants (open connections after): krt-first 118, freerouting-first 54, planned-krt-first 180; kept freerouting-first\nfreerouting-first: krt-planes: ACCEPTED in 443.5 s; routed 0 net(s)\nfreerouting-first: freerouting: ACCEPTED in 910.7 s; routed 192 net(s); kept 206 net(s); dropped 3 that caused DRC errors: +3.3V, GND, GNDA\nfreerouting-first: krt2: ACCEPTED in 819.1 s; routed 4 net(s); kept 18 net(s); dropped 32 that caused DRC errors: +3.3V, GND, GNDA, /CLKMOD1, /IRQ-5, /QSPI_CLK\ndrc: 0 new error(s), 0 fixed, 0 unchanged; open connections 478 -> 54\ntime 3232.9 s\nLeftovers for Claude: 54 connection(s) on 13 net(s)\n  +3.3V: C311.1 -> U301.58\n  +3.3V: U102.34 -> Via [+3.3V] at 125.349,98.872\n  +3.3V: U102.41 -> Via [+3.3V] at 125.537,103.505\n  +3.3V: U102.57 -> U102.55\n  +3.3V: U102.81 -> Via [+3.3V] at 145.288,105.725\n  +3.3V: U301.123 -> U301.115\n  +3.3V: U301.123 -> U301.130\n  +3.3V: U301.130 -> Via [+3.3V] at 208.28,109.54\n  +3.3V: U301.76 -> U301.73\n  +3.3V: U301.95 -> C309.1\n  +3.3V: Via [+3.3V] at 132.903,112.268 -> U102.57\n  +3.3V: Via [+3.3V] at 135.443,91.44 -> U102.14\n  ... 42 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 54,
+    "copper_items_after": 2317,
+    "connections_after": 54,
+    "completion": 0.887,
+    "new_drc_errors": 0,
+    "errors_after": 0,
+    "nets_open_before": 209,
+    "chosen_nets": 209,
+    "connections_allowed": 472,
+    "connections_allowed_after": 54,
+    "completion_allowed": 0.8856,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "freerouting-first: krt-planes": {
+      "seconds": 443.5,
+      "accepted": true,
+      "unconnected_after_stage": 348,
+      "new_errors_in_stage": "0",
+      "nets_routed": 0,
+      "why": ""
+     },
+     "freerouting-first: freerouting": {
+      "seconds": 910.7,
+      "accepted": true,
+      "unconnected_after_stage": 58,
+      "new_errors_in_stage": "0",
+      "nets_routed": 192,
+      "why": "kept 206 net(s); dropped 3 that caused DRC errors: +3.3V, GND, GNDA"
+     },
+     "freerouting-first: krt2": {
+      "seconds": 819.1,
+      "accepted": true,
+      "unconnected_after_stage": 54,
+      "new_errors_in_stage": "0",
+      "nets_routed": 4,
+      "why": "kept 18 net(s); dropped 32 that caused DRC errors: +3.3V, GND, GNDA, /CLKMOD1, /IRQ-5, /QSPI_CLK"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 3228.8,
+    "engine_result": "routed 196 of 209 chosen net(s) (krt 4, freerouting 192); open connections 478 -> 54"
+   },
+   "removed": 3187,
+   "copper_layers": 4,
+   "footprints": 160,
+   "nets": 278,
+   "zones": 3
+  }
+ ]
+}

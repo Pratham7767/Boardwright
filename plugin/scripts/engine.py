@@ -38,7 +38,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from bw_project import SetupError, board_nets, md_table, project_files, write_report  # noqa: E402
+from bw_project import SetupError, board_nets, load_config, md_table, project_files, write_report  # noqa: E402
 
 NOT_INSTALLED = ("the engine tools are not installed: run scripts/setup_engine.ps1 (Windows) or scripts/setup_engine.sh (Linux, macOS) from the plugin, the installer, or Install engine in the chat's Setup")
 COPY_IGNORE = shutil.ignore_patterns("fab", ".boardwright", ".git", "reports", "*.lck", "*-backups", "__pycache__",
@@ -191,7 +191,7 @@ def open_counts(kpy: str, pcb: Path) -> dict:
 
 # ------------------------------------------------------------------ choosing nets
 def choose(proj: Path, files: dict, open_map: dict, patterns: list, allow_fast: bool) -> tuple:
-    """(chosen, left_out {net: why}). open_map: {net: open connections}."""
+    """(chosen, left_out {net: why}, fast: the chosen nets that are fast). open_map: {net: open connections}."""
     import bw_edit
     import routing_plan
     left: dict = {}
@@ -228,7 +228,7 @@ def choose(proj: Path, files: dict, open_map: dict, patterns: list, allow_fast: 
             left[n] = plan_block[n]
             continue
         chosen.append(n)
-    return chosen, left
+    return chosen, left, [n for n in chosen if n in prot]
 
 
 # ------------------------------------------------------------------ stages
@@ -246,9 +246,18 @@ def krt_pattern(net: str) -> str:
     return "[-]" + out[1:] if out.startswith("-") else out
 
 
+# set by cmd_run: the nets no router may move (pairs, and the fast and hazardous nets it left out)
+FROZEN: dict = {"nets": []}
+
+
 def guard_text(kpy: str, pcb: Path, out: Path) -> Path:
-    """out = pcb with keep-outs over its copper-layer text (see engine_kicad textguard); pcb itself if that fails."""
-    rc, _o, _t, _s = sh([kpy, "-I", HERE / "engine_kicad.py", "textguard", pcb, out], timeout=300)
+    """out = pcb with keep-outs over its copper-layer text and the FROZEN nets' copper locked (see engine_kicad
+    textguard); pcb itself if that fails. Only the routers' working copies get this."""
+    extra = []
+    if FROZEN["nets"]:
+        extra = [out.with_suffix(".frozen.json")]
+        extra[0].write_text(json.dumps(sorted(FROZEN["nets"])), "utf-8")
+    rc, _o, _t, _s = sh([kpy, "-I", HERE / "engine_kicad.py", "textguard", pcb, out, *extra], timeout=300)
     return out if rc == 0 and out.is_file() else pcb
 
 
@@ -326,7 +335,7 @@ def krt_stage(tools: dict, kpy: str, base: Path, work: Path, nets: list, minutes
     router = Path(tools["krt"]) / "py_router"
     cmd = [tools["krt_python"], router / "route.py", src, "--output", raw, "--nets", *[krt_pattern(n) for n in nets],
            "--escalation", "off", "--strict-sizes", "--no-fix-drc-settings", "--fab-tier", "standard",
-           "--json-out", summary]
+           "--json-out", summary, *no_via_in_pad(kpy, base)]
     if layout and layout.get("planes") and layout.get("copper"):
         # plane layers forbidden for tracks (vias may still pass through), the others at their usual cost
         names = layout.get("standard") or layout["copper"]
@@ -385,6 +394,7 @@ def planes_stage(tools: dict, kpy: str, base: Path, work: Path, nets: list, minu
                       ("--min-track-width", "width_um"), ("--track-width", "width_um")):
         if r.get(key):
             cmd += [flag, f"{r[key] / 1000:.4f}"]
+    cmd += no_via_in_pad(kpy, base)
     cmd += os.environ.get("BOARDWRIGHT_PLANES_ARGS", "").split()          # extra settings, for experiments
     rc, out, killed, secs = run_until(cmd, minutes, str(router))
     res = {"engine": "krt-planes", "seconds": round(secs, 1), "raw": None}
@@ -396,6 +406,83 @@ def planes_stage(tools: dict, kpy: str, base: Path, work: Path, nets: list, minu
     else:
         res["raw"] = raw
     return res
+
+
+PAIR_ENDS = (("_P", "_N"), ("_DP", "_DM"), ("DP", "DM"), ("P", "N"), ("+", "-"))
+
+
+def pair_members(nets: list, board: list | None = None) -> list:
+    """The nets of `nets` whose partner (same name, the other end of P/N, DP/DM or +/-) is in `nets`, or on the
+    board (`board`: all its nets), with those partners: a pair is routed whole even if one half was done."""
+    have, out = set(board if board is not None else nets), set()
+    for n in nets:
+        for a, b in PAIR_ENDS:
+            for x, y in ((a, b), (b, a)):
+                if n.endswith(x) and n[:-len(x)] + y in have:
+                    out.update((n, n[:-len(x)] + y))
+    return sorted(out)
+
+
+def accepted_pairs(report: dict) -> list:
+    """[p, n, p, n ...] of the pair router's report that may be merged: pairs routed coupled the whole way with
+    both members complete. Not a pair it routed as two single tracks, even one it calls electrically short: that
+    length floor grows with the class's pair spacing and was 100 mm on jetson, where PCIe pairs must couple."""
+    return [n for pr in report.get("pair_reports", [])
+            if pr.get("outcome") == "coupled" and not pr.get("incomplete_members")
+            for n in (pr["p_net"], pr["n_net"])]
+
+
+def pairs_stage(tools: dict, kpy: str, base: Path, work: Path, nets: list, minutes: float, proj: Path,
+                layout: dict | None = None) -> dict:
+    """Differential pairs routed together by KiCadRoutingTools' pair router, strict like the others. Only the
+    pairs it reports as coupled with both members complete are offered for the merge ("coupled"); a pair it
+    routed partly, or as two single tracks, is left open (half a pair routed alone is worse than none)."""
+    src, raw, d = stage_dir(proj, work, base, "pairs", kpy)
+    summary = d / "summary.json"
+    router = Path(tools["krt"]) / "py_router"
+    cmd = [tools["krt_python"], router / "route_diff.py", src, "--output", raw,
+           "--nets", *[krt_pattern(n) for n in nets], "--escalation", "off", "--strict-sizes",
+           "--no-fix-drc-settings", "--fab-tier", "standard", "--json-out", summary, *no_via_in_pad(kpy, base)]
+    r = board_rules(kpy, base)
+    for flag, key in (("--board-edge-clearance", "edge_um"), ("--hole-to-hole-clearance", "hole_to_hole_um")):
+        if r.get(key):
+            cmd += [flag, f"{r[key] / 1000:.4f}"]
+    if layout and layout.get("planes") and layout.get("copper"):
+        cmd += ["--layers", *(layout.get("standard") or layout["copper"]),
+                "--layer-costs", *["-1" if l in layout["planes"] else "1.0" for l in layout["copper"]]]
+    cmd += os.environ.get("BOARDWRIGHT_PAIRS_ARGS", "").split()           # extra settings, for experiments
+    # the pair router does not read the stop file: at the limit it is killed and nothing is kept
+    rc, out, killed, secs = run_until(cmd, minutes, str(router))
+    res = {"engine": "krt-pairs", "seconds": round(secs, 1), "raw": None, "coupled": []}
+    try:
+        report = json.loads(summary.read_text("utf-8"))
+    except (OSError, ValueError):
+        report = {}
+    res["coupled"] = accepted_pairs(report)
+    if killed:
+        res["error"] = f"timed out after {minutes:g} minutes"
+    elif not raw.is_file():
+        res["error"] = f"the pair router wrote no board (exit {rc}): " + " | ".join(
+            l for l in out.splitlines() if l.strip())[-200:]
+    elif not res["coupled"]:
+        res["error"] = "no pair was routed coupled"
+    else:
+        res["raw"] = raw
+    return res
+
+
+# set by cmd_run: may new vias sit in SMD pads (see no_via_in_pad)
+VIA_IN_PAD = {"ok": False}
+
+
+def no_via_in_pad(kpy: str, pcb: Path) -> list:
+    """KiCadRoutingTools allows a via in a same-net pad by default (98 on kit-dev, mostly plane taps on capacitor
+    pads); that needs filled, capped vias at the fab or solder wicks into them. Unless the design uses them
+    (VIA_IN_PAD), keep vias the board's clearance off same-net SMD pads and their paste openings."""
+    if VIA_IN_PAD["ok"]:
+        return []
+    r = board_rules(kpy, pcb)
+    return ["--same-net-pad-clearance", f"{(r.get('clearance_um') or 150) / 1000:.4f}"]
 
 
 def board_rules(kpy: str, pcb: Path) -> dict:
@@ -489,14 +576,17 @@ def board_planes(kpy: str, pcb: Path) -> dict:
     return _kicad_json(kpy, "planes", pcb) or {"planes": {}, "copper": []}
 
 
-def audit(kpy: str, pcb: Path, nets: list, planes: dict) -> dict:
+def audit(kpy: str, pcb: Path, nets: list, planes: dict, pairs: list | None = None,
+          base: Path | None = None) -> dict:
     """{net: problem}: tracks below the net class's width, vias below its via size or drill, tracks on another
     net's plane. KiCad's DRC checks none of these (only the board's minimums)."""
     fd, name = tempfile.mkstemp(prefix="bwaudit", suffix=".json")
     os.close(fd)
     req = Path(name)
     try:
-        req.write_text(json.dumps({"nets": nets, "planes": planes}), "utf-8")
+        req.write_text(json.dumps({"nets": nets, "planes": planes, "pairs": pairs or [],
+                                   "base": str(base) if base else "", "via_in_pad_ok": VIA_IN_PAD["ok"]}),
+                       "utf-8")
         return _kicad_json(kpy, "audit", pcb, req) or {}
     finally:
         try:
@@ -561,7 +651,8 @@ def trim(kpy: str, raw: Path, out: Path, nets: list) -> dict:
             pass
 
 
-def evaluate(proj, kpy, work, name, st, base_open, orig_drc, nets, base_pcb, planes: dict | None = None) -> dict:
+def evaluate(proj, kpy, work, name, st, base_open, orig_drc, nets, base_pcb, planes: dict | None = None,
+             frozen: set | None = None) -> dict:
     """Merge a stage's copper (listed nets only) into the base and check it with KiCad's DRC. A net whose
     new copper causes a new DRC error is dropped (it stays open for the next stage or for Claude) and the
     rest is checked again, so one bad net no longer throws away a whole stage. Fills st."""
@@ -572,7 +663,18 @@ def evaluate(proj, kpy, work, name, st, base_open, orig_drc, nets, base_pcb, pla
     import bw_edit
     # nets the router moved out of the way are merged and checked with the routed ones: merging only the routed
     # nets put kit-dev's plane-repair vias on the old positions of the tracks it had moved
-    st["moved"] = moved_nets(kpy, base_pcb, st["raw"], nets)
+    # never the nets the engine must not route (pairs, fast and hazardous nets): Freerouting rerouted cm5's
+    # coupled pairs as single tracks; a stage whose copper clashes with them loses its own nets instead
+    st["moved"] = [n for n in moved_nets(kpy, base_pcb, st["raw"], nets) if n not in (frozen or set())]
+    # a pair is kept whole or not at all: the other half routed alone is a single track where a pair belongs
+    c = st.get("coupled") or []
+    mate = {**{c[i]: c[i + 1] for i in range(0, len(c) - 1, 2)}, **{c[i + 1]: c[i] for i in range(0, len(c) - 1, 2)}}
+
+    def without(keep, gone):
+        for n in keep:
+            if n not in gone and mate.get(n) in gone:
+                dropped.setdefault(n, f"its partner {mate[n]} was dropped")
+        return [n for n in keep if n not in gone and mate.get(n) not in gone]
     keep = list(nets) + st["moved"]
     dropped: dict = {}
     merged, d, lines, new = None, None, [], []
@@ -593,7 +695,7 @@ def evaluate(proj, kpy, work, name, st, base_open, orig_drc, nets, base_pcb, pla
         new = [d["errors"][k] for k in d["errors"] if k not in orig_drc["errors"]]
         if not new:
             # copper KiCad's DRC does not judge: below the net class's sizes, or on another net's plane
-            sized = audit(kpy, merged, keep, planes or {})
+            sized = audit(kpy, merged, keep, planes or {}, st.get("coupled"), base_pcb)
             if sized:
                 # an undersized single-segment tap is cut from the router's result (its pad stays open) and the
                 # rest of the net is kept; anything else undersized, or on another net's plane, drops the net
@@ -607,7 +709,7 @@ def evaluate(proj, kpy, work, name, st, base_open, orig_drc, nets, base_pcb, pla
                     if not sized:
                         continue
                 dropped.update(sized)
-                keep = [n for n in keep if n not in sized]
+                keep = without(keep, sized)
                 if not keep:
                     break
                 continue
@@ -619,7 +721,7 @@ def evaluate(proj, kpy, work, name, st, base_open, orig_drc, nets, base_pcb, pla
             if not worse:
                 break
             dropped.update(worse)
-            keep = [n for n in keep if n not in worse]
+            keep = without(keep, worse)
             if not keep:
                 break
             continue
@@ -641,7 +743,7 @@ def evaluate(proj, kpy, work, name, st, base_open, orig_drc, nets, base_pcb, pla
         if not bad:
             break                               # an error no net can be blamed for: reject the stage
         dropped.update(bad)
-        keep = [n for n in keep if n not in bad]
+        keep = without(keep, bad)
         if not keep:
             break
     if not any(n in nets for n in keep):
@@ -817,7 +919,7 @@ def cmd_run(proj: Path, args: list) -> int:
         if orig is None:
             raise Setup("KiCad's DRC could not be run (kicad-cli not found or failed)")
         op0 = open_counts(kpy, base_pcb)
-        chosen, left = choose(proj, files, op0["open"], patterns, allow_fast)   # 3
+        chosen, left, fast = choose(proj, files, op0["open"], patterns, allow_fast)   # 3
         zone_nets = set(op0.get("zone_nets", []))
         if not dry:                                                   # 4
             other = history.lock_take(proj, who, "engine run")
@@ -828,15 +930,20 @@ def cmd_run(proj: Path, args: list) -> int:
         board_limits = board_rules(kpy, base_pcb)
         layout = board_planes(kpy, base_pcb)          # the designer's planes: no router may cut them up
         planes = layout["planes"]
+        # vias in pads: the project's choice (boardwright.json "engine": {"via_in_pad": true/false}), else what
+        # the board already does (a designer who put vias in pads ordered filled vias; one who did not, did not)
+        vip = (load_config(proj).get("engine") or {}).get("via_in_pad")
+        VIA_IN_PAD["ok"] = bool(layout.get("via_in_pad")) if vip is None else bool(vip)
 
         def route_variant(steps: list, vwork: Path, venv: dict | None = None) -> dict:
             """One routing sequence on its own copies, in its own folder. Every stage is checked by KiCad's DRC
             against the project as it was (evaluate), so every variant's result is DRC-clean."""
             vwork.mkdir(parents=True, exist_ok=True)
-            v = {"pcb": base_pcb, "open": dict(op0["open"]), "drc": orig, "board": None, "stages": []}
+            v = {"pcb": start["pcb"], "open": dict(start["open"]), "drc": start["drc"], "board": start["board"],
+                 "stages": []}
 
             def run_stage(st, name, nets):
-                evaluate(proj, kpy, vwork, name, st, v["open"], orig, nets, v["pcb"], planes)
+                evaluate(proj, kpy, vwork, name, st, v["open"], orig, nets, v["pcb"], planes, frozen)
                 v["stages"].append(st)
                 if st.get("accepted") and st.get("board"):
                     v["pcb"], v["drc"] = st["board"], st["drc"]
@@ -899,7 +1006,7 @@ def cmd_run(proj: Path, args: list) -> int:
                             stg = f"{tag}-s{seed}" if seed > 1 else tag
                             st = freerouting_stage(tools, kpy, base, vwork / stg, minutes, board_limits, seed,
                                                    planes)
-                            return evaluate(proj, kpy, vwork, stg, st, opn, orig, todo, base, planes)
+                            return evaluate(proj, kpy, vwork, stg, st, opn, orig, todo, base, planes, frozen)
                         with _TP(max_workers=n) as px:
                             tries = list(px.map(one, range(1, n + 1)))
                         ok = [t for t in tries if t.get("accepted") and t.get("board")]
@@ -934,6 +1041,29 @@ def cmd_run(proj: Path, args: list) -> int:
             sequences = {"freerouting": (["planes", "fr"], None)} if "freerouting" in engines else {}
         elif "freerouting" not in engines:
             sequences = {"krt": (["krt", "planes", "krt2"], None), "planned-krt": (["krt", "planes", "krt2"], planned)}
+        # Differential pairs first, once (with --allow-fast only: their members are fast nets), routed together by
+        # the pair router and never handed to the single-track routers, which would route each half alone.
+        start = {"pcb": base_pcb, "open": dict(op0["open"]), "drc": orig, "board": None}
+        pre: list = []
+        pair_nets = pair_members(fast, board_nets(files["pcb"]))
+        frozen = set(left) | set(pair_nets)          # no stage after this may move their copper
+        frozen |= {n for n in board_nets(files["pcb"]) if n and n not in op0["open"]}   # finished before the run
+        FROZEN["nets"] = []
+        chosen_all = chosen
+        if pair_nets:
+            chosen = [n for n in chosen if n not in pair_nets]
+            if "krt" in engines and sum(op0["open"].values()) <= KRT_MAX_OPEN:
+                st = pairs_stage(tools, kpy, base_pcb, work / "pairs", pair_nets, minutes, proj, layout)
+                evaluate(proj, kpy, work / "pairs", "krt-pairs", st, op0["open"], orig, st["coupled"], base_pcb,
+                         planes)
+                pre.append(st)
+                if st.get("accepted") and st.get("board"):
+                    start = {"pcb": st["board"], "open": dict(st["open"]["open"]), "drc": st["drc"],
+                             "board": st["board"]}
+            else:
+                pre.append({"engine": "krt-pairs", "seconds": 0.0, "accepted": False, "routed_nets": [],
+                            "why": "not run on a board this big (the pair router's setup is too slow there)"})
+        FROZEN["nets"] = sorted(frozen)                # locked in the routers' copies from here on
         from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=len(sequences) or 1) as ex:
             futs = {name: ex.submit(route_variant, steps, work / f"variant_{name}", venv)
@@ -941,11 +1071,13 @@ def cmd_run(proj: Path, args: list) -> int:
             variants = {name: f.result() for name, f in futs.items()}
         best_name = min(variants, key=lambda n: (sum(variants[n]["open"].values()), list(variants).index(n))) \
             if variants else None
-        best = variants.get(best_name) or {"pcb": base_pcb, "open": dict(op0["open"]), "drc": orig, "board": None,
-                                           "stages": []}
+        best = variants.get(best_name) or dict(start, stages=[])
+        chosen = chosen_all
         cur_open, cur_drc, result_board = best["open"], best["drc"], best["board"]
-        stages = [dict(s, engine=f"{s['engine']}" if len(variants) == 1 else f"{best_name}: {s['engine']}")
-                  for s in best["stages"]]
+        for s in pre:
+            s.pop("raw", None)
+        stages = pre + [dict(s, engine=f"{s['engine']}" if len(variants) == 1 else f"{best_name}: {s['engine']}")
+                        for s in best["stages"]]
         variant_summary = {n: sum(v["open"].values()) for n, v in variants.items()}
         final_drc = cur_drc
 

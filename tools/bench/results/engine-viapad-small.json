@@ -1,0 +1,116 @@
+{
+ "date": "2026-11-25",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15,
+ "cap_min": 120.0,
+ "boards": [
+  {
+   "name": "pic_programmer",
+   "default": {
+    "connections_before": 86,
+    "drc_unconnected_before": 86,
+    "drc_list_capped": false,
+    "errors_before": 0,
+    "copper_items_before": 0,
+    "exit": 0,
+    "wall_s": 74.8,
+    "skipped": false,
+    "output_tail": "engine run: routed 33 of 33 chosen net(s) (krt 33, freerouting 0); open connections 86 -> 0\nchosen 33: /CLOCK-RB6, /DATA-RB7, /PC-CLOCK-OUT, /PC-DATA-IN, /PC-DATA-OUT, /VPP_ON, /VPP{slash}MCLR, /pic_sockets/VCC_PIC, Net-(C5-Pad1), Net-(D1-A), Net-(D1-K), Net-(D10-A), Net-(D11-A), Net-(D11-K), Net-(D12-A), Net-(D2-A), Net-(D4-A), Net-(D6-A), Net-(D8-A), Net-(D9-A), Net-(Q1-B), Net-(Q2-B), Net-(Q2-C), Net-(Q3-B), Net-(R12-Pad1), Net-(R13-Pad1), Net-(R15-Pad1), Net-(R16-Pad1), Net-(R8-Pad1), Net-(U4-FB+), Net-(U4-Vc), VCC, VPP\nvariants (open connections after): krt-first 0, freerouting-first 5, planned-krt-first 0; kept krt-first\nkrt-first: krt: ACCEPTED in 41.4 s; routed 33 net(s)\ndrc: 0 new error(s), 0 fixed, 0 unchanged; open connections 86 -> 0\ntime 74.3 s\nLeftovers for Claude: 0 connection(s) on 0 net(s)\n",
+    "drc_unconnected_after": 0,
+    "copper_items_after": 353,
+    "connections_after": 0,
+    "completion": 1.0,
+    "new_drc_errors": 0,
+    "errors_after": 0,
+    "nets_open_before": 33,
+    "chosen_nets": 33,
+    "connections_allowed": 82,
+    "connections_allowed_after": 0,
+    "completion_allowed": 1.0,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "krt-first: krt": {
+      "seconds": 41.4,
+      "accepted": true,
+      "unconnected_after_stage": 0,
+      "new_errors_in_stage": "0",
+      "nets_routed": 33,
+      "why": ""
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 70.8,
+    "engine_result": "routed 33 of 33 chosen net(s) (krt 33, freerouting 0); open connections 86 -> 0"
+   },
+   "removed": 376,
+   "copper_layers": 2,
+   "footprints": 63,
+   "nets": 111,
+   "zones": 1
+  },
+  {
+   "name": "stickhub",
+   "default": {
+    "connections_before": 128,
+    "drc_unconnected_before": 128,
+    "drc_list_capped": false,
+    "errors_before": 0,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 707.8,
+    "skipped": false,
+    "output_tail": "sen net(s) (krt 38, freerouting 0); open connections 128 -> 9\nchosen 45: +1V8, +3.3V, +5V, /D+, /D-, /LC, /LED1, /LED2, /LED3, /LED4, /LED5, /LED6, /LED7, /U1D+, /U1D-, /U2D+, /U2D-, /U3D+, /U3D-, /U4D+, /U4D-, /U5D+, /U5D-, /U6D+, /U6D-, /U7D+, /U7D-, /XI, /XO, GND, Net-(D15-1), Net-(D16-1), Net-(D17-1), Net-(D18-1), Net-(D19-1), Net-(D20-1), Net-(D21-1), Net-(J1-Pin_1), Net-(U1-EXT_RST#), Net-(U1-REXT) ... and 5 more\nvariants (open connections after): krt-first 9, freerouting-first 48, planned-krt-first 9; kept krt-first\nkrt-first: krt: ACCEPTED in 293.5 s; routed 37 net(s)\nkrt-first: freerouting: ACCEPTED in 179.5 s; routed 0 net(s)\nkrt-first: krt2: ACCEPTED in 176.7 s; routed 1 net(s); kept 22 net(s); dropped 6 that caused DRC errors: /U1D+, /U4D-, Net-(D18-1), GND, /U4D+, Net-(D17-1)\ndrc: 0 new error(s), 0 fixed, 0 unchanged; open connections 128 -> 9\ntime 707.0 s\nLeftovers for Claude: 9 connection(s) on 7 net(s)\n  +3.3V: Track [+3.3V] at 146.775,102.225 -> C7.1\n  /U2D+: U1.17 -> Track [/U2D+] at 151.8,97.2\n  /U3D+: U1.14 -> Track [/U3D+] at 151.8,90.2\n  /U4D+: U1.12 -> Track [/U4D+] at 151.0,83.5\n  /U7D+: U1.38 -> Track [/U7D+] at 148.3,91.3\n  GND: Zone [GND] at 159.5,108.5 -> Zone [GND] at 159.5,120.5\n  GND: Zone [GND] at 159.5,108.5 -> Zone [GND] at 159.5,120.5\n  GND: Zone [GND] at 159.5,108.5 -> Zone [GND] at 159.5,120.5\n  Net-(D15-1): R7.1 -> D15.GA\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 9,
+    "copper_items_after": 999,
+    "connections_after": 9,
+    "completion": 0.9297,
+    "new_drc_errors": 0,
+    "errors_after": 0,
+    "nets_open_before": 45,
+    "chosen_nets": 45,
+    "connections_allowed": 128,
+    "connections_allowed_after": 9,
+    "completion_allowed": 0.9297,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "krt-first: krt": {
+      "seconds": 293.5,
+      "accepted": true,
+      "unconnected_after_stage": 11,
+      "new_errors_in_stage": "0",
+      "nets_routed": 37,
+      "why": ""
+     },
+     "krt-first: freerouting": {
+      "seconds": 179.5,
+      "accepted": true,
+      "unconnected_after_stage": 9,
+      "new_errors_in_stage": "0",
+      "nets_routed": 0,
+      "why": ""
+     },
+     "krt-first: krt2": {
+      "seconds": 176.7,
+      "accepted": true,
+      "unconnected_after_stage": 9,
+      "new_errors_in_stage": "0",
+      "nets_routed": 1,
+      "why": "kept 22 net(s); dropped 6 that caused DRC errors: /U1D+, /U4D-, Net-(D18-1), GND, /U4D+, Net-(D17-1)"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 702.5,
+    "engine_result": "routed 38 of 45 chosen net(s) (krt 38, freerouting 0); open connections 128 -> 9"
+   },
+   "removed": 1380,
+   "copper_layers": 2,
+   "footprints": 94,
+   "nets": 47,
+   "zones": 5
+  }
+ ]
+}
