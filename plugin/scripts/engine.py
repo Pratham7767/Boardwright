@@ -333,6 +333,7 @@ def krt_stage(tools: dict, kpy: str, base: Path, work: Path, nets: list, minutes
         cmd += ["--layers", *names,
                 "--layer-costs", *["-1" if l in layout["planes"] else "1.0" for l in layout["copper"]]]
     # one run over all the nets, stopped by its own stop file at the time limit: it then keeps what it routed
+    cmd += os.environ.get(f"BOARDWRIGHT_{tag.upper()}_ARGS", "").split()    # extra settings, for experiments
     rc, out, killed, secs = run_until(cmd, minutes, str(router), stop_file=stop, grace=grace, env=env)
     res = {"engine": tag, "seconds": round(secs, 1), "raw": None, "routed": [], "failed": [],
            "stopped_at_limit": stop.exists()}
@@ -384,6 +385,7 @@ def planes_stage(tools: dict, kpy: str, base: Path, work: Path, nets: list, minu
                       ("--min-track-width", "width_um"), ("--track-width", "width_um")):
         if r.get(key):
             cmd += [flag, f"{r[key] / 1000:.4f}"]
+    cmd += os.environ.get("BOARDWRIGHT_PLANES_ARGS", "").split()          # extra settings, for experiments
     rc, out, killed, secs = run_until(cmd, minutes, str(router))
     res = {"engine": "krt-planes", "seconds": round(secs, 1), "raw": None}
     if killed:

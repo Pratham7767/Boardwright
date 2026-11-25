@@ -32,6 +32,8 @@ Open connections after (default runs, 15 minutes per stage; 0 new DRC errors on 
 
 The 0.7.0 numbers on multilayer boards were partly bought by cutting planes, so they are not a fair target. video and jetson are within their run-to-run spread of 0.7.0 (video depends on free memory). KiCadRoutingTools 0.24.2 gave the same result as 0.24.1 on kit-dev (183 open both), so it is not adopted. Results: `tools/bench/results/engine-planes-fixed.json`, `engine-planes-fixed-small.json`.
 
+Tried afterwards on the leftovers, none better (one or two runs each, KiCadRoutingTools only): no rip-up in the leftovers pass (kit-dev 118 open against 46-62), the plane repair ripping blocker nets (timed out), accepting a moved net left slightly more open when the stage gains three times as much (never triggered), a 0.05 mm grid for the leftovers pass (royalblue 77 and 82 against 82 and 79). The neck-down rule at pads: kit-dev 48 against 46, within the spread.
+
 ## Round 5: Freerouting rounds on big boards (0.7.0)
 
 On boards with more than 1000 open connections Freerouting stops at its time limit long before it is done. It now runs again from the board as kept, up to 4 rounds, while a round still closes at least 1 % of what is open. Each round is checked by KiCad's DRC like any stage.
