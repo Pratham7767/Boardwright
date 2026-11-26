@@ -1,0 +1,54 @@
+{
+ "date": "2026-11-26",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 120.0,
+ "boards": [
+  {
+   "name": "pic_programmer",
+   "default": {
+    "connections_before": 86,
+    "drc_unconnected_before": 86,
+    "drc_list_capped": false,
+    "errors_before": 0,
+    "copper_items_before": 0,
+    "exit": 0,
+    "wall_s": 264.0,
+    "skipped": false,
+    "output_tail": "engine run: routed 33 of 33 chosen net(s) (krt 33, freerouting 0); open connections 86 -> 0\nchosen 33: /CLOCK-RB6, /DATA-RB7, /PC-CLOCK-OUT, /PC-DATA-IN, /PC-DATA-OUT, /VPP_ON, /VPP{slash}MCLR, /pic_sockets/VCC_PIC, Net-(C5-Pad1), Net-(D1-A), Net-(D1-K), Net-(D10-A), Net-(D11-A), Net-(D11-K), Net-(D12-A), Net-(D2-A), Net-(D4-A), Net-(D6-A), Net-(D8-A), Net-(D9-A), Net-(Q1-B), Net-(Q2-B), Net-(Q2-C), Net-(Q3-B), Net-(R12-Pad1), Net-(R13-Pad1), Net-(R15-Pad1), Net-(R16-Pad1), Net-(R8-Pad1), Net-(U4-FB+), Net-(U4-Vc), VCC, VPP\nvariants (open connections after): krt-first 0, freerouting-first 3, planned-krt-first 3; kept krt-first\nkrt-first: krt: ACCEPTED in 142.0 s; routed 33 net(s)\ndrc: 0 new error(s), 0 fixed, 0 unchanged; open connections 86 -> 0\ntime 263.6 s\nLeftovers for Claude: 0 connection(s) on 0 net(s)\n",
+    "drc_unconnected_after": 0,
+    "copper_items_after": 353,
+    "connections_after": 0,
+    "completion": 1.0,
+    "new_drc_errors": 0,
+    "errors_after": 0,
+    "nets_open_before": 33,
+    "chosen_nets": 33,
+    "connections_allowed": 82,
+    "connections_allowed_after": 0,
+    "completion_allowed": 1.0,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "krt-first: krt": {
+      "seconds": 142.0,
+      "accepted": true,
+      "unconnected_after_stage": 0,
+      "new_errors_in_stage": "0",
+      "nets_routed": 33,
+      "why": ""
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 256.9,
+    "engine_result": "routed 33 of 33 chosen net(s) (krt 33, freerouting 0); open connections 86 -> 0"
+   },
+   "removed": 376,
+   "copper_layers": 2,
+   "footprints": 63,
+   "nets": 111,
+   "zones": 1
+  }
+ ]
+}

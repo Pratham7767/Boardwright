@@ -8,6 +8,24 @@ Each demo folder is copied to a work directory (the KiCad install is never touch
 
 Completion is `1 - connections after / connections before`, over all connections. "Allowed" completion counts only the connections on nets the engine was permitted to route (it skips hazardous nets, and fast nets unless `--allow-fast`). "New errors" is the number of DRC errors not present on the stripped board.
 
+## Round 10: Freerouting without its fan-out pass (0.7.0)
+
+On jetson Freerouting ran twice for about 17 minutes and completed no net. Its log showed why: before routing, a fan-out pass spent 200 s to fan out 4 of 4683 SMD pins (3990 needing it), and one full routing pass takes about 9 minutes there. The 1488 "pre-existing clearance violations" it reports are the pair router's locked vias inside a pair, closer than Freerouting's single 0.1 mm clearance; the project's rules allow them and KiCad's DRC passes them. Freerouting now runs with `--router.fanout.enabled=false`.
+
+Each pair below ran at the same time under the same load (open connections after; 0 new DRC errors in every run):
+
+| Board | Fan-out on | Fan-out off |
+|---|---|---|
+| video | 217 | 164 |
+| video, again (four runs at once) | 494 | 324 |
+| kit-dev-coldfire-xilinx_5213 | 45 | 42 |
+| stickhub | 4 | 4 |
+| royalblue54L_feather | 67 | 90 (KiCadRoutingTools' time-limited run differed; Freerouting finished 1 and 0 nets) |
+| pic_programmer | (run failed: kicad-cli under load) | 0 |
+| jetson, `--allow-fast` | 1482 | 1491 (Freerouting touched 579 nets, completed none) |
+
+Kept: a clear gain on video, neutral elsewhere. jetson's remaining open connections need a faster router for its size; Freerouting does about one pass in its 15 minutes. Results: `tools/bench/results/engine-r10*.json`.
+
 ## Round 9: big pair groups in runs of 12, plane repair before the pairs (0.7.0)
 
 In round 8 jetson's 85 ohm group (PCIe, USB 3, DisplayPort) went to the pair router in one run, ran out of its 15 minutes and kept nothing (the pair router does not read the stop file). Each size group is now split into runs of at most 12 pairs (`PAIR_CHUNK`; both members of a pair always in the same run, pairs sorted by name so an interface's lanes stay together), each from the board the last one left, so a run that fails loses only itself.

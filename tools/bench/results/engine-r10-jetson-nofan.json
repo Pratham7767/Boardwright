@@ -1,0 +1,166 @@
+{
+ "date": "2026-11-26",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 240.0,
+ "boards": [
+  {
+   "name": "jetson-agx-thor-baseboard",
+   "allow_fast": {
+    "connections_before": 2946,
+    "drc_unconnected_before": 499,
+    "drc_list_capped": true,
+    "errors_before": 3,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 4455.2,
+    "skipped": false,
+    "output_tail": " 5 net(s)\nkrt-pairs-8 (0.19/0.18 mm): ACCEPTED in 137.4 s; routed 16 net(s)\nkrt-pairs-9 (0.19/0.18 mm): ACCEPTED in 141.4 s; routed 10 net(s)\nkrt-pairs-10 (0.19/0.18 mm): ACCEPTED in 149.5 s; routed 3 net(s)\nkrt-pairs-11 (0.19/0.18 mm): ACCEPTED in 256.0 s; routed 4 net(s)\nkrt-pairs-12 (0.19/0.18 mm): ACCEPTED in 152.9 s; routed 7 net(s); kept 16 net(s); dropped 2 that caused DRC errors: /USB Hub/USBC3_CONN_TX1_P, /USB Hub/USBC3_CONN_TX1_N\nkrt-pairs-13 (0.19/0.18 mm): ACCEPTED in 120.6 s; routed 8 net(s); kept 10 net(s); dropped 2 that caused DRC errors: /USB Hub/USBC4_RX_{2}+, /USB Hub/USBC4_RX_{2}-\nfreerouting: ACCEPTED in 1042.8 s; routed 0 net(s); kept 579 net(s); dropped 7 that caused DRC errors: VCC, /DCDC/5V_OUT, +5V, /USB Debug, PD/USBC0_VBUS, +1V8, /DCDC/12V_OUT\ndrc: 0 new error(s), 0 fixed, 3 unchanged; open connections 2946 -> 1473\ntime 4454.8 s\nLeftovers for Claude: 1473 connection(s) on 719 net(s)\n  +12V: 6 connection(s) open\n  +1V15: 22 connection(s) open\n  +1V8: 57 connection(s) open\n  +20V: 8 connection(s) open\n  +3V3_AON: 30 connection(s) open\n  +5V: 46 connection(s) open\n  +5V_AON: 13 connection(s) open\n  +5V_SOM: 22 connection(s) open\n  /CSI/CAM0.CSI2_CLK+: 1 connection(s) open\n  /CSI/CAM0.CSI2_CLK-: 1 connection(s) open\n  /CSI/CAM0.CSI2_D1+: 1 connection(s) open\n  /CSI/CAM0.CSI2_D1-: 1 connection(s) open\n  ... 707 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 499,
+    "copper_items_after": 13825,
+    "connections_after": 1491,
+    "completion": 0.4939,
+    "new_drc_errors": 0,
+    "errors_after": 3,
+    "nets_open_before": 1,
+    "chosen_nets": 872,
+    "connections_allowed": 499,
+    "connections_allowed_after": 495,
+    "completion_allowed": null,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "krt-planes": {
+      "seconds": 294.5,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 2,
+      "why": ""
+     },
+     "krt-pairs (0.17/0.18 mm)": {
+      "seconds": 223.9,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 17,
+      "why": ""
+     },
+     "krt-pairs-2 (0.17/0.18 mm)": {
+      "seconds": 256.1,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 15,
+      "why": ""
+     },
+     "krt-pairs-3 (0.17/0.18 mm)": {
+      "seconds": 112.1,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "no pair was routed coupled"
+     },
+     "krt-pairs-4 (0.19/0.18 mm)": {
+      "seconds": 128.3,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 24,
+      "why": ""
+     },
+     "krt-pairs-5 (0.19/0.18 mm)": {
+      "seconds": 164.4,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 24,
+      "why": ""
+     },
+     "krt-pairs-6 (0.19/0.18 mm)": {
+      "seconds": 144.3,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 18,
+      "why": ""
+     },
+     "krt-pairs-7 (0.19/0.18 mm)": {
+      "seconds": 183.7,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 5,
+      "why": ""
+     },
+     "krt-pairs-8 (0.19/0.18 mm)": {
+      "seconds": 137.4,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 16,
+      "why": ""
+     },
+     "krt-pairs-9 (0.19/0.18 mm)": {
+      "seconds": 141.4,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 10,
+      "why": ""
+     },
+     "krt-pairs-10 (0.19/0.18 mm)": {
+      "seconds": 149.5,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 3,
+      "why": ""
+     },
+     "krt-pairs-11 (0.19/0.18 mm)": {
+      "seconds": 256.0,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 4,
+      "why": ""
+     },
+     "krt-pairs-12 (0.19/0.18 mm)": {
+      "seconds": 152.9,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 7,
+      "why": "kept 16 net(s); dropped 2 that caused DRC errors: /USB Hub/USBC3_CONN_TX1_P, /USB Hub/USBC3_CONN_TX1_N"
+     },
+     "krt-pairs-13 (0.19/0.18 mm)": {
+      "seconds": 120.6,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 8,
+      "why": "kept 10 net(s); dropped 2 that caused DRC errors: /USB Hub/USBC4_RX_{2}+, /USB Hub/USBC4_RX_{2}-"
+     },
+     "freerouting": {
+      "seconds": 1042.8,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 0,
+      "why": "kept 579 net(s); dropped 7 that caused DRC errors: VCC, /DCDC/5V_OUT, +5V, /USB Debug, PD/USBC0_VBUS, +1V8, /DCDC/12V_OUT"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 4430.3,
+    "engine_result": "routed 153 of 872 chosen net(s) (krt 153, freerouting 0); open connections 2946 -> 1473"
+   },
+   "removed": 25386,
+   "copper_layers": 10,
+   "footprints": 1125,
+   "nets": 1387,
+   "zones": 125
+  }
+ ]
+}

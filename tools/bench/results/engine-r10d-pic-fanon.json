@@ -1,0 +1,45 @@
+{
+ "date": "2026-11-26",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 120.0,
+ "boards": [
+  {
+   "name": "pic_programmer",
+   "default": {
+    "connections_before": 86,
+    "drc_unconnected_before": 86,
+    "drc_list_capped": false,
+    "errors_before": 0,
+    "copper_items_before": 0,
+    "exit": 2,
+    "wall_s": 275.7,
+    "skipped": false,
+    "output_tail": "ERROR: KiCad's DRC could not be run (kicad-cli not found or failed)\n",
+    "drc_unconnected_after": 86,
+    "copper_items_after": 0,
+    "connections_after": 86,
+    "completion": 0.0,
+    "new_drc_errors": 0,
+    "errors_after": 0,
+    "nets_open_before": 33,
+    "chosen_nets": 0,
+    "connections_allowed": 0,
+    "connections_allowed_after": 0,
+    "completion_allowed": null,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {},
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": null,
+    "engine_result": null
+   },
+   "removed": 376,
+   "copper_layers": 2,
+   "footprints": 63,
+   "nets": 111,
+   "zones": 1
+  }
+ ]
+}

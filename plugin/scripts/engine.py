@@ -594,7 +594,10 @@ def freerouting_stage(tools: dict, kpy: str, base: Path, work: Path, minutes: fl
            # and Freerouting's own clearance checks on
            "--router.automatic_neckdown=false", "--router.strict_drc=true", "--router.clearance_tolerance_um=0",
            # repeatable: a fixed item order (two runs with the same seed gave identical files) and one thread
-           f"--router.autorouter.item_order_seed={seed}", "--router.max_threads=1"]
+           f"--router.autorouter.item_order_seed={seed}", "--router.max_threads=1",
+           # no fan-out pass before routing: on jetson it spent 200 s to fan out 4 of 4683 pins, and on video
+           # routing without it left fewer open (164 against 217, 324 against 494; round 10)
+           "--router.fanout.enabled=false"]
     cmd += os.environ.get("BOARDWRIGHT_FREEROUTING_ARGS", "").split()    # extra settings, for experiments
     # KiCad's DSN export carries no copper-to-edge clearance; Freerouting then uses its own default (250 um),
     # which it lowers to the smallest pad-to-edge gap on the board (down to 0). So the board's own values go

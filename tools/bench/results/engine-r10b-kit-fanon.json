@@ -1,0 +1,78 @@
+{
+ "date": "2026-11-26",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 150.0,
+ "boards": [
+  {
+   "name": "kit-dev-coldfire-xilinx_5213",
+   "default": {
+    "connections_before": 478,
+    "drc_unconnected_before": 478,
+    "drc_list_capped": false,
+    "errors_before": 0,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 3005.9,
+    "skipped": false,
+    "output_tail": "tions after): krt-first 113, freerouting-first 47, planned-krt-first 41; kept planned-krt-first\nplanned-krt-first: krt: REJECTED in 131.6 s; routed 0 net(s); no summary from KiCadRoutingTools (exit 1): gine\\venv\\Lib\\site-packages\\numpy\\lib\\_function_base_impl.py\", line 5579, in insert |     new = empty(news\nplanned-krt-first: krt-planes: ACCEPTED in 268.3 s; routed 0 net(s)\nplanned-krt-first: freerouting: ACCEPTED in 909.8 s; routed 201 net(s); kept 207 net(s); dropped 2 that caused DRC errors: GND, GNDA\nplanned-krt-first: krt2: ACCEPTED in 734.0 s; routed 0 net(s)\ndrc: 0 new error(s), 0 fixed, 0 unchanged; open connections 478 -> 41\ntime 3005.4 s\nLeftovers for Claude: 41 connection(s) on 8 net(s)\n  +3.3V: U102.41 -> Via [+3.3V] at 125.6643,102.8614\n  +3.3V: U102.68 -> Via [+3.3V] at 137.882,107.9436\n  +3.3V: U301.130 -> Via [+3.3V] at 210.4964,109.8621\n  +3.3V: U301.24 -> C308.1\n  +3.3V: Via [+3.3V] at 128.9228,99.473 -> U102.34\n  +3.3V: Via [+3.3V] at 135.5045,92.4133 -> U102.14\n  +3.3V: Via [+3.3V] at 141.84,98.973 -> U102.93\n  /AN0: U102.43 -> PTH pad 10 of MCU_PORT201 at 174.244,139.446\n  /AN4: U102.54 -> PTH pad 18 of MCU_PORT201 at 164.084,139.446\n  /DSI: Track [/DSI] at 82.3995,119.126 -> U102.79\n  /PST0: PTH pad 15 of BDM_PORT101 at 76.327,124.079 -> U102.65\n  /xilinx/TDI: U301.4 -> PTH pad 4 of P301 at 223.52,71.12\n  ... 29 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 41,
+    "copper_items_after": 2442,
+    "connections_after": 41,
+    "completion": 0.9142,
+    "new_drc_errors": 0,
+    "errors_after": 0,
+    "nets_open_before": 209,
+    "chosen_nets": 209,
+    "connections_allowed": 472,
+    "connections_allowed_after": 41,
+    "completion_allowed": 0.9131,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "planned-krt-first: krt": {
+      "seconds": 131.6,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "no summary from KiCadRoutingTools (exit 1): gine\\venv\\Lib\\site-packages\\numpy\\lib\\_function_base_impl.py\", line 5579, in insert |     new = empty(newshape, arr.dtype, arrorder) | numpy._core._exceptions._ArrayMemoryError: Unable to allocate"
+     },
+     "planned-krt-first: krt-planes": {
+      "seconds": 268.3,
+      "accepted": true,
+      "unconnected_after_stage": 348,
+      "new_errors_in_stage": "0",
+      "nets_routed": 0,
+      "why": ""
+     },
+     "planned-krt-first: freerouting": {
+      "seconds": 909.8,
+      "accepted": true,
+      "unconnected_after_stage": 41,
+      "new_errors_in_stage": "0",
+      "nets_routed": 201,
+      "why": "kept 207 net(s); dropped 2 that caused DRC errors: GND, GNDA"
+     },
+     "planned-krt-first: krt2": {
+      "seconds": 734.0,
+      "accepted": true,
+      "unconnected_after_stage": 41,
+      "new_errors_in_stage": "0",
+      "nets_routed": 0,
+      "why": ""
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 3001.3,
+    "engine_result": "routed 201 of 209 chosen net(s) (krt 0, freerouting 201); open connections 478 -> 41"
+   },
+   "removed": 3187,
+   "copper_layers": 4,
+   "footprints": 160,
+   "nets": 278,
+   "zones": 3
+  }
+ ]
+}
