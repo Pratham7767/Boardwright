@@ -577,12 +577,13 @@ def freerouting_stage(tools: dict, kpy: str, base: Path, work: Path, minutes: fl
     if rc != 0 or not dsn.is_file():
         res["error"] = "KiCad could not export the Specctra DSN: " + out.strip()[-200:]
         return res
-    # KiCad exports every copper layer as a signal layer; the plane layers become power layers, which Freerouting
-    # does not route signal tracks on
+    # KiCad exports each copper layer with its own type (signal, mixed, jumper: jetson's +1V8 plane is a jumper
+    # layer, and Freerouting routed power nets across it); the plane layers become power layers, which
+    # Freerouting does not route signal tracks on
     if planes:
         txt = dsn.read_text("utf-8", errors="replace")
         for lay in planes:
-            txt = re.sub(r"(\(layer " + re.escape(lay) + r"\s*\(type )signal\)", r"\1power)", txt)
+            txt = re.sub(r"(\(layer " + re.escape(lay) + r"\s*\(type )\w+\)", r"\1power)", txt)
         dsn.write_text(txt, "utf-8")
     # Freerouting's own time limit: when it is reached Freerouting stops and still saves what it routed
     # (tested with 2.5.0). The outer limit only catches a hang.
@@ -833,9 +834,9 @@ def evaluate(proj, kpy, work, name, st, base_open, orig_drc, nets, base_pcb, pla
     if new:
         st["why"] = "adds new DRC errors: " + "; ".join(l.strip()[:160] for l in lines[1:4])
     elif not keep:
-        st["why"] = "every net it routed caused a new DRC error"
+        st["why"] = "every net it routed failed a check (new DRC error, under its sizes, or across a plane)"
     elif dropped:
-        st["why"] = f"kept {len(keep)} net(s); dropped {len(dropped)} that caused DRC errors: " + \
+        st["why"] = f"kept {len(keep)} net(s); dropped {len(dropped)} that failed a check (see dropped): " + \
             ", ".join(list(dropped)[:6])
     return st
 

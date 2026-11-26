@@ -1,0 +1,64 @@
+{
+ "date": "2026-11-27",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 400.0,
+ "boards": [
+  {
+   "name": "jetson-agx-thor-baseboard",
+   "default": {
+    "connections_before": 2946,
+    "drc_unconnected_before": 499,
+    "drc_list_capped": true,
+    "errors_before": 3,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 8804.3,
+    "skipped": false,
+    "output_tail": "/USB Hub/USBSS_RX_N: fast net, route it by hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nleft out /USB Hub/USBSS_RX_P: fast net, route it by hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nleft out /USB Hub/USBSS_TX_N: fast net, route it by hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nleft out /USB Hub/USBSS_TX_P: fast net, route it by hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nleft out /USB Hub/VBUS_MON_UP: fast net, route it by hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nkrt-planes: ACCEPTED in 315.2 s; routed 2 net(s)\nfreerouting: ACCEPTED in 1946.6 s; routed 1 net(s)\nfreerouting: ACCEPTED in 1957.4 s; routed 4 net(s)\nfreerouting: ACCEPTED in 1976.0 s; routed 3 net(s)\nfreerouting: ACCEPTED in 1988.5 s; routed 2 net(s)\ndrc: 0 new error(s), 0 fixed, 3 unchanged; open connections 2946 -> 1468\ntime 8803.5 s\nLeftovers for Claude: 1468 connection(s) on 861 net(s)\n  +12V: 6 connection(s) open\n  +1V15: 2 connection(s) open\n  +1V8: 12 connection(s) open\n  +20V: 5 connection(s) open\n  +3V3_AON: 30 connection(s) open\n  +5V: 6 connection(s) open\n  +5V_AON: 1 connection(s) open\n  +5V_SOM: 15 connection(s) open\n  /CSI/CAM0.CSI2_CLK+: 1 connection(s) open\n  /CSI/CAM0.CSI2_CLK-: 1 connection(s) open\n  /CSI/CAM0.CSI2_D0+: 1 connection(s) open\n  /CSI/CAM0.CSI2_D0-: 1 connection(s) open\n  ... 849 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 499,
+    "copper_items_after": 8993,
+    "connections_after": 1468,
+    "completion": 0.5017,
+    "new_drc_errors": 0,
+    "errors_after": 3,
+    "nets_open_before": 1,
+    "chosen_nets": 571,
+    "connections_allowed": 499,
+    "connections_allowed_after": 365,
+    "completion_allowed": null,
+    "left_out_by_reason": {
+     "fast net, route it by hand or pass --allow-fast": 301
+    },
+    "left_out_connections": 0,
+    "stages": {
+     "krt-planes": {
+      "seconds": 315.2,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 2,
+      "why": ""
+     },
+     "freerouting": {
+      "seconds": 1988.5,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 2,
+      "why": ""
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 2,
+    "engine_seconds": 8781.7,
+    "engine_result": "routed 11 of 571 chosen net(s) (krt 2, freerouting 10); open connections 2946 -> 1468"
+   },
+   "removed": 25386,
+   "copper_layers": 10,
+   "footprints": 1125,
+   "nets": 1387,
+   "zones": 125
+  }
+ ]
+}

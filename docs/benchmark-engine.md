@@ -8,6 +8,18 @@ Each demo folder is copied to a work directory (the KiCad install is never touch
 
 Completion is `1 - connections after / connections before`, over all connections. "Allowed" completion counts only the connections on nets the engine was permitted to route (it skips hazardous nets, and fast nets unless `--allow-fast`). "New errors" is the number of DRC errors not present on the stripped board.
 
+## Round 12: every plane layer closed to Freerouting (0.7.0)
+
+In every Freerouting round on jetson, 4 to 13 power nets (VCC, the 5 V rails, the USB-C VBUS nets) were dropped. KiCad's DRC was not the reason: the engine's plane guard was. Freerouting had laid them across In4.Cu, jetson's +1V8 plane. The engine marks each plane layer as a power layer in the DSN so Freerouting leaves it alone, but it only replaced `(type signal)`, and KiCad exports In4.Cu as `(type jumper)` (the layer type set in the board). Any type is now replaced. The run log also said "caused DRC errors" for nets dropped by the size or plane checks; it now says "failed a check".
+
+| jetson-agx-thor-baseboard, default, `--minutes 15` | Open after | Nets dropped per Freerouting round | New DRC errors |
+|---|---|---|---|
+| Round 11 | 1552 | 4, 13, 13, 11 | 0 |
+| **Plane fix, run A (kept)** | **1476** | 0 | 0 |
+| **Plane fix, run B (same time as A)** | **1468** | 0 | 0 |
+
+On a board whose plane layers export as `signal` nothing changes (not re-run on the other boards). Results: `tools/bench/results/engine-r12-*.json`.
+
 ## Round 11: longer Freerouting rounds on big boards (0.7.0)
 
 On a big board (more than 1000 open connections) Freerouting runs in rounds of up to `--minutes` each, while a round still closes 1 % of what is open. Its first round on video routed 135 nets and the later ones 41, 19 and 7: it was cut off mid-way, not out of work. Each round on a big board now gets twice `--minutes` (`FR_STRETCH_BIG`; the rounds and the 1 % rule are unchanged).
