@@ -1,0 +1,214 @@
+{
+ "date": "2026-11-25",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 240.0,
+ "boards": [
+  {
+   "name": "jetson-agx-thor-baseboard",
+   "allow_fast": {
+    "connections_before": 2946,
+    "drc_unconnected_before": 499,
+    "drc_list_capped": true,
+    "errors_before": 3,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 4605.0,
+    "skipped": false,
+    "output_tail": "0.19/0.18 mm): ACCEPTED in 130.7 s; routed 15 net(s)\nkrt-pairs-12 (0.19/0.18 mm): ACCEPTED in 107.3 s; routed 16 net(s)\nkrt-pairs-13 (0.19/0.18 mm): ACCEPTED in 149.1 s; routed 11 net(s)\nkrt-pairs-14 (0.19/0.18 mm): ACCEPTED in 119.6 s; routed 3 net(s)\nkrt-pairs-15 (0.19/0.18 mm): ACCEPTED in 157.9 s; routed 3 net(s)\nkrt-pairs-16 (0.19/0.18 mm): REJECTED in 128.3 s; routed 0 net(s); no pair was routed coupled\nkrt-pairs-17 (0.19/0.18 mm): REJECTED in 108.9 s; routed 0 net(s); no pair was routed coupled\nkrt-pairs-18 (0.19/0.18 mm): ACCEPTED in 106.9 s; routed 10 net(s)\nkrt-pairs-19 (0.19/0.18 mm): REJECTED in 94.1 s; routed 0 net(s); no pair was routed coupled\nkrt-planes: REJECTED in 600.0 s; routed 0 net(s); timed out after 10 minutes\nfreerouting: ACCEPTED in 976.9 s; routed 0 net(s)\ndrc: 0 new error(s), 0 fixed, 3 unchanged; open connections 2946 -> 2737\ntime 4604.5 s\nLeftovers for Claude: 2737 connection(s) on 721 net(s)\n  +12V: 6 connection(s) open\n  +1V15: 22 connection(s) open\n  +1V8: 57 connection(s) open\n  +20V: 8 connection(s) open\n  +3V3: 157 connection(s) open\n  +3V3_AON: 30 connection(s) open\n  +5V: 46 connection(s) open\n  +5V_AON: 14 connection(s) open\n  +5V_SOM: 22 connection(s) open\n  /CSI/CAM0.CSI2_CLK+: 1 connection(s) open\n  /CSI/CAM0.CSI2_CLK-: 1 connection(s) open\n  /CSI/CAM0.CSI2_D0+: 1 connection(s) open\n  ... 709 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 499,
+    "copper_items_after": 4704,
+    "connections_after": 2754,
+    "completion": 0.0652,
+    "new_drc_errors": 0,
+    "errors_after": 3,
+    "nets_open_before": 1,
+    "chosen_nets": 872,
+    "connections_allowed": 499,
+    "connections_allowed_after": 499,
+    "completion_allowed": null,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "krt-pairs (0.17/0.18 mm)": {
+      "seconds": 183.7,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "no pair was routed coupled"
+     },
+     "krt-pairs-2 (0.17/0.18 mm)": {
+      "seconds": 142.4,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 15,
+      "why": ""
+     },
+     "krt-pairs-3 (0.17/0.18 mm)": {
+      "seconds": 133.2,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 12,
+      "why": ""
+     },
+     "krt-pairs-4 (0.17/0.18 mm)": {
+      "seconds": 98.5,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "no pair was routed coupled"
+     },
+     "krt-pairs-5 (0.19/0.18 mm)": {
+      "seconds": 96.0,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 14,
+      "why": "kept 14 net(s); dropped 2 that caused DRC errors: /Expansion connector/DP2.AUX+, /Expansion connector/DP2.AUX-"
+     },
+     "krt-pairs-6 (0.19/0.18 mm)": {
+      "seconds": 109.1,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 13,
+      "why": ""
+     },
+     "krt-pairs-7 (0.19/0.18 mm)": {
+      "seconds": 125.8,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 14,
+      "why": ""
+     },
+     "krt-pairs-8 (0.19/0.18 mm)": {
+      "seconds": 97.8,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "no pair was routed coupled"
+     },
+     "krt-pairs-9 (0.19/0.18 mm)": {
+      "seconds": 116.5,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 14,
+      "why": ""
+     },
+     "krt-pairs-10 (0.19/0.18 mm)": {
+      "seconds": 135.3,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 11,
+      "why": ""
+     },
+     "krt-pairs-11 (0.19/0.18 mm)": {
+      "seconds": 130.7,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 15,
+      "why": ""
+     },
+     "krt-pairs-12 (0.19/0.18 mm)": {
+      "seconds": 107.3,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 16,
+      "why": ""
+     },
+     "krt-pairs-13 (0.19/0.18 mm)": {
+      "seconds": 149.1,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 11,
+      "why": ""
+     },
+     "krt-pairs-14 (0.19/0.18 mm)": {
+      "seconds": 119.6,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 3,
+      "why": ""
+     },
+     "krt-pairs-15 (0.19/0.18 mm)": {
+      "seconds": 157.9,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 3,
+      "why": ""
+     },
+     "krt-pairs-16 (0.19/0.18 mm)": {
+      "seconds": 128.3,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "no pair was routed coupled"
+     },
+     "krt-pairs-17 (0.19/0.18 mm)": {
+      "seconds": 108.9,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "no pair was routed coupled"
+     },
+     "krt-pairs-18 (0.19/0.18 mm)": {
+      "seconds": 106.9,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 10,
+      "why": ""
+     },
+     "krt-pairs-19 (0.19/0.18 mm)": {
+      "seconds": 94.1,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "no pair was routed coupled"
+     },
+     "krt-planes": {
+      "seconds": 600.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "timed out after 10 minutes"
+     },
+     "freerouting": {
+      "seconds": 976.9,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 0,
+      "why": ""
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 4591.0,
+    "engine_result": "routed 151 of 872 chosen net(s) (krt 151, freerouting 0); open connections 2946 -> 2737"
+   },
+   "removed": 25386,
+   "copper_layers": 10,
+   "footprints": 1125,
+   "nets": 1387,
+   "zones": 125
+  }
+ ]
+}

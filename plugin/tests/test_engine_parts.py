@@ -155,6 +155,10 @@ def main() -> int:
               got == [(("F.Cu", "B.Cu"), 0.17, 0.18, ["/A+", "/A-"]),
                       (("F.Cu", "In1.Cu", "In3.Cu", "B.Cu"), 0.2, 0.15, ["/U_P", "/U_N"]),
                       ((), 0.0, 0.0, ["/X_P", "/X_N"])], got)
+        # a big group in runs of at most N pairs, partners never split
+        got = engine.pair_chunks(["/B_N", "/A+", "/C_P", "/A-", "/B_P", "/C_N", "/D_DM", "/D_DP"], 3)
+        check("pair runs: at most 3 pairs each, sorted by name, both members together",
+              got == [["/A+", "/A-", "/B_N", "/B_P", "/C_N", "/C_P"], ["/D_DM", "/D_DP"]], got)
 
         # blame by place: the nets with copper near a DRC error's position (needs KiCad's Python)
         import kicad_python

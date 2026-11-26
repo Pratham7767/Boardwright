@@ -458,6 +458,22 @@ def pair_groups(sizes_file: str, pairs: list, layout: dict) -> list:
     return [(k[0], k[1], k[2], v) for k, v in groups.items()]
 
 
+# pairs per pair router run: jetson's 42-pair group ran out of 15 minutes in one run and kept nothing
+PAIR_CHUNK = int(os.environ.get("BOARDWRIGHT_PAIR_CHUNK", "") or 12)
+
+
+def pair_chunks(nets: list, size: int = PAIR_CHUNK) -> list:
+    """The nets in runs of at most `size` pairs, both members of a pair always in the same run, pairs sorted by
+    name so one interface's lanes stay together. The pair router keeps nothing when it runs out of time (it does
+    not read the stop file), so a big group in one run can lose every pair."""
+    base: dict = {}
+    for n in nets:
+        b = next((n[:-len(x)] for a, c in PAIR_ENDS for x in (a, c) if n.endswith(x)), n)
+        base.setdefault(b, []).append(n)
+    keys = sorted(base)
+    return [[n for k in keys[i:i + size] for n in sorted(base[k])] for i in range(0, len(keys), size)]
+
+
 def pairs_stage(tools: dict, kpy: str, base: Path, work: Path, nets: list, minutes: float, proj: Path,
                 layout: dict | None = None, layers: tuple = (), width: float = 0.0, gap: float = 0.0) -> dict:
     """Differential pairs routed together by KiCadRoutingTools' pair router, strict like the others. Only the
@@ -1108,9 +1124,24 @@ def cmd_run(proj: Path, args: list) -> int:
         if pair_nets:
             chosen = [n for n in chosen if n not in pair_nets]
             if "krt" in engines:
+                # the big pour nets joined to their planes before the pairs are laid: after 150 pair nets the
+                # plane repair did not finish in 60 minutes on jetson; first, it took 290 s (round 9)
+                pours = [n for n in chosen if n in zone_nets and start["open"].get(n, 0) > BIG_POUR]
+                if pours:
+                    st = planes_stage(tools, kpy, start["pcb"], work / "planes-first", pours, min(minutes, 10), proj,
+                                      layout)
+                    evaluate(proj, kpy, work / "planes-first", "krt-planes-first", st, start["open"], orig, pours,
+                             start["pcb"], planes)
+                    pre.append(st)
+                    if st.get("accepted") and st.get("board"):
+                        start = {"pcb": st["board"], "open": dict(st["open"]["open"]), "drc": st["drc"],
+                                 "board": st["board"]}
+            if "krt" in engines:
                 # one run per size group, each from the board the last one left; a group that runs out of time
                 # loses only itself (the pair router does not read the stop file)
-                for gi, (lays, w, g, nets) in enumerate(pair_groups(SIZES["file"], pair_nets, layout)):
+                runs = [(lays, w, g, part) for lays, w, g, nets in pair_groups(SIZES["file"], pair_nets, layout)
+                        for part in pair_chunks(nets)]
+                for gi, (lays, w, g, nets) in enumerate(runs):
                     tag = "krt-pairs" + (f"-{gi + 1}" if gi else "")
                     st = pairs_stage(tools, kpy, start["pcb"], work / tag, nets, minutes, proj, layout, lays, w, g)
                     if w and g:

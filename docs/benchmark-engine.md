@@ -8,6 +8,21 @@ Each demo folder is copied to a work directory (the KiCad install is never touch
 
 Completion is `1 - connections after / connections before`, over all connections. "Allowed" completion counts only the connections on nets the engine was permitted to route (it skips hazardous nets, and fast nets unless `--allow-fast`). "New errors" is the number of DRC errors not present on the stripped board.
 
+## Round 9: big pair groups in runs of 12, plane repair before the pairs (0.7.0)
+
+In round 8 jetson's 85 ohm group (PCIe, USB 3, DisplayPort) went to the pair router in one run, ran out of its 15 minutes and kept nothing (the pair router does not read the stop file). Each size group is now split into runs of at most 12 pairs (`PAIR_CHUNK`; both members of a pair always in the same run, pairs sorted by name so an interface's lanes stay together), each from the board the last one left, so a run that fails loses only itself.
+
+With some 150 pair nets laid, the GND and +3V3 plane repair no longer finished: 600 s limit hit in every run, and still not done after 60 minutes on its own; fewer A* iterations (`--max-iterations 50000`) or no KiCad recheck pass did not finish in 30 minutes either. Run before the pairs it took 290 s (521 s in round 8, after them), and the pairs still route. So when pairs are routed, the big pour nets go to the plane repair first.
+
+| jetson-agx-thor-baseboard, `--allow-fast` (2946 connections) | Open after | Pair nets routed | New DRC errors |
+|---|---|---|---|
+| Round 8: one run per size group | 1639 | 36 | 0 |
+| Runs of 8 pairs, pairs first (two runs at once) | 2754 | 151 | 0 |
+| Runs of 12 pairs, pairs first (alone) | 2723 | 165 | 0 |
+| **Runs of 12 pairs, plane repair first (kept)** | **1482** | **151** | **0** |
+
+cm5_minima, `--allow-fast`, two runs at once under equal load: split 63 open, not split 60, the same 7 pairs coupled in both (the difference is Freerouting's time-limited run). Results: `tools/bench/results/engine-r9-*.json`.
+
 ## Round 8: sizes from the project's rules file, pairs at their rule sizes (0.7.0)
 
 jetson's high-speed classes set no sizes; its pair widths and gaps are custom rules in its `.kicad_dru`, per layer (90 ohm: 0.17/0.18 mm on the outer layers, 0.125/0.10 mm inside; 85 ohm: 0.19/0.18 and 0.15/0.125). Everything read the Default class's 5 mm placeholders instead: the size audit, the pair router (its default gap is the Default class's, and its "electrically short" floor came out at 100 mm) and the fan-out. KiCad's Python has no rule evaluation, so `engine_rules.py` resolves each net's sizes per layer with KiCadRoutingTools' rules reader (which follows KiCad's DRC order: class, then the rules file, last matching rule winning). The audit and the tap trim use those sizes; the pair router gets each group's width and gap explicitly.
