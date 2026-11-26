@@ -1,0 +1,64 @@
+{
+ "date": "2026-11-26",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 400.0,
+ "boards": [
+  {
+   "name": "jetson-agx-thor-baseboard",
+   "default": {
+    "connections_before": 2946,
+    "drc_unconnected_before": 499,
+    "drc_list_capped": true,
+    "errors_before": 3,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 8679.9,
+    "skipped": false,
+    "output_tail": "-planes: ACCEPTED in 402.8 s; routed 2 net(s)\nfreerouting: ACCEPTED in 1970.1 s; routed 0 net(s); kept 567 net(s); dropped 4 that caused DRC errors: +5V_AON, /USB Debug, PD/USBC0_VBUS, +1V15, /USB DP Alt mode/USBC1_VBUS\nfreerouting: ACCEPTED in 1945.0 s; routed 2 net(s); kept 558 net(s); dropped 13 that caused DRC errors: VCC, +5V_AON, SYS_VIN_HV, /DCDC/5V_OUT, /DCDC/3V3_OUT, /USB Debug, PD/USBC0_VBUS\nfreerouting: ACCEPTED in 1925.0 s; routed 1 net(s); kept 556 net(s); dropped 13 that caused DRC errors: VCC, +5V_AON, SYS_VIN_HV, /DCDC/5V_OUT, /DCDC/3V3_OUT, /USB Debug, PD/USBC0_VBUS\nfreerouting: ACCEPTED in 1931.8 s; routed 3 net(s); kept 558 net(s); dropped 11 that caused DRC errors: VCC, +5V_AON, /DCDC/5V_OUT, /DCDC/3V3_OUT, /USB Debug, PD/USBC0_VBUS, /DCDC/5V_{AON}_OUT\ndrc: 0 new error(s), 0 fixed, 3 unchanged; open connections 2946 -> 1552\ntime 8679.4 s\nLeftovers for Claude: 1552 connection(s) on 865 net(s)\n  +12V: 6 connection(s) open\n  +1V15: 9 connection(s) open\n  +1V8: 22 connection(s) open\n  +20V: 7 connection(s) open\n  +3V3_AON: 30 connection(s) open\n  +5V: 10 connection(s) open\n  +5V_AON: 10 connection(s) open\n  +5V_SOM: 17 connection(s) open\n  /CSI/CAM0.CSI2_CLK+: 1 connection(s) open\n  /CSI/CAM0.CSI2_CLK-: 1 connection(s) open\n  /CSI/CAM0.CSI2_D0+: 1 connection(s) open\n  /CSI/CAM0.CSI2_D0-: 1 connection(s) open\n  ... 853 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 499,
+    "copper_items_after": 8735,
+    "connections_after": 1552,
+    "completion": 0.4732,
+    "new_drc_errors": 0,
+    "errors_after": 3,
+    "nets_open_before": 1,
+    "chosen_nets": 571,
+    "connections_allowed": 499,
+    "connections_allowed_after": 405,
+    "completion_allowed": null,
+    "left_out_by_reason": {
+     "fast net, route it by hand or pass --allow-fast": 301
+    },
+    "left_out_connections": 0,
+    "stages": {
+     "krt-planes": {
+      "seconds": 402.8,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 2,
+      "why": ""
+     },
+     "freerouting": {
+      "seconds": 1931.8,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 3,
+      "why": "kept 558 net(s); dropped 11 that caused DRC errors: VCC, +5V_AON, /DCDC/5V_OUT, /DCDC/3V3_OUT, /USB Debug, PD/USBC0_VBUS, /DCDC/5V_{AON}_OUT"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 3,
+    "engine_seconds": 8660.4,
+    "engine_result": "routed 7 of 571 chosen net(s) (krt 2, freerouting 6); open connections 2946 -> 1552"
+   },
+   "removed": 25386,
+   "copper_layers": 10,
+   "footprints": 1125,
+   "nets": 1387,
+   "zones": 125
+  }
+ ]
+}

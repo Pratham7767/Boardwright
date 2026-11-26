@@ -8,6 +8,19 @@ Each demo folder is copied to a work directory (the KiCad install is never touch
 
 Completion is `1 - connections after / connections before`, over all connections. "Allowed" completion counts only the connections on nets the engine was permitted to route (it skips hazardous nets, and fast nets unless `--allow-fast`). "New errors" is the number of DRC errors not present on the stripped board.
 
+## Round 11: longer Freerouting rounds on big boards (0.7.0)
+
+On a big board (more than 1000 open connections) Freerouting runs in rounds of up to `--minutes` each, while a round still closes 1 % of what is open. Its first round on video routed 135 nets and the later ones 41, 19 and 7: it was cut off mid-way, not out of work. Each round on a big board now gets twice `--minutes` (`FR_STRETCH_BIG`; the rounds and the 1 % rule are unchanged).
+
+Default runs, `--minutes 15`; runs in each group at the same time under the same load (open connections after; 0 new DRC errors in every run):
+
+| Board | 15 min rounds | 15 min, up to 8 rounds | **30 min rounds (kept)** |
+|---|---|---|---|
+| video (1345 connections) | 239 (nets per round 135, 41, 19, 7) | 222 (138, 42, 20, 14, 5, 1; stopped by the 1 % rule) | **149** (216, 24, 8, 4) |
+| jetson-agx-thor-baseboard (2946) | 1625 (3 rounds) | | **1552** (4 rounds) |
+
+More rounds of the same length barely help; longer rounds do. The cost is time: video took 131 minutes against 71, jetson 145 against 66. Small boards are unchanged (one round of `--minutes`). Results: `tools/bench/results/engine-r11-*.json`.
+
 ## Round 10: Freerouting without its fan-out pass (0.7.0)
 
 On jetson Freerouting ran twice for about 17 minutes and completed no net. Its log showed why: before routing, a fan-out pass spent 200 s to fan out 4 of 4683 SMD pins (3990 needing it), and one full routing pass takes about 9 minutes there. The 1488 "pre-existing clearance violations" it reports are the pair router's locked vias inside a pair, closer than Freerouting's single 0.1 mm clearance; the project's rules allow them and KiCad's DRC passes them. Freerouting now runs with `--router.fanout.enabled=false`.

@@ -867,6 +867,9 @@ def free_memory_gb() -> float:
 FR_SEEDS = 3                                    # Freerouting seeds tried at most per round (best DRC-clean kept)
 FR_SEED_GB = 2.0                                # free memory needed per extra Freerouting run
 FR_ROUNDS_BIG = 4                               # Freerouting rounds at most on a big board, while each helps
+# Freerouting round length on a big board, times --minutes: longer rounds beat more rounds (video, same load:
+# 4 x 30 min left 149 open, 4 x 15 min 239, 8 x 15 min 222; round 11)
+FR_STRETCH_BIG = float(os.environ.get("BOARDWRIGHT_FR_STRETCH", "") or 2)
 BIG_POUR = 60                                   # open connections above which a pour net gets its own pass
 DRC_CAP = 499                                   # kicad-cli lists at most this many unconnected items
 
@@ -1061,6 +1064,9 @@ def cmd_run(proj: Path, args: list) -> int:
                     # On a big board it stops at the time limit long before it is done (video, jetson), so it runs
                     # again from the board as kept, while a round still closes at least 1 % of what is open.
                     rounds = FR_ROUNDS_BIG if sum(op0["open"].values()) > KRT_MAX_OPEN else 1
+                    fr_min = minutes * (FR_STRETCH_BIG if sum(op0["open"].values()) > KRT_MAX_OPEN else 1)
+                    if os.environ.get("BOARDWRIGHT_FR_ROUNDS", "").isdigit():        # to measure it
+                        rounds = max(1, int(os.environ["BOARDWRIGHT_FR_ROUNDS"]))
                     for r in range(1, rounds + 1):
                         todo = [n for n in chosen if n in v["open"]]
                         if not todo:
@@ -1077,7 +1083,7 @@ def cmd_run(proj: Path, args: list) -> int:
 
                         def one(seed, base=v["pcb"], opn=dict(v["open"]), todo=todo, tag=tag):
                             stg = f"{tag}-s{seed}" if seed > 1 else tag
-                            st = freerouting_stage(tools, kpy, base, vwork / stg, minutes, board_limits, seed,
+                            st = freerouting_stage(tools, kpy, base, vwork / stg, fr_min, board_limits, seed,
                                                    planes)
                             return evaluate(proj, kpy, vwork, stg, st, opn, orig, todo, base, planes, frozen)
                         with _TP(max_workers=n) as px:
