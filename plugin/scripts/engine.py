@@ -566,6 +566,13 @@ def board_rules(kpy: str, pcb: Path) -> dict:
     return {}
 
 
+def import_ok(rc: int, out: str, raw: Path) -> bool:
+    """The session import worked: a clean exit, or "ok": true, which engine_kicad prints only after the board is
+    saved (under load KiCad's Python was cut off or failed while closing after that, and a whole Freerouting
+    round was thrown away: video, round 14)."""
+    return raw.is_file() and (rc == 0 or '"ok": true' in out)
+
+
 def freerouting_stage(tools: dict, kpy: str, base: Path, work: Path, minutes: float, rules: dict | None = None,
                       seed: int = 1, planes: dict | None = None) -> dict:
     work.mkdir(parents=True, exist_ok=True)
@@ -626,9 +633,9 @@ def freerouting_stage(tools: dict, kpy: str, base: Path, work: Path, minutes: fl
         res["error"] = f"Freerouting wrote no session (exit {rc}): " + " | ".join(
             l for l in out.splitlines() if l.strip())[-200:]
         return res
-    rc, out, _t, _s = sh([kpy, "-I", HERE / "engine_kicad.py", "ses", base, ses, raw], timeout=300)
+    rc, out, _t, _s = sh([kpy, "-I", HERE / "engine_kicad.py", "ses", base, ses, raw], timeout=600)
     res["seconds"] = round(time.time() - t0, 1)
-    if rc != 0 or not raw.is_file():
+    if not import_ok(rc, out, raw):
         res["error"] = "KiCad could not import the Freerouting session: " + out.strip()[-200:]
         return res
     res["raw"] = raw

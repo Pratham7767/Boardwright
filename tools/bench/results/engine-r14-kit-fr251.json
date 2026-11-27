@@ -1,0 +1,70 @@
+{
+ "date": "2026-11-27",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 400.0,
+ "boards": [
+  {
+   "name": "kit-dev-coldfire-xilinx_5213",
+   "default": {
+    "connections_before": 478,
+    "drc_unconnected_before": 478,
+    "drc_list_capped": false,
+    "errors_before": 0,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 3775.1,
+    "skipped": false,
+    "output_tail": ".3V, /ALLPST, /AN0, /AN1, /AN2, /AN3, /AN4, /AN5, /AN6, /AN7, /BKPT-, /CANRX, /CANTX, /CLKIN{slash}EXTAL, /CLKMOD0, /CLKMOD1, /DDAT0, /DDAT1, /DDAT2, /DDAT3, /DSCLK, /DSI, /DSO, /DSPI_DOUT, /DTIN0, /DTIN1, /DTIN2, /DTIN3, /GPT0, /GPT1, /GPT2, /GPT3, /IRQ-1, /IRQ-2, /IRQ-3, /IRQ-4, /IRQ-5, /IRQ-6, /IRQ-7, /JTAG_EN ... and 169 more\nvariants (open connections after): krt-first 62, freerouting-first 44, planned-krt-first 58; kept freerouting-first\nfreerouting-first: krt-planes: ACCEPTED in 218.4 s; routed 0 net(s)\nfreerouting-first: freerouting: ACCEPTED in 908.5 s; routed 202 net(s); kept 208 net(s); dropped 1 that failed a check (see dropped): GND\nfreerouting-first: krt2: ACCEPTED in 1968.1 s; routed 0 net(s)\ndrc: 0 new error(s), 0 fixed, 0 unchanged; open connections 478 -> 44\ntime 3774.0 s\nLeftovers for Claude: 44 connection(s) on 7 net(s)\n  +3.3V: C311.1 -> U301.58\n  +3.3V: U102.14 -> Via [+3.3V] at 135.443,91.44\n  +3.3V: U102.41 -> Via [+3.3V] at 125.537,103.505\n  +3.3V: U102.55 -> U102.57\n  +3.3V: U102.68 -> Via [+3.3V] at 138.618,111.76\n  +3.3V: U102.93 -> Via [+3.3V] at 145.415,98.364\n  +3.3V: U301.115 -> U301.123\n  +3.3V: U301.123 -> U301.130\n  +3.3V: U301.76 -> U301.73\n  +3.3V: Via [+3.3V] at 125.349,98.872 -> U102.34\n  +3.3V: Via [+3.3V] at 132.903,112.268 -> U102.57\n  +3.3V: Via [+3.3V] at 145.288,105.725 -> U102.81\n  ... 32 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 44,
+    "copper_items_after": 2475,
+    "connections_after": 44,
+    "completion": 0.9079,
+    "new_drc_errors": 0,
+    "errors_after": 0,
+    "nets_open_before": 209,
+    "chosen_nets": 209,
+    "connections_allowed": 472,
+    "connections_allowed_after": 44,
+    "completion_allowed": 0.9068,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "freerouting-first: krt-planes": {
+      "seconds": 218.4,
+      "accepted": true,
+      "unconnected_after_stage": 348,
+      "new_errors_in_stage": "0",
+      "nets_routed": 0,
+      "why": ""
+     },
+     "freerouting-first: freerouting": {
+      "seconds": 908.5,
+      "accepted": true,
+      "unconnected_after_stage": 44,
+      "new_errors_in_stage": "0",
+      "nets_routed": 202,
+      "why": "kept 208 net(s); dropped 1 that failed a check (see dropped): GND"
+     },
+     "freerouting-first: krt2": {
+      "seconds": 1968.1,
+      "accepted": true,
+      "unconnected_after_stage": 44,
+      "new_errors_in_stage": "0",
+      "nets_routed": 0,
+      "why": ""
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 3766.7,
+    "engine_result": "routed 202 of 209 chosen net(s) (krt 0, freerouting 202); open connections 478 -> 44"
+   },
+   "removed": 3187,
+   "copper_layers": 4,
+   "footprints": 160,
+   "nets": 278,
+   "zones": 3
+  }
+ ]
+}

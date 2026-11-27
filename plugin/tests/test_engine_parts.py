@@ -77,6 +77,12 @@ def main() -> int:
             "pathlib.Path(sys.argv[1]).write_text('finished')\n", "utf-8")
         out = tmp / "out.txt"
         stop = tmp / "STOP"
+        saved = tmp / "saved.kicad_pcb"
+        saved.write_text("x")
+        check("a session import that saved its board counts even if KiCad failed while closing",
+              engine.import_ok(-1, 'noise\n{"ok": true}\n', saved) and engine.import_ok(0, "", saved)
+              and not engine.import_ok(1, '{"ok": false}', saved)
+              and not engine.import_ok(0, '{"ok": true}', tmp / "missing.kicad_pcb"))
         t0 = time.time()
         rc, text, killed, secs = engine.run_until([sys.executable, router, out], 2 / 60, str(tmp), stop_file=stop)
         check("at the limit the stop file is made and the router keeps its partial result",

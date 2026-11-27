@@ -1,0 +1,62 @@
+{
+ "date": "2026-11-27",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 400.0,
+ "boards": [
+  {
+   "name": "video",
+   "default": {
+    "connections_before": 1345,
+    "drc_unconnected_before": 499,
+    "drc_list_capped": true,
+    "errors_before": 0,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 5303.0,
+    "skipped": false,
+    "output_tail": "_ON, /ADR2, /ADR3, /ADR4, /ADR5, /ADR6, /BE-0, /BE-1, /BE-2, /BE-3, /BLANK-, /BLUE_IN, /BLUE_OUT, /BPCLK, /BT812_RD-, /BT812_WR-, /CAS0-, /CAS1-, /CAS2-, /CAS3-, /CLAMP, /CLKCAD, /CLKCDA, /CSYNC-OUT, /CSYNCIN-, /C_OUT, /DQ0, /DQ1, /DQ10, /DQ11, /DQ12, /DQ13, /DQ14, /DQ15, /DQ16, /DQ17 ... and 331 more\nkrt-planes: REJECTED in 600.0 s; routed 0 net(s); timed out after 10 minutes\nfreerouting: ACCEPTED in 1813.2 s; routed 207 net(s)\nfreerouting: REJECTED in 2804.9 s; routed 0 net(s); KiCad could not import the Freerouting session: {\"ok\": true}\ndrc: 0 new error(s), 0 fixed, 0 unchanged; open connections 1345 -> 230\ntime 5302.6 s\nLeftovers for Claude: 230 connection(s) on 164 net(s)\n  //PCRD: Track [//PCRD] at 126.48,83.29 -> Track [//PCRD] at 156.8782,121.8168\n  //PCWR: Track [//PCWR] at 126.48,82.64 -> Track [//PCWR] at 156.73,120.665\n  /ACCES_RAM-: Track [/ACCES_RAM-] at 174.7534,125.476 -> Track [/ACCES_RAM-] at 173.433,110.998\n  /ACCES_RAM-: Track [/ACCES_RAM-] at 202.389,134.366 -> U22.21\n  /ACQ_ON: U24.48 -> U22.13\n  /ADR2: Track [/ADR2] at 129.9811,84.1645 -> U11.68\n  /ADR3: U11.67 -> Track [/ADR3] at 125.0174,86.54\n  /ADR4: U11.66 -> Track [/ADR4] at 122.8992,87.19\n  /ADR5: U11.64 -> Track [/ADR5] at 122.8184,87.84\n  /ADR6: U11.132 -> U24.143\n  /ADR6: U24.143 -> U23.39\n  /BE-0: U11.87 -> Track [/BE-0] at 126.6282,90.2918\n  ... 218 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 230,
+    "copper_items_after": 3954,
+    "connections_after": 230,
+    "completion": 0.829,
+    "new_drc_errors": 0,
+    "errors_after": 0,
+    "nets_open_before": 121,
+    "chosen_nets": 371,
+    "connections_allowed": 495,
+    "connections_allowed_after": 227,
+    "completion_allowed": null,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "krt-planes": {
+      "seconds": 600.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "timed out after 10 minutes"
+     },
+     "freerouting": {
+      "seconds": 2804.9,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "KiCad could not import the Freerouting session: {\"ok\": true}"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 5280.0,
+    "engine_result": "routed 207 of 371 chosen net(s) (krt 0, freerouting 207); open connections 1345 -> 230"
+   },
+   "removed": 8740,
+   "copper_layers": 4,
+   "footprints": 189,
+   "nets": 588,
+   "zones": 2
+  }
+ ]
+}

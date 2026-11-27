@@ -1,0 +1,62 @@
+{
+ "date": "2026-11-27",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 400.0,
+ "boards": [
+  {
+   "name": "video",
+   "default": {
+    "connections_before": 1345,
+    "drc_unconnected_before": 499,
+    "drc_list_capped": true,
+    "errors_before": 0,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 6055.7,
+    "skipped": false,
+    "output_tail": ": routed 300 of 371 chosen net(s) (krt 0, freerouting 300); open connections 1345 -> 124\nplanes kept free of tracks: In1.Cu (GND), In2.Cu (+5V)\nchosen 371: +3.3V, +5F, +5V, /ACCES_RAM-, /ACQ_ON, /ADR2, /ADR3, /ADR4, /ADR5, /ADR6, /BE-0, /BE-1, /BE-2, /BE-3, /BLANK-, /BLUE_IN, /BLUE_OUT, /BPCLK, /BT812_RD-, /BT812_WR-, /CAS0-, /CAS1-, /CAS2-, /CAS3-, /CLAMP, /CLKCAD, /CLKCDA, /CSYNC-OUT, /CSYNCIN-, /C_OUT, /DQ0, /DQ1, /DQ10, /DQ11, /DQ12, /DQ13, /DQ14, /DQ15, /DQ16, /DQ17 ... and 331 more\nkrt-planes: REJECTED in 600.0 s; routed 0 net(s); timed out after 10 minutes\nfreerouting: ACCEPTED in 5410.1 s; routed 300 net(s); kept 369 net(s); dropped 2 that failed a check (see dropped): /DQ2, /TVG3\ndrc: 0 new error(s), 0 fixed, 0 unchanged; open connections 1345 -> 124\ntime 6055.4 s\nLeftovers for Claude: 124 connection(s) on 71 net(s)\n  +5V: Track [+5V] at 114.3,153.8911 -> BUS1.B19\n  //PCWR: U24.132 -> U11.74\n  //PCWR: U24.132 -> U23.47\n  /ADR2: Track [/ADR2] at 126.48,85.89 -> U23.48\n  /ADR4: U11.66 -> Track [/ADR4] at 122.8992,87.19\n  /ADR6: U11.132 -> U24.143\n  /ADR6: U24.143 -> U23.39\n  /BE-0: Track [/BE-0] at 132.9298,94.7888 -> U11.87\n  /BLANK-: Track [/BLANK-] at 307.427,64.4708 -> PTH pad 7 of U9 at 335.915,102.235\n  /BT812_WR-: U23.70 -> U10.83\n  /CLKCAD: U22.2 -> Track [/CLKCAD] at 316.357,99.949\n  /CLKCAD: U22.2 -> U24.77\n  ... 112 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 124,
+    "copper_items_after": 5926,
+    "connections_after": 124,
+    "completion": 0.9078,
+    "new_drc_errors": 0,
+    "errors_after": 0,
+    "nets_open_before": 121,
+    "chosen_nets": 371,
+    "connections_allowed": 495,
+    "connections_allowed_after": 122,
+    "completion_allowed": null,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "krt-planes": {
+      "seconds": 600.0,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "timed out after 10 minutes"
+     },
+     "freerouting": {
+      "seconds": 5410.1,
+      "accepted": true,
+      "unconnected_after_stage": 124,
+      "new_errors_in_stage": "0",
+      "nets_routed": 300,
+      "why": "kept 369 net(s); dropped 2 that failed a check (see dropped): /DQ2, /TVG3"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 300,
+    "engine_seconds": 6050.1,
+    "engine_result": "routed 300 of 371 chosen net(s) (krt 0, freerouting 300); open connections 1345 -> 124"
+   },
+   "removed": 8740,
+   "copper_layers": 4,
+   "footprints": 189,
+   "nets": 588,
+   "zones": 2
+  }
+ ]
+}
