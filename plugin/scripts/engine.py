@@ -609,8 +609,13 @@ def freerouting_stage(tools: dict, kpy: str, base: Path, work: Path, minutes: fl
         cmd.append(f"--router.copper_to_edge_clearance_um={251 if edge == 250 else edge}")
     if rules.get("hole_um"):
         cmd.append(f"--router.hole_clearance_um={int(-(-rules['hole_um'] // 1))}")
-    if rules.get("min_width_um"):
+    # No necked retry: with a neck width under the class width, a net Freerouting cannot route at its width is
+    # routed whole at the neck width, and the size audit then drops it (royalblue 7 nets, kit-dev GND, +3.3V
+    # and GNDA). A neck width wider than any track turns the retry off (0 necked nets; round 13).
+    if os.environ.get("BOARDWRIGHT_FR_NECK") == "board" and rules.get("min_width_um"):     # the old way, to measure
         cmd.append(f"--router.neck_width_um={int(-(-rules['min_width_um'] // 1))}")
+    else:
+        cmd.append("--router.neck_width_um=10000")
     rc, out, timed_out, _s = sh(cmd, timeout=secs + 300, cwd=str(work))
     res["seconds"] = round(time.time() - t0, 1)
     res["edge_rule_applied"] = "copper-to-edge clearance override" in out.lower() or None

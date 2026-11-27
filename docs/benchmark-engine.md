@@ -8,6 +8,22 @@ Each demo folder is copied to a work directory (the KiCad install is never touch
 
 Completion is `1 - connections after / connections before`, over all connections. "Allowed" completion counts only the connections on nets the engine was permitted to route (it skips hazardous nets, and fast nets unless `--allow-fast`). "New errors" is the number of DRC errors not present on the stripped board.
 
+## Round 13: no necked retry in Freerouting (0.7.0)
+
+Freerouting 2.5.x has a "necked retry": when a connection will not route at its class width, it routes it again whole at the neck width, and later connections of that net start necked (the logs say "Necked retry routed net 'GND' at 150.0 um"). `--router.automatic_neckdown=false` does not switch it off. The engine passed the board's minimum track width as the neck width, so a net routed this way lay under its class or rule width and the size audit dropped the whole net (royalblue: 7 nets at 0.077 mm; kit-dev: GND, +3.3V and GNDA at 0.2 mm under their 0.4 mm class). A neck width wider than any track (`--router.neck_width_um=10000`) turns the retry off: in Freerouting's source the retry returns nothing when the neck is not narrower than the class width, and hand runs showed 0 necked nets (7 and 1 before).
+
+Each pair ran at the same time (open connections after; 0 new DRC errors in every run):
+
+| Board, default, `--minutes 15` | Neck = board minimum | **No necked retry (kept)** |
+|---|---|---|
+| kit-dev-coldfire-xilinx_5213 | 41 (GND, GNDA dropped) | **37** (nothing dropped) |
+| royalblue54L_feather | 60 | **58** |
+| video | 135 | **129** |
+
+`BOARDWRIGHT_FR_NECK=board` restores the old setting for comparison. A first attempt ran four benchmarks at once and failed with out-of-memory errors (numpy, a Java VM crash); those runs were discarded and rerun two at a time. Results: `tools/bench/results/engine-r13-*.json`.
+
+Research done this round (in `docs/research/round13/`): Freerouting's source (necked retry, fallback strategies, single-threaded passes), a survey of open-source routers (Freerouting 2.6.0 released 2026-11-25 with large reported gains, not yet benchmarked here), KiCadRoutingTools' pair, escape and plane options, KiCad's push-and-shove router (no headless route API in KiCad 10), and the tscircuit capacity autorouter studied with the REA reverse-engineering tool (its global corridor routing, step budgets, escape templates and DRC repair loop, written up as specs).
+
 ## Full run after round 12 (0.7.0, default runs)
 
 All seven boards, `--minutes 15`, in two streams at the same time (video and jetson; the five others one after another). 0 new DRC errors on every board. "Allowed" counts what a default run may route: fast nets (impedance classes, pairs) are left for `--allow-fast` or for hand routing.
