@@ -5,7 +5,7 @@
 #   bash plugin/scripts/setup_engine.sh
 #
 # Each download is pinned to one version and checked against its published SHA-256 before use:
-#   Freerouting 2.5.1 nightly 12f085e (GPL-3, a separate program), a Java 25 runtime for it (Eclipse Temurin),
+#   Freerouting 2.6.0 (GPL-3, a separate program), a Java 25 runtime for it (Eclipse Temurin),
 #   KiCadRoutingTools 0.24.1 (MIT) with its prebuilt router, and its Python packages in their own environment.
 set -euo pipefail
 ROOT="${BOARDWRIGHT_ENGINE_DIR:-$HOME/.local/share/boardwright/engine}"
@@ -42,27 +42,8 @@ get() {  # name url sha file
 }
 
 get jre "$JRE" "$JSHA" jre.tar.gz
-# Freerouting 2.5.1 nightly of 2026-11-16 (commit 12f085e): the jar from the one layer of its official image
-# on ghcr.io that holds it, checked against the layer's SHA-256 and the jar's own. It applies the board-edge and
-# hole clearances that 2.5.0 ignored.
-FRJAR="$ROOT/freerouting-2.5.1-nightly-12f085e.jar"
-if [ -f "$FRJAR" ] && [ "$(sha "$FRJAR")" = "72a62bb5964f542fc946801e68fe450e8c3c80d98fb3e9b70bab2ecc80ae5dd4" ]; then
-  echo "ok        freerouting (already here)"
-else
-  echo "download  freerouting"
-  TOK=$(curl -fsSL "https://ghcr.io/token?scope=repository:freerouting/freerouting:pull" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
-  curl -fsSL -H "Authorization: Bearer $TOK" -o "$ROOT/freerouting-layer.tar.gz" \
-    "https://ghcr.io/v2/freerouting/freerouting/blobs/sha256:81c14637909e1e18f70d7808393ab1074e602df7583173f6aec761773e7b1c25"
-  [ "$(sha "$ROOT/freerouting-layer.tar.gz")" = "81c14637909e1e18f70d7808393ab1074e602df7583173f6aec761773e7b1c25" ] || {
-    rm -f "$ROOT/freerouting-layer.tar.gz"; echo "freerouting: the image layer's checksum does not match"; exit 1; }
-  rm -rf "$ROOT/freerouting-unpack"; mkdir -p "$ROOT/freerouting-unpack"
-  tar -xzf "$ROOT/freerouting-layer.tar.gz" -C "$ROOT/freerouting-unpack" app/freerouting-executable.jar
-  [ "$(sha "$ROOT/freerouting-unpack/app/freerouting-executable.jar")" = "72a62bb5964f542fc946801e68fe450e8c3c80d98fb3e9b70bab2ecc80ae5dd4" ] || {
-    rm -rf "$ROOT/freerouting-unpack" "$ROOT/freerouting-layer.tar.gz"; echo "freerouting: the jar's checksum does not match"; exit 1; }
-  mv "$ROOT/freerouting-unpack/app/freerouting-executable.jar" "$FRJAR"
-  rm -rf "$ROOT/freerouting-unpack" "$ROOT/freerouting-layer.tar.gz"
-  echo "ok        freerouting (checksums match)"
-fi
+get freerouting https://github.com/freerouting/freerouting/releases/download/v2.6.0/freerouting-2.6.0.jar a2929fe37767a71d119f52ac99a1615a9aa2b0538742fa514ddafd72a7785729 freerouting-2.6.0.jar
+FRJAR="$ROOT/freerouting-2.6.0.jar"
 get krt "$K/KiCadRoutingTools-0.24.1.zip" 95fe2610a591b2b5702d41e8e85b89dc5318a48d75f528e2b866c3b3ced5fdb2 krt.zip
 if [ -n "$RTR" ]; then get krt-router "$RTR" "$RSHA" grid_router.so; fi
 

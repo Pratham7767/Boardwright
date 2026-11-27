@@ -1,0 +1,62 @@
+{
+ "date": "2026-11-27",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 500.0,
+ "boards": [
+  {
+   "name": "video",
+   "default": {
+    "connections_before": 1345,
+    "drc_unconnected_before": 499,
+    "drc_list_capped": true,
+    "errors_before": 0,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 8105.1,
+    "skipped": false,
+    "output_tail": "1: +3.3V, +5F, +5V, /ACCES_RAM-, /ACQ_ON, /ADR2, /ADR3, /ADR4, /ADR5, /ADR6, /BE-0, /BE-1, /BE-2, /BE-3, /BLANK-, /BLUE_IN, /BLUE_OUT, /BPCLK, /BT812_RD-, /BT812_WR-, /CAS0-, /CAS1-, /CAS2-, /CAS3-, /CLAMP, /CLKCAD, /CLKCDA, /CSYNC-OUT, /CSYNCIN-, /C_OUT, /DQ0, /DQ1, /DQ10, /DQ11, /DQ12, /DQ13, /DQ14, /DQ15, /DQ16, /DQ17 ... and 331 more\nkrt-planes: ACCEPTED in 323.9 s; routed 2 net(s)\nfreerouting: ACCEPTED in 2056.1 s; routed 229 net(s); kept 370 net(s); dropped 1 that failed a check (see dropped): GND\nfreerouting: ACCEPTED in 2134.6 s; routed 22 net(s)\nfreerouting: ACCEPTED in 1689.1 s; routed 8 net(s)\nfreerouting: ACCEPTED in 1803.1 s; routed 2 net(s)\ndrc: 0 new error(s), 0 fixed, 0 unchanged; open connections 1345 -> 133\ntime 8104.7 s\nLeftovers for Claude: 133 connection(s) on 109 net(s)\n  +3.3V: Track [+3.3V] at 151.13,149.505 -> BUS1.A53\n  /ACCES_RAM-: Track [/ACCES_RAM-] at 201.721,133.698 -> U22.21\n  /ACQ_ON: U24.48 -> U22.13\n  /ADR3: U11.67 -> U24.138\n  /BLANK-: PTH pad 7 of U9 at 335.915,102.235 -> U22.8\n  /BLANK-: U22.8 -> U24.53\n  /BLUE_OUT: PTH pad 39 of U9 at 348.615,127.635 -> Track [/BLUE_OUT] at 82.2559,131.375\n  /BPCLK: U23.30 -> U11.140\n  /BT812_RD-: U23.71 -> U10.86\n  /BT812_WR-: U23.70 -> U10.83\n  /CAS0-: PTH pad 40 of U15 at 227.33,89.535 -> U24.57\n  /CAS2-: PTH pad 42 of U15 at 224.79,89.535 -> U24.59\n  ... 121 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 133,
+    "copper_items_after": 6953,
+    "connections_after": 133,
+    "completion": 0.9011,
+    "new_drc_errors": 0,
+    "errors_after": 0,
+    "nets_open_before": 121,
+    "chosen_nets": 371,
+    "connections_allowed": 495,
+    "connections_allowed_after": 133,
+    "completion_allowed": null,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "krt-planes": {
+      "seconds": 323.9,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 2,
+      "why": ""
+     },
+     "freerouting": {
+      "seconds": 1803.1,
+      "accepted": true,
+      "unconnected_after_stage": 133,
+      "new_errors_in_stage": "0",
+      "nets_routed": 2,
+      "why": ""
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 2,
+    "engine_seconds": 8098.4,
+    "engine_result": "routed 262 of 371 chosen net(s) (krt 2, freerouting 261); open connections 1345 -> 133"
+   },
+   "removed": 8740,
+   "copper_layers": 4,
+   "footprints": 189,
+   "nets": 588,
+   "zones": 2
+  }
+ ]
+}

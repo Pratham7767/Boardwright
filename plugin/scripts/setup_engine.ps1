@@ -4,10 +4,8 @@
 #   powershell -ExecutionPolicy Bypass -File plugin\scripts\setup_engine.ps1   (the installer runs it for you)
 #
 # What it fetches (each pinned to one version and checked against its published SHA-256 before use):
-#   - Freerouting 2.5.1 nightly of 2026-11-16, commit 12f085e (GPL-3, a separate program;
-#     https://github.com/freerouting/freerouting): its official image on ghcr.io, only the layer that holds the
-#     jar, checked against the layer's SHA-256 and the jar's own. It applies the board-edge and hole clearances
-#     that 2.5.0 ignored (routing benchmark in docs/benchmark-engine.md).
+#   - Freerouting 2.6.0 (GPL-3, a separate program; https://github.com/freerouting/freerouting), its release jar
+#     (routing benchmark in docs/benchmark-engine.md)
 #   - a Java 25 runtime for it (Eclipse Temurin, https://adoptium.net)
 #   - KiCadRoutingTools 0.24.1 (MIT, https://github.com/drandyhaas/KiCadRoutingTools) and its prebuilt router
 #   - the Python packages KiCadRoutingTools needs (numpy, scipy, shapely, Pillow, ortools) in its own environment
@@ -19,6 +17,8 @@ New-Item -ItemType Directory -Force $Root | Out-Null
 $Files = @(
   @{ Name = "jre"; Url = "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.5%2B8/OpenJDK25U-jre_x64_windows_hotspot_25.0.5_8.zip";
      Sha = "da78d54a2fcdbba1e92d5e3f07dd30236f96297891c4a21a781c3f38f5c0beae"; File = "jre.zip" },
+  @{ Name = "freerouting"; Url = "https://github.com/freerouting/freerouting/releases/download/v2.6.0/freerouting-2.6.0.jar";
+     Sha = "a2929fe37767a71d119f52ac99a1615a9aa2b0538742fa514ddafd72a7785729"; File = "freerouting-2.6.0.jar" },
   @{ Name = "krt"; Url = "https://github.com/drandyhaas/KiCadRoutingTools/releases/download/v0.24.1/KiCadRoutingTools-0.24.1.zip";
      Sha = "95fe2610a591b2b5702d41e8e85b89dc5318a48d75f528e2b866c3b3ced5fdb2"; File = "krt.zip" },
   @{ Name = "krt-router"; Url = "https://github.com/drandyhaas/KiCadRoutingTools/releases/download/v0.24.1/grid_router-windows-x86_64.pyd";
@@ -43,30 +43,6 @@ function Get-Checked($f) {
 $paths = @{}
 foreach ($f in $Files) { $paths[$f.Name] = Get-Checked $f }
 
-# Freerouting: the jar from the one layer of its official nightly image that holds it (anonymous registry access)
-$frJar = Join-Path $Root "freerouting-2.5.1-nightly-12f085e.jar"
-if ((Test-Path $frJar) -and ((Get-FileHash $frJar -Algorithm SHA256).Hash.ToLower() -eq "72a62bb5964f542fc946801e68fe450e8c3c80d98fb3e9b70bab2ecc80ae5dd4")) {
-  Write-Host "ok        freerouting (already here)"
-} else {
-  Write-Host "download  freerouting"
-  $tok = (Invoke-RestMethod -UseBasicParsing "https://ghcr.io/token?scope=repository:freerouting/freerouting:pull").token
-  $layer = Join-Path $Root "freerouting-layer.tar.gz"
-  Invoke-WebRequest -UseBasicParsing -Headers @{ Authorization = "Bearer $tok" } -OutFile $layer `
-    "https://ghcr.io/v2/freerouting/freerouting/blobs/sha256:81c14637909e1e18f70d7808393ab1074e602df7583173f6aec761773e7b1c25"
-  if ((Get-FileHash $layer -Algorithm SHA256).Hash.ToLower() -ne "81c14637909e1e18f70d7808393ab1074e602df7583173f6aec761773e7b1c25") {
-    Remove-Item $layer; throw "freerouting: the image layer's checksum does not match. Nothing was installed from it." }
-  $unz = Join-Path $Root "freerouting-unpack"
-  Remove-Item -Recurse -Force $unz -ErrorAction SilentlyContinue
-  New-Item -ItemType Directory -Force $unz | Out-Null
-  & tar -xzf $layer -C $unz app/freerouting-executable.jar
-  $got = Join-Path $unz "app\freerouting-executable.jar"
-  if (-not (Test-Path $got) -or (Get-FileHash $got -Algorithm SHA256).Hash.ToLower() -ne "72a62bb5964f542fc946801e68fe450e8c3c80d98fb3e9b70bab2ecc80ae5dd4") {
-    Remove-Item -Recurse -Force $unz, $layer; throw "freerouting: the jar's checksum does not match. Nothing was installed." }
-  Move-Item -Force $got $frJar
-  Remove-Item -Recurse -Force $unz, $layer
-  Write-Host "ok        freerouting (checksums match)"
-}
-$paths["freerouting"] = $frJar
 
 # Java runtime for Freerouting
 $jreDir = Join-Path $Root "jre"

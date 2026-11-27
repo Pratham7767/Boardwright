@@ -8,6 +8,31 @@ Each demo folder is copied to a work directory (the KiCad install is never touch
 
 Completion is `1 - connections after / connections before`, over all connections. "Allowed" completion counts only the connections on nets the engine was permitted to route (it skips hazardous nets, and fast nets unless `--allow-fast`). "New errors" is the number of DRC errors not present on the stripped board.
 
+## Round 14: Freerouting 2.6.0, and a pass budget (0.7.0)
+
+**Pass budget (rejected).** Freerouting stops at a time limit, so its result depends on how fast the machine is that day. A budget of autorouter passes instead (`--router.autorouter.max_passes`, branch `engine-pass-budget`, switch `BOARDWRIGHT_FR_PASSES`) gives a byte-identical session for the same seed: three kit-dev runs at 10 passes matched, and so did one with 24 busy processes beside it (11 % slower). But it routed no better on video, where it matters (open connections after, 0 new DRC errors in every run):
+
+| video, default, `--minutes 15` | Open after |
+|---|---|
+| Four timed rounds of 30 minutes (kept) | 117, 130 |
+| One run of 4 passes | 141 |
+| One run of 5 passes | 124 (stopped by the 90-minute safety limit) |
+| Four rounds of 2 passes | 133 |
+
+The same code gave 117 to 138 on video across this round's runs: differences under about 20 connections there are noise. The branch is kept but not merged.
+
+**Freerouting 2.6.0 (kept).** Released 2026-11-25, against the 2.5.1 nightly the engine used; each pair ran at the same time, `--minutes 15`, 0 new DRC errors in every run:
+
+| Board | 2.5.1 nightly 12f085e | **2.6.0** |
+|---|---|---|
+| kit-dev-coldfire-xilinx_5213 | 44 | **40** |
+| video | 138 | **134** |
+| jetson-agx-thor-baseboard | 1448 (12 nets routed by Freerouting) | **1085** (172 nets) |
+
+kit-dev and video are within the noise; jetson is not: its Freerouting rounds had stalled at 1-5 nets each and now route 11-89, and its allowed (non-fast) connections fall from 359 to 286 open. The installers now fetch the 2.6.0 release jar from GitHub, pinned by checksum, instead of a layer of the nightly image.
+
+**Session import fix.** One timed video run lost a whole round (207 nets routed, then thrown away): under load KiCad's Python failed while closing after it had printed ok and saved the board. An import now counts when it exited cleanly or reported ok and the board file exists, and it may take 10 minutes.
+
 ## Round 13: no necked retry in Freerouting (0.7.0)
 
 Freerouting 2.5.x has a "necked retry": when a connection will not route at its class width, it routes it again whole at the neck width, and later connections of that net start necked (the logs say "Necked retry routed net 'GND' at 150.0 um"). `--router.automatic_neckdown=false` does not switch it off. The engine passed the board's minimum track width as the neck width, so a net routed this way lay under its class or rule width and the size audit dropped the whole net (royalblue: 7 nets at 0.077 mm; kit-dev: GND, +3.3V and GNDA at 0.2 mm under their 0.4 mm class). A neck width wider than any track (`--router.neck_width_um=10000`) turns the retry off: in Freerouting's source the retry returns nothing when the neck is not narrower than the class width, and hand runs showed 0 necked nets (7 and 1 before).
