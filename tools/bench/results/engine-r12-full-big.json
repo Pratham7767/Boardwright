@@ -1,0 +1,118 @@
+{
+ "date": "2026-11-27",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 400.0,
+ "boards": [
+  {
+   "name": "video",
+   "default": {
+    "connections_before": 1345,
+    "drc_unconnected_before": 499,
+    "drc_list_capped": true,
+    "errors_before": 0,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 7783.3,
+    "skipped": false,
+    "output_tail": "S1-, /CAS2-, /CAS3-, /CLAMP, /CLKCAD, /CLKCDA, /CSYNC-OUT, /CSYNCIN-, /C_OUT, /DQ0, /DQ1, /DQ10, /DQ11, /DQ12, /DQ13, /DQ14, /DQ15, /DQ16, /DQ17 ... and 331 more\nkrt-planes: ACCEPTED in 363.0 s; routed 2 net(s)\nfreerouting: ACCEPTED in 1812.7 s; routed 237 net(s); kept 370 net(s); dropped 1 that failed a check (see dropped): +3.3V\nfreerouting: ACCEPTED in 1815.9 s; routed 20 net(s)\nfreerouting: ACCEPTED in 1817.3 s; routed 6 net(s)\nfreerouting: ACCEPTED in 1815.0 s; routed 0 net(s); kept 83 net(s); dropped 27 that failed a check (see dropped): /buspci.sch/P_AD14, /DQ2, /DQ3, /DQ8, /TVB7, /TVG7\ndrc: 0 new error(s), 0 fixed, 0 unchanged; open connections 1345 -> 144\ntime 7783.0 s\nLeftovers for Claude: 144 connection(s) on 106 net(s)\n  +3.3V: Track [+3.3V] at 151.13,158.496 -> Track [+3.3V] at 161.29,158.496\n  //PCWR: Track [//PCWR] at 156.73,120.665 -> U24.132\n  /ACCES_RAM-: Track [/ACCES_RAM-] at 201.721,133.698 -> U22.21\n  /ACQ_ON: U24.48 -> U22.13\n  /BE-1: Track [/BE-1] at 127.779,90.5135 -> U11.63\n  /BE-2: Track [/BE-2] at 123.071,91.7914 -> U11.62\n  /BLANK-: Track [/BLANK-] at 296.449,104.005 -> U22.8\n  /BLUE_OUT: PTH pad 39 of U9 at 348.615,127.635 -> C60.2\n  /BT812_RD-: U23.71 -> U10.86\n  /CLAMP: Track [/CLAMP] at 292.6204,78.8529 -> U22.7\n  /CLKCAD: U22.2 -> Track [/CLKCAD] at 316.357,99.949\n  /CLKCAD: U22.2 -> U24.77\n  ... 132 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 144,
+    "copper_items_after": 6702,
+    "connections_after": 144,
+    "completion": 0.8929,
+    "new_drc_errors": 0,
+    "errors_after": 0,
+    "nets_open_before": 121,
+    "chosen_nets": 371,
+    "connections_allowed": 495,
+    "connections_allowed_after": 143,
+    "completion_allowed": null,
+    "left_out_by_reason": {},
+    "left_out_connections": 0,
+    "stages": {
+     "krt-planes": {
+      "seconds": 363.0,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 2,
+      "why": ""
+     },
+     "freerouting": {
+      "seconds": 1815.0,
+      "accepted": true,
+      "unconnected_after_stage": 144,
+      "new_errors_in_stage": "0",
+      "nets_routed": 0,
+      "why": "kept 83 net(s); dropped 27 that failed a check (see dropped): /buspci.sch/P_AD14, /DQ2, /DQ3, /DQ8, /TVB7, /TVG7"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 7777.5,
+    "engine_result": "routed 265 of 371 chosen net(s) (krt 2, freerouting 263); open connections 1345 -> 144"
+   },
+   "removed": 8740,
+   "copper_layers": 4,
+   "footprints": 189,
+   "nets": 588,
+   "zones": 2
+  },
+  {
+   "name": "jetson-agx-thor-baseboard",
+   "default": {
+    "connections_before": 2946,
+    "drc_unconnected_before": 499,
+    "drc_list_capped": true,
+    "errors_before": 3,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 8583.5,
+    "skipped": false,
+    "output_tail": " out /USB Hub/USBSS_RX_P: fast net, route it by hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nleft out /USB Hub/USBSS_TX_N: fast net, route it by hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nleft out /USB Hub/USBSS_TX_P: fast net, route it by hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nleft out /USB Hub/VBUS_MON_UP: fast net, route it by hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nkrt-planes: ACCEPTED in 277.8 s; routed 2 net(s)\nfreerouting: ACCEPTED in 1922.4 s; routed 5 net(s)\nfreerouting: ACCEPTED in 1924.3 s; routed 3 net(s); kept 568 net(s); dropped 1 that failed a check (see dropped): +20V\nfreerouting: ACCEPTED in 1929.1 s; routed 3 net(s)\nfreerouting: ACCEPTED in 1937.0 s; routed 13 net(s)\ndrc: 0 new error(s), 0 fixed, 3 unchanged; open connections 2946 -> 1404\ntime 8582.8 s\nLeftovers for Claude: 1404 connection(s) on 847 net(s)\n  +12V: 6 connection(s) open\n  +1V8: 11 connection(s) open\n  +20V: 5 connection(s) open\n  +3V3_AON: 30 connection(s) open\n  +5V: 1 connection(s) open\n  /CSI/CAM0.CSI2_CLK+: 1 connection(s) open\n  /CSI/CAM0.CSI2_CLK-: 1 connection(s) open\n  /CSI/CAM0.CSI2_D0+: 1 connection(s) open\n  /CSI/CAM0.CSI2_D0-: 1 connection(s) open\n  /CSI/CAM0.CSI2_D1+: 1 connection(s) open\n  /CSI/CAM0.CSI2_D1-: 1 connection(s) open\n  /CSI/CAM0.CSI3_D0+: 1 connection(s) open\n  ... 835 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 499,
+    "copper_items_after": 9299,
+    "connections_after": 1404,
+    "completion": 0.5234,
+    "new_drc_errors": 0,
+    "errors_after": 3,
+    "nets_open_before": 1,
+    "chosen_nets": 571,
+    "connections_allowed": 499,
+    "connections_allowed_after": 343,
+    "completion_allowed": null,
+    "left_out_by_reason": {
+     "fast net, route it by hand or pass --allow-fast": 301
+    },
+    "left_out_connections": 0,
+    "stages": {
+     "krt-planes": {
+      "seconds": 277.8,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 2,
+      "why": ""
+     },
+     "freerouting": {
+      "seconds": 1937.0,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 13,
+      "why": ""
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 13,
+    "engine_seconds": 8541.0,
+    "engine_result": "routed 25 of 571 chosen net(s) (krt 2, freerouting 24); open connections 2946 -> 1404"
+   },
+   "removed": 25386,
+   "copper_layers": 10,
+   "footprints": 1125,
+   "nets": 1387,
+   "zones": 125
+  }
+ ]
+}

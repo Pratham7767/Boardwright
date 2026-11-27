@@ -8,6 +8,22 @@ Each demo folder is copied to a work directory (the KiCad install is never touch
 
 Completion is `1 - connections after / connections before`, over all connections. "Allowed" completion counts only the connections on nets the engine was permitted to route (it skips hazardous nets, and fast nets unless `--allow-fast`). "New errors" is the number of DRC errors not present on the stripped board.
 
+## Full run after round 12 (0.7.0, default runs)
+
+All seven boards, `--minutes 15`, in two streams at the same time (video and jetson; the five others one after another). 0 new DRC errors on every board. "Allowed" counts what a default run may route: fast nets (impedance classes, pairs) are left for `--allow-fast` or for hand routing.
+
+| Board | Connections | Open after | Allowed: open before -> after | Left out (fast nets) | Earlier result | Time |
+|---|---|---|---|---|---|---|
+| pic_programmer | 86 | 0 | 82 -> 0 | 0 | 0 (round 10) | 1 min |
+| stickhub | 128 | 4 | 128 -> 4 | 0 | 4 (round 10) | 4 min |
+| kit-dev-coldfire-xilinx_5213 | 478 | 45 | 472 -> 45 | 0 | 42-45 (round 10) | 40 min |
+| cm5_minima | 208 | 87 | 126 -> **0** | 81 | 24 (0.7.0, fast nets then laid as plain tracks) | 19 min |
+| royalblue54L_feather | 142 | 59 | 132 -> 49 | 8 | 67-90 (round 10) | 37 min |
+| video | 1345 | **144** | 495 -> 143 | 0 | 149 (round 11) | 130 min |
+| jetson-agx-thor-baseboard | 2946 | **1404** | 499 (list capped) -> 343 | 0 | 1468-1476 (round 12) | 143 min |
+
+cm5's open count rose against the 0.7.0 table only because its 90 ohm and 100 ohm nets are fast nets since round 7; a default run leaves them out, and of what it may route it left nothing open. Two cm5 runs at the same time with Freerouting's fan-out on and off both left 88 open, so the fan-out setting is not a factor there. Results: `tools/bench/results/engine-r12-full-*.json`, `engine-r12-cm5-*.json`.
+
 ## Round 12: every plane layer closed to Freerouting (0.7.0)
 
 In every Freerouting round on jetson, 4 to 13 power nets (VCC, the 5 V rails, the USB-C VBUS nets) were dropped. KiCad's DRC was not the reason: the engine's plane guard was. Freerouting had laid them across In4.Cu, jetson's +1V8 plane. The engine marks each plane layer as a power layer in the DSN so Freerouting leaves it alone, but it only replaced `(type signal)`, and KiCad exports In4.Cu as `(type jumper)` (the layer type set in the board). Any type is now replaced. The run log also said "caused DRC errors" for nets dropped by the size or plane checks; it now says "failed a check".

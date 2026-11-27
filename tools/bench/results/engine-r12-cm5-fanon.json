@@ -1,0 +1,64 @@
+{
+ "date": "2026-11-27",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 400.0,
+ "boards": [
+  {
+   "name": "cm5_minima",
+   "default": {
+    "connections_before": 208,
+    "drc_unconnected_before": 208,
+    "drc_list_capped": false,
+    "errors_before": 4,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 1289.7,
+    "skipped": false,
+    "output_tail": ".nWAKE: fast net, route it by hand or pass --allow-fast (net class 90ohm)\nleft out /CM5/USB2P.D_N: fast net, route it by hand or pass --allow-fast (net class 90ohm)\nleft out /CM5/USB2P.D_P: fast net, route it by hand or pass --allow-fast (net class 90ohm)\nleft out /USB_C.D_N: fast net, route it by hand or pass --allow-fast (net class 90ohm)\nleft out /USB_C.D_P: fast net, route it by hand or pass --allow-fast (net class 90ohm)\nvariants (open connections after): krt-first 95, freerouting-first 88, planned-krt-first 91; kept freerouting-first\nfreerouting-first: freerouting: ACCEPTED in 908.8 s; routed 49 net(s)\nfreerouting-first: krt2: ACCEPTED in 33.6 s; routed 5 net(s)\ndrc: 0 new error(s), 0 fixed, 4 unchanged; open connections 208 -> 88\ntime 1289.2 s\nLeftovers for Claude: 88 connection(s) on 41 net(s)\n  /CM5/DPHY0_P.C_N: Module302.127 -> J802.8\n  /CM5/DPHY0_P.C_P: Module302.129 -> J802.9\n  /CM5/DPHY0_P.D0_N: Module302.115 -> J802.2\n  /CM5/DPHY0_P.D0_P: Module302.117 -> J802.3\n  /CM5/DPHY0_P.D1_N: Module302.121 -> J802.5\n  /CM5/DPHY0_P.D1_P: Module302.123 -> J802.6\n  /CM5/DPHY0_P.D2_N: Module302.133 -> J802.11\n  /CM5/DPHY0_P.D2_P: Module302.135 -> J802.12\n  /CM5/DPHY0_P.D3_N: Module302.139 -> J802.14\n  /CM5/DPHY0_P.D3_P: Module302.141 -> J802.15\n  /CM5/ETH_PI.TRD0_N: Module301.10 -> U401.9\n  /CM5/ETH_PI.TRD0_N: U401.2 -> J1.3\n  ... 76 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 88,
+    "copper_items_after": 856,
+    "connections_after": 88,
+    "completion": 0.5769,
+    "new_drc_errors": 0,
+    "errors_after": 4,
+    "nets_open_before": 94,
+    "chosen_nets": 54,
+    "connections_allowed": 126,
+    "connections_allowed_after": 0,
+    "completion_allowed": 1.0,
+    "left_out_by_reason": {
+     "fast net, route it by hand or pass --allow-fast": 40
+    },
+    "left_out_connections": 81,
+    "stages": {
+     "freerouting-first: freerouting": {
+      "seconds": 908.8,
+      "accepted": true,
+      "unconnected_after_stage": 92,
+      "new_errors_in_stage": "0",
+      "nets_routed": 49,
+      "why": ""
+     },
+     "freerouting-first: krt2": {
+      "seconds": 33.6,
+      "accepted": true,
+      "unconnected_after_stage": 88,
+      "new_errors_in_stage": "0",
+      "nets_routed": 5,
+      "why": ""
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 1282.4,
+    "engine_result": "routed 54 of 54 chosen net(s) (krt 5, freerouting 49); open connections 208 -> 88"
+   },
+   "removed": 2528,
+   "copper_layers": 6,
+   "footprints": 112,
+   "nets": 220,
+   "zones": 14
+  }
+ ]
+}
