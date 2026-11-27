@@ -5,7 +5,7 @@
 #   bash plugin/scripts/setup_engine.sh
 #
 # Each download is pinned to one version and checked against its published SHA-256 before use:
-#   Freerouting 2.5.0 (GPL-3, a separate program), a Java 25 runtime for it (Eclipse Temurin),
+#   Freerouting 2.5.1 nightly 12f085e (GPL-3, a separate program), a Java 25 runtime for it (Eclipse Temurin),
 #   KiCadRoutingTools 0.24.1 (MIT) with its prebuilt router, and its Python packages in their own environment.
 set -euo pipefail
 ROOT="${BOARDWRIGHT_ENGINE_DIR:-$HOME/.local/share/boardwright/engine}"
