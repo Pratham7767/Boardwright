@@ -31,6 +31,8 @@ The same code gave 117 to 138 on video across this round's runs: differences und
 
 kit-dev and video are within the noise; jetson is not: its Freerouting rounds had stalled at 1-5 nets each and now route 11-89, and its allowed (non-fast) connections fall from 359 to 286 open. The installers now fetch the 2.6.0 release jar from GitHub, pinned by checksum, instead of a layer of the nightly image.
 
+**Plane taps at the board's minimums (rejected).** kit-dev's leftovers are all +3.3V, GND and GNDA pins on the fine-pitch U102 and U301, which the plane repair cannot tap at their 0.4 mm class under `--escalation off`. With `BOARDWRIGHT_PLANES_ARGS="--escalation board"` (taps may step down to the board's own minimum sizes) every net the plane repair routed failed a check (a new DRC error, under its class, or across a plane) and the stage was rejected: 54 open against 38 with the default, 0 new DRC errors in both (Freerouting 2.6.0, run at the same time). These pins need a design decision (a narrower class at those pads, or the designer's own fan-out), not a router setting. The default run here is a second 2.6.0 sample on kit-dev: 38 (40 before).
+
 **Session import fix.** One timed video run lost a whole round (207 nets routed, then thrown away): under load KiCad's Python failed while closing after it had printed ok and saved the board. An import now counts when it exited cleanly or reported ok and the board file exists, and it may take 10 minutes.
 
 ## Round 13: no necked retry in Freerouting (0.7.0)
