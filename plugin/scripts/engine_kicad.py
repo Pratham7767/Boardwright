@@ -14,6 +14,8 @@
     python.exe -I engine_kicad.py textguard <in.kicad_pcb> <out.kicad_pcb>         keep-outs over copper text
     python.exe -I engine_kicad.py moved  <base.kicad_pcb> <result.kicad_pcb> <nets.json>  other nets the router moved
     python.exe -I engine_kicad.py trim   <in.kicad_pcb> <out.kicad_pcb> <nets.json>   remove undersized single-segment taps
+    python.exe -I engine_kicad.py cut    <in.kicad_pcb> <base.kicad_pcb> <out.kicad_pcb> <request.json>
+                                                                                     remove the tracks and vias DRC named
     python.exe -I engine_kicad.py planes <in.kicad_pcb>                              plane layers and the copper layer order
 
 open: by KiCad's own connectivity, not capped like the DRC's unconnected list (499 items). For each net,
@@ -410,6 +412,81 @@ def cmd_trim(a):
     return 0
 
 
+def cmd_cut(a):
+    """request: {net: [uuid ...]}. Remove those tracks and vias (only where they belong to that net), then the
+    net's copper the cut left dangling, but never copper the base board already had: the rest of the net's
+    new routing stays and only the gap is open again. Prints {"cut": {net: items removed}}."""
+    pcbnew, b = load(a[0])
+    _p, base = load(a[1])
+    req = json.loads(open(a[3], encoding="utf-8").read())
+
+    def key(t):
+        if t.Type() == pcbnew.PCB_VIA_T:
+            p = t.GetPosition()
+            return ("v", t.GetNetname(), p.x, p.y)
+        s, e = t.GetStart(), t.GetEnd()
+        return ("t", t.GetNetname(), t.GetLayer(), t.GetWidth(), *sorted([(s.x, s.y), (e.x, e.y)]))
+    old = {key(t) for t in base.GetTracks() if t.GetNetname() in req}
+    # decide on a snapshot, remove last: pcbnew's lists go stale (and crash) once an item is removed
+    mine: dict = {}
+    for t in b.GetTracks():
+        if t.GetNetname() in req:
+            mine.setdefault(t.GetNetname(), []).append(t)
+    pads: dict = {}
+    for pad in b.GetPads():
+        if pad.GetNetname() in req:
+            pads.setdefault(pad.GetNetname(), []).append(pad)
+    zones: dict = {}
+    for z in b.Zones():
+        if not z.GetIsRuleArea() and z.GetNetname() in req:
+            zones.setdefault(z.GetNetname(), []).append(z)
+
+    def in_zone(p, net, layers):
+        return any(z.IsOnLayer(l) and z.HitTestFilledArea(l, p) for z in zones.get(net, []) for l in layers)
+
+    gone, done = set(), {}
+    for n, ts in mine.items():
+        for t in ts:
+            if t.m_Uuid.AsString() in req[n]:
+                gone.add(id(t))
+                done[n] = done.get(n, 0) + 1
+
+    def held(p, me, ts):
+        n = me.GetNetname()
+        if any(pad.IsOnLayer(me.GetLayer()) and pad.HitTest(p) for pad in pads.get(n, [])):
+            return True
+        if in_zone(p, n, [me.GetLayer()]):
+            return True
+        return any(o is not me and id(o) not in gone and (o.Type() == pcbnew.PCB_VIA_T or o.GetLayer() == me.GetLayer())
+                   and o.HitTest(p) for o in ts)
+    while True:                                   # prune what the cut left hanging, new copper only
+        loose = []
+        for n, ts in mine.items():
+            if n not in done:
+                continue
+            for t in ts:
+                if id(t) in gone or key(t) in old:
+                    continue
+                if t.Type() == pcbnew.PCB_VIA_T:
+                    p = t.GetPosition()
+                    if not any(id(o) not in gone and o.Type() != pcbnew.PCB_VIA_T and o.HitTest(p) for o in ts)                             and not any(pad.HitTest(p) for pad in pads.get(n, []))                             and not in_zone(p, n, list(t.GetLayerSet().CuStack())):
+                        loose.append(t)
+                elif not (held(t.GetStart(), t, ts) and held(t.GetEnd(), t, ts)):
+                    loose.append(t)
+        if not loose:
+            break
+        for t in loose:
+            gone.add(id(t))
+            done[t.GetNetname()] += 1
+    for ts in mine.values():
+        for t in ts:
+            if id(t) in gone:
+                b.Remove(t)
+    b.Save(a[2])
+    print(json.dumps({"cut": done}))
+    return 0
+
+
 def cmd_merge(a):
     pcbnew, base = load(a[0])
     _p, res = load(a[1])
@@ -436,7 +513,7 @@ def cmd_merge(a):
 
 
 def main(argv):
-    cmds = {"dsn": cmd_dsn, "ses": cmd_ses, "merge": cmd_merge, "copper": cmd_copper, "open": cmd_open, "rules": cmd_rules, "near": cmd_near, "refill": cmd_refill, "zones": cmd_zones, "audit": cmd_audit, "planes": cmd_planes, "textguard": cmd_textguard, "moved": cmd_moved, "trim": cmd_trim}
+    cmds = {"dsn": cmd_dsn, "ses": cmd_ses, "merge": cmd_merge, "copper": cmd_copper, "open": cmd_open, "rules": cmd_rules, "near": cmd_near, "refill": cmd_refill, "zones": cmd_zones, "audit": cmd_audit, "planes": cmd_planes, "textguard": cmd_textguard, "moved": cmd_moved, "trim": cmd_trim, "cut": cmd_cut}
     if not argv or argv[0] not in cmds:
         print(__doc__)
         return 2

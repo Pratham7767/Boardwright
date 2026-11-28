@@ -854,8 +854,8 @@ def evaluate(proj, kpy, work, name, st, base_open, orig_drc, nets, base_pcb, pla
             break                               # an error no net can be blamed for: reject the stage
         # Local repair: a net DRC names loses only the tracks and vias DRC names, and what that leaves dangling,
         # instead of all its new copper; the gap stays open for the next stage. A few times per net, then it is
-        # dropped. BOARDWRIGHT_DRC_CUT=0 turns it off, to measure.
-        if os.environ.get("BOARDWRIGHT_DRC_CUT", "1") != "0":
+        # dropped. Off until it is measured: BOARDWRIGHT_DRC_CUT=1 turns it on.
+        if os.environ.get("BOARDWRIGHT_DRC_CUT", "0") == "1":
             named: dict = {}
             for k in d["errors"]:
                 if k in orig_drc["errors"]:

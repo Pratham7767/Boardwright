@@ -200,6 +200,21 @@ def main() -> int:
                 check("a long track at the same width still fails it", net in long_, long_)
             else:
                 check("neck-down boards made", False, made.stderr[-300:])
+            # local DRC repair: cutting one named track also prunes what it leaves dangling, never old copper
+            made = subprocess.run([kpy, "-I", "-c", CUT_BOARDS, str(Path(engine.__file__).parent), str(board),
+                                   str(tmp)], capture_output=True, text=True)
+            pick = next((json.loads(l[5:]) for l in made.stdout.splitlines() if l.startswith("PICK=")), None)
+            if pick:
+                n, uid = pick["net"], pick["uuid"]
+                got = engine.cut(kpy, board, tmp / "cut_base.kicad_pcb", tmp / "cut_new.kicad_pcb", {n: [uid]})
+                op = engine.open_counts(kpy, tmp / "cut_new.kicad_pcb")["open"].get(n, 0)
+                full = engine.open_counts(kpy, tmp / "cut_base.kicad_pcb")["open"].get(n, 0)
+                check("cut: the named track and the copper it left dangling go, the net's other connections stay",
+                      got.get(n, 0) > 1 and 0 < op < full, (got, op, full))
+                same = engine.cut(kpy, board, board, tmp / "cut_old.kicad_pcb", {n: [uid]})
+                check("cut: copper the base board already had is never pruned", same == {n: 1}, same)
+            else:
+                check("cut boards made", False, made.stderr[-300:])
             # sizes from the project's rules (engine_rules.py) win over the class, per layer, both ways
             layers = ["F.Cu", "In1.Cu", "In2.Cu", "B.Cu"]
             sz = tmp / "sizes.json"
@@ -220,6 +235,31 @@ def main() -> int:
         shutil.rmtree(tmp, ignore_errors=True)
     print("ALL PASSED" if not BAD else f"{len(BAD)} FAILED")
     return 1 if BAD else 0
+
+
+CUT_BOARDS = r"""
+import json, sys
+sys.path.insert(0, sys.argv[1])
+import kicad_python
+kicad_python.quiet()
+import pcbnew
+b = pcbnew.LoadBoard(sys.argv[2])
+by = {}
+for t in b.GetTracks():
+    if t.Type() != pcbnew.PCB_VIA_T:
+        by.setdefault(t.GetNetname(), []).append(t)
+poured = {z.GetNetname() for z in b.Zones()}
+pads = list(b.GetPads())
+def free(t):                                     # a segment in the middle of a chain: neither end on a pad
+    return not any(p.HitTest(t.GetStart()) or p.HitTest(t.GetEnd()) for p in pads)
+net, mid = next((n, t) for n, ts in sorted(by.items(), key=lambda kv: -len(kv[1])) if n and n not in poured
+                for t in ts if free(t))
+print("PICK=" + json.dumps({"net": net, "uuid": mid.m_Uuid.AsString()}))
+gone = [t for t in b.GetTracks() if t.GetNetname() == net]
+for t in gone:
+    b.Remove(t)
+b.Save(sys.argv[3] + "/cut_base.kicad_pcb")
+"""
 
 
 if __name__ == "__main__":
