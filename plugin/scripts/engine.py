@@ -810,12 +810,12 @@ def evaluate(proj, kpy, work, name, st, base_open, orig_drc, nets, base_pcb, pla
                 # an undersized single-segment tap is cut from the router's result (its pad stays open) and the
                 # rest of the net is kept; anything else undersized, or on another net's plane, drops the net
                 small = [n for n, w in sized.items() if "it would cut the plane" not in w]
-                cut = trim(kpy, st["raw"], work / f"{name}_trim{attempt}.kicad_pcb", small) if small else {}
-                if cut.get("trimmed"):
+                tr = trim(kpy, st["raw"], work / f"{name}_trim{attempt}.kicad_pcb", small) if small else {}
+                if tr.get("trimmed"):
                     st["raw"] = work / f"{name}_trim{attempt}.kicad_pcb"
-                    for n, c in cut["trimmed"].items():
+                    for n, c in tr["trimmed"].items():
                         st.setdefault("trimmed", {})[n] = st.get("trimmed", {}).get(n, 0) + c
-                    sized = {n: w for n, w in sized.items() if n not in cut["trimmed"]}
+                    sized = {n: w for n, w in sized.items() if n not in tr["trimmed"]}
                     if not sized:
                         continue
                 dropped.update(sized)
@@ -896,6 +896,9 @@ def evaluate(proj, kpy, work, name, st, base_open, orig_drc, nets, base_pcb, pla
     elif dropped:
         st["why"] = f"kept {len(keep)} net(s); dropped {len(dropped)} that failed a check (see dropped): " + \
             ", ".join(list(dropped)[:6])
+    if st.get("cut") and st["accepted"]:
+        st["why"] = f"repaired {len(st['cut'])} net(s) by cutting {sum(st['cut'].values())} item(s) DRC named" + \
+            ("; " + st["why"] if st.get("why") else "")
     return st
 
 
