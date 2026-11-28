@@ -142,6 +142,7 @@ def drc_full(pcb: Path, refill: bool = False) -> dict | None:
         shutil.rmtree(out.parent, ignore_errors=True)
     errs = {}
     pos: dict = {}
+    ids: dict = {}
     for v in d.get("violations", []):
         if v.get("severity") != "error":
             continue
@@ -155,6 +156,7 @@ def drc_full(pcb: Path, refill: bool = False) -> dict | None:
         errs[key] = v.get("description", "") + ": " + "; ".join(i.get("description", "") for i in v.get("items", []))
         pos[key] = [(i["pos"]["x"], i["pos"]["y"]) for i in v.get("items", []) if isinstance(i.get("pos"), dict)
                     and "x" in i["pos"] and "y" in i["pos"]]
+        ids[key] = [(i.get("description", ""), i["uuid"]) for i in v.get("items", []) if i.get("uuid")]
     unc = []
     for u in d.get("unconnected_items", []):
         items = []
@@ -170,7 +172,7 @@ def drc_full(pcb: Path, refill: bool = False) -> dict | None:
                 net = net or (n.group(1) if n else "")
                 items.append(desc.split(" on ")[0].replace(f"[{net}] ", "") + f" at {i.get('pos', {}).get('x')},{i.get('pos', {}).get('y')}")
         unc.append((net, items))
-    return {"errors": errs, "pos": pos, "unconnected": len(unc), "unconnected_list": unc}
+    return {"errors": errs, "pos": pos, "ids": ids, "unconnected": len(unc), "unconnected_list": unc}
 
 
 def open_counts(kpy: str, pcb: Path) -> dict:
@@ -623,7 +625,9 @@ def freerouting_stage(tools: dict, kpy: str, base: Path, work: Path, minutes: fl
         cmd.append(f"--router.neck_width_um={int(-(-rules['min_width_um'] // 1))}")
     else:
         cmd.append("--router.neck_width_um=10000")
-    rc, out, timed_out, _s = sh(cmd, timeout=secs + 300, cwd=str(work))
+    # past its limit Freerouting finishes the connection it is on and then writes the session: on jetson that took
+    # more than 5 minutes once and the round was lost (round 15), so the hang guard allows 10
+    rc, out, timed_out, _s = sh(cmd, timeout=secs + 600, cwd=str(work))
     res["seconds"] = round(time.time() - t0, 1)
     res["edge_rule_applied"] = "copper-to-edge clearance override" in out.lower() or None
     if timed_out:
@@ -737,6 +741,25 @@ def trim(kpy: str, raw: Path, out: Path, nets: list) -> dict:
             pass
 
 
+def cut(kpy: str, board: Path, base: Path, out: Path, items: dict) -> dict:
+    """engine_kicad cut: {net: items removed} ({} when it fails). items: {net: [uuid ...]}."""
+    fd, name = tempfile.mkstemp(prefix="bwcut", suffix=".json")
+    os.close(fd)
+    req = Path(name)
+    try:
+        req.write_text(json.dumps(items), "utf-8")
+        got = _kicad_json(kpy, "cut", board, base, out, req)
+        return got.get("cut", {}) if isinstance(got, dict) and out.is_file() else {}
+    finally:
+        try:
+            req.unlink()
+        except OSError:
+            pass
+
+
+CUTS_PER_NET = 3                                # local repairs of one net before it is dropped
+
+
 def evaluate(proj, kpy, work, name, st, base_open, orig_drc, nets, base_pcb, planes: dict | None = None,
              frozen: set | None = None) -> dict:
     """Merge a stage's copper (listed nets only) into the base and check it with KiCad's DRC. A net whose
@@ -764,7 +787,8 @@ def evaluate(proj, kpy, work, name, st, base_open, orig_drc, nets, base_pcb, pla
     keep = list(nets) + st["moved"]
     dropped: dict = {}
     merged, d, lines, new = None, None, [], []
-    for attempt in range(12):
+    cuts: dict = {}
+    for attempt in range(12 + 2 * CUTS_PER_NET):
         merged = work / f"{name}_merged{attempt}.kicad_pcb"
         ok, text = merge(kpy, base_pcb, st["raw"], merged, keep, work)
         if not ok:
@@ -828,6 +852,28 @@ def evaluate(proj, kpy, work, name, st, base_open, orig_drc, nets, base_pcb, pla
                 bad[n] = "new copper near a DRC error that names no routed net"
         if not bad:
             break                               # an error no net can be blamed for: reject the stage
+        # Local repair: a net DRC names loses only the tracks and vias DRC names, and what that leaves dangling,
+        # instead of all its new copper; the gap stays open for the next stage. A few times per net, then it is
+        # dropped. BOARDWRIGHT_DRC_CUT=0 turns it off, to measure.
+        if os.environ.get("BOARDWRIGHT_DRC_CUT", "1") != "0":
+            named: dict = {}
+            for k in d["errors"]:
+                if k in orig_drc["errors"]:
+                    continue
+                for desc, uid in d.get("ids", {}).get(k, []):
+                    for shown in NET_IN.findall(desc):
+                        n = alias.get(shown)
+                        if n in bad and cuts.get(n, 0) < CUTS_PER_NET and ("Track" in desc or "Via" in desc):
+                            named.setdefault(n, []).append(uid)
+            got = cut(kpy, merged, base_pcb, work / f"{name}_cut{attempt}.kicad_pcb", named) if named else {}
+            if got:
+                st["raw"] = work / f"{name}_cut{attempt}.kicad_pcb"
+                for n, c in got.items():
+                    cuts[n] = cuts.get(n, 0) + 1
+                    st.setdefault("cut", {})[n] = st.get("cut", {}).get(n, 0) + c
+                bad = {n: w for n, w in bad.items() if n not in got}
+                if not bad:
+                    continue
         dropped.update(bad)
         keep = without(keep, bad)
         if not keep:

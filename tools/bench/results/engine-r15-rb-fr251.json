@@ -1,0 +1,72 @@
+{
+ "date": "2026-11-28",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 120.0,
+ "boards": [
+  {
+   "name": "royalblue54L_feather",
+   "default": {
+    "connections_before": 142,
+    "drc_unconnected_before": 142,
+    "drc_list_capped": false,
+    "errors_before": 51,
+    "copper_items_before": 15,
+    "exit": 1,
+    "wall_s": 3385.0,
+    "skipped": false,
+    "output_tail": "; dropped 1 that failed a check (see dropped): GND\nplanned-krt-first: freerouting: REJECTED in 1227.1 s; routed 0 net(s); Freerouting did not stop at its 15 minute limit\nplanned-krt-first: krt2: REJECTED in 1080.1 s; routed 0 net(s); did not stop within 15 minutes plus its grace time\ndrc: 0 new error(s), 0 fixed, 51 unchanged; open connections 142 -> 77\ntime 3382.7 s\nLeftovers for Claude: 77 connection(s) on 40 net(s)\n  /Connectors/ANALOG.A1: U1.F8 -> PTH pad 6 of J1 at 145.77,116.41\n  /Connectors/ANALOG.A2: U1.F9 -> PTH pad 7 of J1 at 148.31,116.41\n  /Connectors/ANALOG.A3: Track [/Connectors/ANALOG.A3] at 161.060625,106.145625 -> PTH pad 8 of J1 at 150.85,116.41\n  /Connectors/ANALOG.A4: U1.B4 -> PTH pad 9 of J1 at 153.39,116.41\n  /Connectors/ANALOG.A5: PTH pad 10 of J1 at 155.93,116.41 -> U1.B5\n  /Connectors/DIG.D10: U1.K6 -> PTH pad 7 of J2 at 158.47,94.82\n  /Connectors/DIG.D11: Track [/Connectors/DIG.D11] at 157.835,100.505 -> U1.J4\n  /Connectors/DIG.D12: Track [/Connectors/DIG.D12] at 163.5,101.2 -> PTH pad 5 of J2 at 153.39,94.82\n  /Connectors/DIG.D9: PTH pad 8 of J2 at 161.01,94.82 -> U1.K5\n  /Connectors/I2C.SDA: Track [/Connectors/I2C.SDA] at 128.0,100.3 -> Track [/Connectors/I2C.SDA] at 167.025,101.925\n  /Connectors/SPI.MISO: U1.K9 -> U4.2\n  /Connectors/SPI.MOSI: U1.J8 -> Track [/Connectors/SPI.MOSI] at 160.95,108.95\n  ... 70 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 82,
+    "copper_items_after": 1077,
+    "connections_after": 82,
+    "completion": 0.4225,
+    "new_drc_errors": 0,
+    "errors_after": 51,
+    "nets_open_before": 67,
+    "chosen_nets": 65,
+    "connections_allowed": 132,
+    "connections_allowed_after": 72,
+    "completion_allowed": 0.4545,
+    "left_out_by_reason": {
+     "fast net, route it by hand or pass --allow-fast": 2
+    },
+    "left_out_connections": 8,
+    "stages": {
+     "planned-krt-first: krt": {
+      "seconds": 997.2,
+      "accepted": true,
+      "unconnected_after_stage": 82,
+      "new_errors_in_stage": "0",
+      "nets_routed": 27,
+      "why": "kept 64 net(s); dropped 1 that failed a check (see dropped): GND"
+     },
+     "planned-krt-first: freerouting": {
+      "seconds": 1227.1,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "Freerouting did not stop at its 15 minute limit"
+     },
+     "planned-krt-first: krt2": {
+      "seconds": 1080.1,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "did not stop within 15 minutes plus its grace time"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 3351.1,
+    "engine_result": "routed 27 of 65 chosen net(s) (krt 27, freerouting 0); open connections 142 -> 77"
+   },
+   "removed": 1126,
+   "copper_layers": 8,
+   "footprints": 71,
+   "nets": 95,
+   "zones": 267
+  }
+ ]
+}

@@ -8,6 +8,22 @@ Each demo folder is copied to a work directory (the KiCad install is never touch
 
 Completion is `1 - connections after / connections before`, over all connections. "Allowed" completion counts only the connections on nets the engine was permitted to route (it skips hazardous nets, and fast nets unless `--allow-fast`). "New errors" is the number of DRC errors not present on the stripped board.
 
+## Full run on Freerouting 2.6.0 (0.7.0, default runs)
+
+All seven boards, `--minutes 15`, in two streams (jetson; the six others one after another). 0 new DRC errors on every board. Open connections after, against the full run after round 12:
+
+| Board | After round 12 (2.5.1 nightly) | **2.6.0** | Time |
+|---|---|---|---|
+| pic_programmer | 0 | 0 | 1 min |
+| stickhub | 4 | 4 | 5 min |
+| kit-dev-coldfire-xilinx_5213 | 45 | **39** | 35 min |
+| cm5_minima (allowed: open after) | 87 (0) | 90 (0) | 19 min |
+| royalblue54L_feather | 59 | 66 | 29 min |
+| video | 144 | 146 | 98 min |
+| jetson-agx-thor-baseboard | 1404 | **1373** | 144 min |
+
+royalblue's 66 is load, not the version: a pair at the same time on a busy machine gave 82 for both (stages overran their limits), and on an idle one **59 with 2.6.0 against 69 with 2.5.1**. jetson's fourth Freerouting round was lost: past its limit Freerouting finishes the connection it is on before it writes the session, that took more than the 5 minutes the hang guard allowed, and the round was thrown away. The guard now allows 10 minutes. jetson's 1085 in round 14 came with its third round routing 89 nets; here the rounds routed 11, 10 and 8, so its result still swings with load. Results: `tools/bench/results/engine-r15-*.json`, `engine-r15b-rb-*.json`.
+
 ## Round 14: Freerouting 2.6.0, and a pass budget (0.7.0)
 
 **Pass budget (rejected).** Freerouting stops at a time limit, so its result depends on how fast the machine is that day. A budget of autorouter passes instead (`--router.autorouter.max_passes`, branch `engine-pass-budget`, switch `BOARDWRIGHT_FR_PASSES`) gives a byte-identical session for the same seed: three kit-dev runs at 10 passes matched, and so did one with 24 busy processes beside it (11 % slower). But it routed no better on video, where it matters (open connections after, 0 new DRC errors in every run):

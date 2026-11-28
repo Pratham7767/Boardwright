@@ -1,0 +1,64 @@
+{
+ "date": "2026-11-28",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 500.0,
+ "boards": [
+  {
+   "name": "jetson-agx-thor-baseboard",
+   "default": {
+    "connections_before": 2946,
+    "drc_unconnected_before": 499,
+    "drc_list_capped": true,
+    "errors_before": 3,
+    "copper_items_before": 0,
+    "exit": 1,
+    "wall_s": 8629.5,
+    "skipped": false,
+    "output_tail": "\nleft out /USB Hub/USBSS_RX_P: fast net, route it by hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nleft out /USB Hub/USBSS_TX_N: fast net, route it by hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nleft out /USB Hub/USBSS_TX_P: fast net, route it by hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nleft out /USB Hub/VBUS_MON_UP: fast net, route it by hand or pass --allow-fast (net class 85Ohm-diff_USB_SS)\nkrt-planes: ACCEPTED in 297.4 s; routed 2 net(s)\nfreerouting: ACCEPTED in 1929.9 s; routed 11 net(s)\nfreerouting: ACCEPTED in 1933.4 s; routed 10 net(s)\nfreerouting: ACCEPTED in 1940.4 s; routed 8 net(s)\nfreerouting: REJECTED in 2109.2 s; routed 0 net(s); Freerouting did not stop at its 30 minute limit\ndrc: 0 new error(s), 0 fixed, 3 unchanged; open connections 2946 -> 1373\ntime 8629.1 s\nLeftovers for Claude: 1373 connection(s) on 843 net(s)\n  +12V: 6 connection(s) open\n  +1V8: 8 connection(s) open\n  +3V3_AON: 30 connection(s) open\n  +5V: 1 connection(s) open\n  /CSI/CAM0.CSI2_CLK+: 1 connection(s) open\n  /CSI/CAM0.CSI2_CLK-: 1 connection(s) open\n  /CSI/CAM0.CSI2_D0+: 1 connection(s) open\n  /CSI/CAM0.CSI2_D0-: 1 connection(s) open\n  /CSI/CAM0.CSI2_D1+: 1 connection(s) open\n  /CSI/CAM0.CSI2_D1-: 1 connection(s) open\n  /CSI/CAM0.CSI3_D0+: 1 connection(s) open\n  /CSI/CAM0.CSI3_D0-: 1 connection(s) open\n  ... 831 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 499,
+    "copper_items_after": 9542,
+    "connections_after": 1373,
+    "completion": 0.5339,
+    "new_drc_errors": 0,
+    "errors_after": 3,
+    "nets_open_before": 1,
+    "chosen_nets": 571,
+    "connections_allowed": 499,
+    "connections_allowed_after": 331,
+    "completion_allowed": null,
+    "left_out_by_reason": {
+     "fast net, route it by hand or pass --allow-fast": 301
+    },
+    "left_out_connections": 0,
+    "stages": {
+     "krt-planes": {
+      "seconds": 297.4,
+      "accepted": true,
+      "unconnected_after_stage": 499,
+      "new_errors_in_stage": "0",
+      "nets_routed": 2,
+      "why": ""
+     },
+     "freerouting": {
+      "seconds": 2109.2,
+      "accepted": false,
+      "unconnected_after_stage": null,
+      "new_errors_in_stage": null,
+      "nets_routed": 0,
+      "why": "Freerouting did not stop at its 30 minute limit"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 8599.7,
+    "engine_result": "routed 31 of 571 chosen net(s) (krt 2, freerouting 29); open connections 2946 -> 1373"
+   },
+   "removed": 25386,
+   "copper_layers": 10,
+   "footprints": 1125,
+   "nets": 1387,
+   "zones": 125
+  }
+ ]
+}

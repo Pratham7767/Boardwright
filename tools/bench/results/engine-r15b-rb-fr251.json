@@ -1,0 +1,64 @@
+{
+ "date": "2026-11-28",
+ "kicad_python": "E:\\KiCAD\\bin\\python.exe",
+ "minutes_per_stage": 15.0,
+ "cap_min": 120.0,
+ "boards": [
+  {
+   "name": "royalblue54L_feather",
+   "default": {
+    "connections_before": 142,
+    "drc_unconnected_before": 142,
+    "drc_list_capped": false,
+    "errors_before": 51,
+    "copper_items_before": 15,
+    "exit": 1,
+    "wall_s": 2670.8,
+    "skipped": false,
+    "output_tail": "opped): GND\nfreerouting-first: krt2: ACCEPTED in 1004.5 s; routed 14 net(s); kept 58 net(s); dropped 4 that failed a check (see dropped): /Connectors/ANALOG.A0, /Connectors/SPI.MISO, VSYS, /Debugger/SWD_TRG.~{RESET}\ndrc: 0 new error(s), 0 fixed, 51 unchanged; open connections 142 -> 59\ntime 2669.7 s\nLeftovers for Claude: 59 connection(s) on 43 net(s)\n  +BATT: Track [+BATT] at 148.6391,101.3245 -> C11.1\n  /Connectors/ANALOG.A4: U1.B4 -> PTH pad 9 of J1 at 153.39,116.41\n  /Connectors/DIG.D10: PTH pad 7 of J2 at 158.47,94.82 -> Via [/Connectors/DIG.D10] at 164.4,109.0\n  /Connectors/DIG.D11: Track [/Connectors/DIG.D11] at 157.835,100.505 -> Track [/Connectors/DIG.D11] at 166.2,107.9\n  /Connectors/DIG.D12: PTH pad 5 of J2 at 153.39,94.82 -> U1.J5\n  /Connectors/DIG.D9: PTH pad 8 of J2 at 161.01,94.82 -> Track [/Connectors/DIG.D9] at 165.32,109.03\n  /Connectors/I2C.SCL: Track [/Connectors/I2C.SCL] at 127.1,100.3 -> Track [/Connectors/I2C.SCL] at 163.295,106.33\n  /Connectors/I2C.SDA: R3.2 -> Track [/Connectors/I2C.SDA] at 127.7002,99.6462\n  /Connectors/SPI.MISO: PTH pad 13 of J1 at 163.55,116.41 -> U1.K9\n  /Connectors/SPI.MISO: U4.2 -> U1.K9\n  /Connectors/SPI.MOSI: Track [/Connectors/SPI.MOSI] at 162.573,107.9186 -> U4.5\n  /Connectors/SPI.SCK: Track [/Connectors/SPI.SCK] at 161.47,108.13 -> Track [/Connectors/SPI.SCK] at 159.5,108.8\n  ... 57 more in reports/engine.md\nHandle them with bw_edit.py ({\"route\": [net]} or {\"add\": ...}); protected nets (hazardous, fast) by hand, then check.\n",
+    "drc_unconnected_after": 69,
+    "copper_items_after": 1186,
+    "connections_after": 69,
+    "completion": 0.5141,
+    "new_drc_errors": 0,
+    "errors_after": 51,
+    "nets_open_before": 67,
+    "chosen_nets": 65,
+    "connections_allowed": 132,
+    "connections_allowed_after": 59,
+    "completion_allowed": 0.553,
+    "left_out_by_reason": {
+     "fast net, route it by hand or pass --allow-fast": 2
+    },
+    "left_out_connections": 8,
+    "stages": {
+     "freerouting-first: freerouting": {
+      "seconds": 909.7,
+      "accepted": true,
+      "unconnected_after_stage": 108,
+      "new_errors_in_stage": "0",
+      "nets_routed": 10,
+      "why": "kept 64 net(s); dropped 1 that failed a check (see dropped): GND"
+     },
+     "freerouting-first: krt2": {
+      "seconds": 1004.5,
+      "accepted": true,
+      "unconnected_after_stage": 69,
+      "new_errors_in_stage": "0",
+      "nets_routed": 14,
+      "why": "kept 58 net(s); dropped 4 that failed a check (see dropped): /Connectors/ANALOG.A0, /Connectors/SPI.MISO, VSYS, /Debugger/SWD_TRG.~{RESET}"
+     }
+    },
+    "krt_nets": 0,
+    "freerouting_nets": 0,
+    "engine_seconds": 2664.9,
+    "engine_result": "routed 24 of 65 chosen net(s) (krt 14, freerouting 10); open connections 142 -> 59"
+   },
+   "removed": 1126,
+   "copper_layers": 8,
+   "footprints": 71,
+   "nets": 95,
+   "zones": 267
+  }
+ ]
+}
